@@ -21,7 +21,7 @@ interface Employee {
   designation: string
   site: string
   contractType: string
-  ctc: number
+ 
   status: "active" | "inactive"
   uan?: string
   esic?: string
@@ -55,7 +55,7 @@ const mockEmployees: Employee[] = [
     designation: "Manager",
     site: "site-a",
     contractType: "permanent",
-    ctc: 800000,
+    
     status: "active",
     uan: "100200300400",
     esic: "ESIC123456",
@@ -70,6 +70,7 @@ const mockEmployees: Employee[] = [
     employerPf: 1800,
     employerEsic: 500,
     employerLwf: 50,
+    
     bankName: "State Bank of India",
     accountNumber: "12345678901",
     ifsc: "SBIN0001234",
@@ -84,7 +85,7 @@ const mockEmployees: Employee[] = [
     designation: "Supervisor",
     site: "site-b",
     contractType: "contract",
-    ctc: 450000,
+
     status: "active",
     uan: "200300400500",
     esic: "ESIC654321",
@@ -126,6 +127,23 @@ export function EmployeeTable({ searchTerm, filterSite }: EmployeeTableProps) {
 
     return matchesSearch && matchesSite
   })
+const calculateMonthlyCost = (employee: Employee) => {
+  const {
+    basic = 0,
+    da = 0,
+    hra = 0,
+    employerPf = 0,
+    employerEsic = 0,
+    employerLwf = 0,
+  } = employee
+
+  return basic + da + hra + employerPf + employerEsic + employerLwf
+}
+
+const calculateCTC = (employee: Employee) => {
+  const monthlyCost = calculateMonthlyCost(employee)
+  return monthlyCost * 12
+}
 
   const getSiteName = (siteCode: string) => {
     const siteMap: Record<string, string> = {
@@ -196,7 +214,7 @@ export function EmployeeTable({ searchTerm, filterSite }: EmployeeTableProps) {
                   {employee.contractType}
                 </Badge>
               </td>
-              <td className="py-3 px-4 text-foreground">{formatCurrency(employee.ctc)}</td>
+              <td className="py-3 px-4 text-foreground">{formatCurrency(calculateCTC(employee))}</td>
               <td className="py-3 px-4">
                 <Badge
                   variant={employee.status === "active" ? "default" : "secondary"}
@@ -262,7 +280,7 @@ export function EmployeeTable({ searchTerm, filterSite }: EmployeeTableProps) {
                               <div>Basic: {formatCurrency(employee.basic)}</div>
                               <div>DA: {formatCurrency(employee.da)}</div>
                               <div>HRA: {formatCurrency(employee.hra)}</div>
-                              <div>CTC: {formatCurrency(employee.ctc)}</div>
+                              <div>CTC: {formatCurrency(calculateCTC(employee))}</div>
                             </div>
                             <div>
                               <div className="font-medium mb-1">Deductions</div>
