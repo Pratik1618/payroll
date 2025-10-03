@@ -46,12 +46,13 @@ const mockSites = [
   { id: "site-e", name: "Tech Hub", employees: 320, clientId: "client-3" },
 ]
 
+// 1. Add basicSalary to each employee in mockAttendanceData
 const mockAttendanceData = [
-  { empId: "EMP001", name: "John Doe", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, overtime: 8 },
-  { empId: "EMP002", name: "Jane Smith", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, overtime: 12 },
-  { empId: "EMP003", name: "Mike Johnson", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, overtime: 15 },
-  { empId: "EMP004", name: "Sarah Wilson", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, overtime: 5 },
-  { empId: "EMP005", name: "David Brown", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, overtime: 10 },
+  { empId: "EMP001", name: "John Doe", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, overtime: 8, basicSalary: 28000 },
+  { empId: "EMP002", name: "Jane Smith", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, overtime: 12, basicSalary: 32000 },
+  { empId: "EMP003", name: "Mike Johnson", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, overtime: 15, basicSalary: 25000 },
+  { empId: "EMP004", name: "Sarah Wilson", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, overtime: 5, basicSalary: 22000 },
+  { empId: "EMP005", name: "David Brown", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, overtime: 10, basicSalary: 35000 },
 ]
 
 export default function PayrollPage() {
@@ -81,8 +82,6 @@ export default function PayrollPage() {
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0)
   const [overridePendingLeaves, setOverridePendingLeaves] = useState(false)
   const [overrideReason, setOverrideReason] = useState("")
-
-
 
   useEffect(() => {
     const updatedSteps = payrollSteps.map((step, index) => ({
@@ -153,26 +152,38 @@ export default function PayrollPage() {
         case 2:
           await new Promise((resolve) => setTimeout(resolve, 3000))
 
+          // 2. Calculate all salary components
           const calculations = attendanceData.map((emp) => {
-            const basicSalary = 25000 // Base salary
-            const perDaySalary = basicSalary / emp.totalDays
-            const earnedSalary = perDaySalary * emp.daysPresent
-            const lopDeduction = perDaySalary * emp.lop
+               const earnedBasic = emp.basicSalary
+            const da = earnedBasic * 0.15 // 15% of basic
+            const hra = earnedBasic * 0.20 // 20% of basic
+            const cca = 1000 // Fixed
+            const pt = 200 // Fixed
+            const lwf = 50 
+            const perDaySalary = (emp.basicSalary +  da+hra+cca)/ emp.totalDays
+   
             const overtimePay = emp.overtime * 200 // ₹200 per hour
-            const grossSalary = earnedSalary + overtimePay
-            const pf = grossSalary * 0.12
-            const esi = grossSalary * 0.0175
-            const netSalary = grossSalary - pf - esi - lopDeduction
+            const grossSalary = earnedBasic + da + hra + cca + overtimePay
+            const pf = earnedBasic>15000?1800: earnedBasic * 0.12
+            const esi = grossSalary>21000?0:grossSalary * 0.0175
+            const lopDeduction = perDaySalary * emp.lop
+            const totalDeductions = pf + esi + pt + lwf + lopDeduction
+            const netSalary = grossSalary - totalDeductions
 
             return {
               ...emp,
-              basicSalary,
-              earnedSalary: Math.round(earnedSalary),
-              lopDeduction: Math.round(lopDeduction),
-              overtimePay,
+              earnedBasic: Math.round(earnedBasic),
+              da: Math.round(da),
+              hra: Math.round(hra),
+              cca: Math.round(cca),
+              overtimePay: Math.round(overtimePay),
               grossSalary: Math.round(grossSalary),
               pf: Math.round(pf),
               esi: Math.round(esi),
+              pt: Math.round(pt),
+              lwf: Math.round(lwf),
+              lopDeduction: Math.round(lopDeduction),
+              totalDeductions: Math.round(totalDeductions),
               netSalary: Math.round(netSalary),
             }
           })
@@ -412,8 +423,6 @@ export default function PayrollPage() {
                             onClick: () => console.log("ok"),
                           },
                         })
-
-
                       }
                     >
                       Notify Managers
@@ -527,7 +536,6 @@ export default function PayrollPage() {
         onClick: () => console.log("ok"),
       },
     })
-
   }
 
   return (
@@ -684,13 +692,24 @@ export default function PayrollPage() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-2">Employee</th>
+                      <th className="text-left p-2">Emp Code</th>
                       <th className="text-left p-2">Present Days</th>
                       <th className="text-left p-2">Leaves</th>
                       <th className="text-left p-2">LOP</th>
                       <th className="text-left p-2">Overtime</th>
                       {currentStep >= 3 && (
                         <>
+                          <th className="text-left p-2">Basic</th>
+                          <th className="text-left p-2">DA</th>
+                          <th className="text-left p-2">HRA</th>
+                          <th className="text-left p-2">CCA</th>
                           <th className="text-left p-2">Gross Salary</th>
+                          <th className="text-left p-2">PF</th>
+                          <th className="text-left p-2">ESIC</th>
+                          <th className="text-left p-2">PT</th>
+                          <th className="text-left p-2">LWF</th>
+                          <th className="text-left p-2">LOP deductions</th>
+
                           <th className="text-left p-2">Deductions</th>
                           <th className="text-left p-2">Net Salary</th>
                         </>
@@ -706,6 +725,7 @@ export default function PayrollPage() {
                             <div className="text-xs text-muted-foreground">{emp.empId}</div>
                           </div>
                         </td>
+                        <td className="p-2">{emp.empId}</td>
                         <td className="p-2">
                           {emp.daysPresent}/{emp.totalDays}
                         </td>
@@ -718,8 +738,18 @@ export default function PayrollPage() {
                         </td>
                         {currentStep >= 3 && (
                           <>
+                            <td className="p-2">₹{emp.earnedBasic?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.da?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.hra?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.cca?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.grossSalary?.toLocaleString()}</td>
-                            <td className="p-2">₹{(emp.pf + emp.esi + emp.lopDeduction)?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.pf?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.esi?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.pt?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.lwf?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.lopDeduction?.toLocaleString()}</td>
+                           
+                            <td className="p-2">₹{emp.totalDeductions?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
                           </>
                         )}
