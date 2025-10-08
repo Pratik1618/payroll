@@ -499,22 +499,23 @@ export default function PayrollPage() {
       return
     }
 
-    const bankFileData = payrollCalculations.map((emp, index) => {
-      return [
-        (index + 1)
-          .toString()
-          .padStart(3, "0"), // Serial Number
-        emp.empId, // Employee ID
-        emp.name, // Employee Name
-        "12345678901234", // Bank Account Number (mock)
-        "HDFC0001234", // IFSC Code (mock)
-        emp.netSalary.toString(), // Net Salary Amount
-        "SALARY", // Payment Type
-        new Date().toISOString().split("T")[0], // Payment Date
-      ].join(",")
-    })
+    // Updated header as per your latest format
+    const header = "TYPE,DEBIT BANK A/C NO,DEBIT AMT,CUR,BENEFICIARY A/C NO,IFSC CODE,NARRATION/NAME (NOT MORE THAN 20)"
 
-    const header = "Sr No,Employee ID,Employee Name,Account Number,IFSC Code,Amount,Payment Type,Payment Date"
+    // Generate a random 12-digit beneficiary account number for each row
+    const randomAccountNumber = () =>
+      Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("")
+
+    const bankFileData = payrollCalculations.map((emp) => [
+      "NEFT", // TYPE
+      "12345678901234", // DEBIT BANK A/C NO (mocked, replace as needed)
+      emp.netSalary?.toString() ?? "", // DEBIT AMT
+      "INR", // CUR
+      randomAccountNumber(), // BENEFICIARY A/C NO (random 12-digit number)
+      emp.ifsc || "HDFC0001234", // IFSC CODE (mock or real if available)
+      (emp.name || "").substring(0, 20), // NARRATION/NAME (NOT MORE THAN 20)
+    ].join(","))
+
     const csvContent = [header, ...bankFileData].join("\n")
 
     // Create and download the file
@@ -528,9 +529,9 @@ export default function PayrollPage() {
     link.click()
     document.body.removeChild(link)
 
-    toast("Cannot Generate Bank File", {
-      description: "Payroll must be locked and calculations must be completed.",
-      className: "bg-red-600 text-white", // tailwind destructive look
+    toast("Bank File Generated", {
+      description: "Bank file has been generated and downloaded.",
+      className: "bg-green-600 text-white",
       action: {
         label: "OK",
         onClick: () => console.log("ok"),
