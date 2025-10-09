@@ -100,12 +100,14 @@ const filteredHistory = payrollHistory.filter((record) => {
 
   return (
     <MainLayout>
-      <div className="space-y-6 px-4 py-8 max-w-6xl mx-auto">
-        <div>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+         <div>
           <h1 className="text-3xl font-bold tracking-tight">Payroll History</h1>
           <p className="text-muted-foreground text-sm">
             Filter and view processed payroll data by client, site, and month.
           </p>
+          </div>
         </div>
 
         {/* Filters */}
