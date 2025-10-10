@@ -156,18 +156,18 @@ export default function PayrollPage() {
 
           // 2. Calculate all salary components
           const calculations = attendanceData.map((emp) => {
-               const earnedBasic = emp.basicSalary
+            const earnedBasic = emp.basicSalary
             const da = earnedBasic * 0.15 // 15% of basic
             const hra = earnedBasic * 0.20 // 20% of basic
             const cca = 1000 // Fixed
             const pt = 200 // Fixed
-            const lwf = 50 
-            const perDaySalary = (emp.basicSalary +  da+hra+cca)/ emp.totalDays
-   
+            const lwf = 50
+            const perDaySalary = (emp.basicSalary + da + hra + cca) / emp.totalDays
+
             const overtimePay = emp.overtime * 200 // ₹200 per hour
             const grossSalary = earnedBasic + da + hra + cca + overtimePay
-            const pf = earnedBasic>15000?1800: earnedBasic * 0.12
-            const esi = grossSalary>21000?0:grossSalary * 0.0175
+            const pf = earnedBasic > 15000 ? 1800 : earnedBasic * 0.12
+            const esi = grossSalary > 21000 ? 0 : grossSalary * 0.0175
             const lopDeduction = perDaySalary * emp.lop
             const totalDeductions = pf + esi + pt + lwf + lopDeduction
             const netSalary = grossSalary - totalDeductions
@@ -311,12 +311,12 @@ export default function PayrollPage() {
 
               {/* Sites Dropdown with Search and Select All */}
               <div className="space-y-2">
-              <SitesDropdown
-  sites={getAvailableSites()}
-  selectedSites={selectedSites}
-  setSelectedSites={setSelectedSites}
-  label="Select Sites"
-/>
+                <SitesDropdown
+                  sites={getAvailableSites()}
+                  selectedSites={selectedSites}
+                  setSelectedSites={setSelectedSites}
+                  label="Select Sites"
+                />
               </div>
             </div>
 
@@ -736,7 +736,7 @@ export default function PayrollPage() {
                             <td className="p-2">₹{emp.pt?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.lwf?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.lopDeduction?.toLocaleString()}</td>
-                           
+
                             <td className="p-2">₹{emp.totalDeductions?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
                           </>

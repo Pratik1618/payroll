@@ -61,7 +61,8 @@ export const SitesDropdown: React.FC<SitesDropdownProps> = ({
       {label && <label className="text-sm font-medium mb-1 block">{label}</label>}
       <button
         type="button"
-        className="w-full border rounded-md px-3 py-2 text-left bg-background"
+        className="w-full border rounded-md px-3 py-2 text-left bg-background "
+    
         onClick={() => setOpen((v) => !v)}
       >
         {selectedSites.length === 0
