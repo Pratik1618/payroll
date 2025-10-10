@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,7 @@ import { VariableUpload } from "@/components/ui/payroll/variable-upload"
 import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
 import { CloneSiteModal } from "@/components/ui/payroll/clone-site-modal"
 import { toast } from "sonner"
+import { SitesDropdown } from "@/components/ui/sites-dropdown"
 
 const initialPayrollSteps = [
   {
@@ -91,6 +92,7 @@ export default function PayrollPage() {
     }))
     setPayrollSteps(updatedSteps)
   }, [currentStep])
+
 
   const getAvailableSites = () => {
     if (!selectedClient) return []
@@ -307,29 +309,14 @@ export default function PayrollPage() {
                 </Select>
               </div>
 
+              {/* Sites Dropdown with Search and Select All */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Select Sites</label>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {getAvailableSites().map((site) => (
-                    <label key={site.id} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedSites.includes(site.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedSites([...selectedSites, site.id])
-                          } else {
-                            setSelectedSites(selectedSites.filter((id) => id !== site.id))
-                          }
-                        }}
-                        className="rounded border-gray-300"
-                      />
-                      <span className="text-sm">
-                        {site.name} ({site.employees} employees)
-                      </span>
-                    </label>
-                  ))}
-                </div>
+              <SitesDropdown
+  sites={getAvailableSites()}
+  selectedSites={selectedSites}
+  setSelectedSites={setSelectedSites}
+  label="Select Sites"
+/>
               </div>
             </div>
 
@@ -771,3 +758,5 @@ export default function PayrollPage() {
     </MainLayout>
   )
 }
+
+
