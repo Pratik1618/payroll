@@ -21,6 +21,7 @@ import { MainLayout } from "@/components/ui/layout/main-layout";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Eye } from "lucide-react";
+import { PayslipViewer } from "@/components/ui/payroll-History/payslip-viewer";
 
 // Dummy data
 const clients = [
@@ -34,28 +35,69 @@ const sites = [
   { id: 3, clientId: 2, name: "Site Z" },
 ];
 
+
+
+// Now payrollHistory with detailed employee info for payslip
 const payrollHistory = [
-  { id: 1, employee: "John Doe", designation: "HK", clientId: 1, siteId: 1, amount: 50000, date: "2025-10-01" },
-  { id: 2, employee: "Jane Smith", designation: "Supervisor", clientId: 2, siteId: 3, amount: 60000, date: "2025-10-05" },
-  { id: 3, employee: "Alice Johnson", designation: "Janitor", clientId: 1, siteId: 2, amount: 52000, date: "2025-09-30" },
-  { id: 4, employee: "Bob Martin", designation: "Chambermaid", clientId: 1, siteId: 1, amount: 48000, date: "2025-10-02" },
-  { id: 5, employee: "Evelyn Cruz", designation: "HK", clientId: 1, siteId: 2, amount: 51000, date: "2025-10-03" },
-  { id: 6, employee: "Samuel Green", designation: "Supervisor", clientId: 2, siteId: 3, amount: 62000, date: "2025-10-07" },
-  { id: 7, employee: "Clara Oswald", designation: "Janitor", clientId: 1, siteId: 1, amount: 53000, date: "2025-09-25" },
-  { id: 8, employee: "Ravi Kumar", designation: "HK", clientId: 1, siteId: 1, amount: 49500, date: "2025-10-08" },
-  { id: 9, employee: "Sneha Rao", designation: "Chambermaid", clientId: 2, siteId: 3, amount: 47000, date: "2025-10-04" },
-  { id: 10, employee: "Luis Fernandez", designation: "Janitor", clientId: 1, siteId: 2, amount: 52500, date: "2025-09-28" },
-  { id: 11, employee: "Grace Lee", designation: "Supervisor", clientId: 2, siteId: 3, amount: 61500, date: "2025-09-27" },
-  { id: 12, employee: "Aisha Ali", designation: "Chambermaid", clientId: 1, siteId: 2, amount: 46000, date: "2025-10-06" },
-  { id: 13, employee: "Victor Chen", designation: "HK", clientId: 2, siteId: 3, amount: 50500, date: "2025-10-09" },
-  { id: 14, employee: "Anita Patel", designation: "Janitor", clientId: 1, siteId: 1, amount: 53500, date: "2025-09-29" },
-  { id: 15, employee: "George Wilson", designation: "Supervisor", clientId: 1, siteId: 2, amount: 63000, date: "2025-10-01" },
-  { id: 16, employee: "Maya Kapoor", designation: "Chambermaid", clientId: 2, siteId: 3, amount: 45500, date: "2025-10-05" },
-  { id: 17, employee: "Daniel White", designation: "HK", clientId: 1, siteId: 1, amount: 49800, date: "2025-09-26" },
-  { id: 18, employee: "Laura Kim", designation: "Janitor", clientId: 2, siteId: 3, amount: 54000, date: "2025-10-03" },
-  { id: 19, employee: "Ibrahim Musa", designation: "Supervisor", clientId: 1, siteId: 2, amount: 62500, date: "2025-10-04" },
-  { id: 20, employee: "Nora Black", designation: "HK", clientId: 1, siteId: 2, amount: 50200, date: "2025-10-07" },
+  {
+    id: 1,
+    employee: {
+      name: "John Doe",
+      designation: "HK",
+      department: "Housekeeping",
+      site: "Site X",
+      pan: "ABCDE1234F",
+      uan: "100200300",
+      esic: "1234567890",
+      joiningDate: "2022-01-15"
+    },
+    clientId: 1,
+    siteId: 1,
+    amount: 50000,
+    date: "2025-10-01",
+    salary: {
+      basic: 20000,
+      hra: 8000,
+      da: 5000,
+      conveyance: 2000,
+      medical: 1500,
+      others: 1500,
+      deductions: 5000,
+    
+     
+    }
+   
+  },
+  {
+    id: 2,
+    employee: {
+      name: "Jane Smith",
+      designation: "Supervisor",
+      department: "Management",
+      site: "Site Z",
+      pan: "XYZAB5678C",
+      uan: "200300400",
+      esic: "0987654321",
+      joiningDate: "2020-03-20"
+    },
+    clientId: 2,
+    siteId: 3,
+    amount: 60000,
+    date: "2025-10-05",
+    salary: {
+      basic: 25000,
+      hra: 9000,
+      da: 6000,
+      conveyance: 2500,
+      medical: 2000,
+      others: 1500,
+      deductions: 6000,
+      netPay: 60000
+    }
+  },
+  // Add more records with similar structure
 ];
+
 
 
 // Fixed designations
@@ -73,7 +115,7 @@ export default function PayrollHistoryPage() {
   const [selectedSite, setSelectedSite] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("2025-10");
 const [searchTerm, setSearchTerm] = useState<string>("");
-
+const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const filteredSites =
     selectedClient !== "all"
       ? sites.filter((site) => site.clientId === Number(selectedClient))
@@ -86,7 +128,7 @@ const filteredHistory = payrollHistory.filter((record) => {
   const siteMatch =
     selectedSite !== "all" ? record.siteId === Number(selectedSite) : true;
   const monthMatch = record.date.startsWith(selectedMonth);
-  const searchMatch = record.employee.toLowerCase().includes(searchTerm.toLowerCase());
+  const searchMatch = record.employee.name.toLowerCase().includes(searchTerm.toLowerCase());
 
   return clientMatch && siteMatch && monthMatch && searchMatch;
 });
@@ -95,7 +137,7 @@ const filteredHistory = payrollHistory.filter((record) => {
   // Count by designation
   const designationSummary: Record<string, number> = {};
   designations.forEach((des) => {
-    designationSummary[des] = filteredHistory.filter((rec) => rec.designation === des).length;
+    designationSummary[des] = filteredHistory.filter((rec) => rec.employee.designation === des).length;
   });
 
   return (
@@ -245,8 +287,8 @@ const filteredHistory = payrollHistory.filter((record) => {
                   ) : (
                     filteredHistory.map((record) => (
                       <TableRow key={record.id}>
-                        <TableCell>{record.employee}</TableCell>
-                        <TableCell>{record.designation}</TableCell>
+                        <TableCell>{record.employee.name}</TableCell>
+                        <TableCell>{record.employee.designation}</TableCell>
                         <TableCell>
                           {clients.find((c) => c.id === record.clientId)?.name}
                         </TableCell>
@@ -258,8 +300,10 @@ const filteredHistory = payrollHistory.filter((record) => {
                         </TableCell>
                         <TableCell>{record.date}</TableCell>
                         <TableCell className="text-center">
-  <Eye className="h-5 w-5 text-muted-foreground hover:text-primary cursor-pointer" />
-</TableCell>
+ <Eye
+    className="h-5 w-5 text-muted-foreground hover:text-primary cursor-pointer"
+    onClick={() => setSelectedRecord(record)}
+  /></TableCell>
 
                       </TableRow>
                     ))
@@ -270,6 +314,14 @@ const filteredHistory = payrollHistory.filter((record) => {
           </CardContent>
         </Card>
       </div>
+      {selectedRecord && (
+  <PayslipViewer
+    employeeId={selectedRecord.id}
+    record={selectedRecord}
+  month={selectedMonth}
+  onClose={() => setSelectedRecord(null)}
+  />
+)}
     </MainLayout>
   );
 }
