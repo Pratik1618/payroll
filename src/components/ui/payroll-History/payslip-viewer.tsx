@@ -65,11 +65,11 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
         </CardHeader>
         <CardContent className="p-6">
           {/* Company Header */}
-          <div className="text-center mb-6 pb-4 border-b border-border">
+          {/* <div className="text-center mb-6 pb-4 border-b border-border">
             <h2 className="text-2xl font-bold text-foreground">FacilityTech Solutions Pvt. Ltd.</h2>
             <p className="text-muted-foreground">Corporate Office: 123 Business Park, Mumbai - 400001</p>
             <p className="text-muted-foreground">Email: hr@facilitytech.com | Phone: +91-22-12345678</p>
-          </div>
+          </div> */}
 
           {/* Employee Information */}
           <div className="grid gap-6 md:grid-cols-2 mb-6">
@@ -158,19 +158,19 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 </div>
                 <div className="text-center">
                   <div className="text-muted-foreground">Leave</div>
-                  <div className="text-lg font-bold text-blue-600">{attendance.leave}</div>
+                  <div className="text-lg font-bold text-blue-600">{attendance.leaves}</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-muted-foreground">Absent</div>
-                  <div className="text-lg font-bold text-red-600">{attendance.absent}</div>
+                  <div className="text-muted-foreground">Lop</div>
+                  <div className="text-lg font-bold text-red-600">{attendance.lop}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-muted-foreground">Weekly Off</div>
-                  <div className="text-lg font-bold text-gray-600">{attendance.weeklyOff}</div>
+                  <div className="text-lg font-bold text-gray-600">{attendance.wo}</div>
                 </div>
                 <div className="text-center">
                   <div className="text-muted-foreground">OT Hours</div>
-                  <div className="text-lg font-bold text-purple-600">{salary.otHours}</div>
+                  <div className="text-lg font-bold text-purple-600">{attendance.ot}</div>
                 </div>
               </div>
             </CardContent>
@@ -268,10 +268,12 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                     <span className="text-2xl font-bold text-blue-900">{formatCurrency(netPay)}</span>
                   </div>
                   <div className="text-center mt-2">
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800  break-words">
-                      {/* Ideally you'd convert netPay to words dynamically */}
-                     Amount in Words: {toWords(netPay) }
-                    </Badge>
+                    <Badge
+          variant="secondary"
+          className="bg-blue-100 text-blue-800 block max-w-full whitespace-normal break-words px-2 py-1"
+        >
+          Amount in Words: {toWords(netPay)} rupees only
+        </Badge>
                   </div>
                 </div>
               </CardContent>

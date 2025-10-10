@@ -65,6 +65,15 @@ const payrollHistory = [
       deductions: 5000,
     
      
+    },
+    attendance:{
+      workingDays:30,
+      present: 23,
+      leaves :1,
+      lop: 0,
+      wo:4,
+      ot:0
+
     }
    
   },
