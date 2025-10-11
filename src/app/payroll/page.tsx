@@ -556,7 +556,7 @@ export default function PayrollPage() {
             <h1 className="text-3xl font-bold text-foreground">Payroll Processing</h1>
             <p className="text-muted-foreground">Process monthly payroll with step-by-step workflow</p>
           </div>
-          <div className="flex space-x-2">
+          {/* <div className="flex space-x-2">
             <Button variant="outline" onClick={() => setShowCloneSite(true)} disabled={payrollData.payrollLocked}>
               <Copy className="mr-2 h-4 w-4" />
               Clone Site
@@ -565,7 +565,7 @@ export default function PayrollPage() {
               <Upload className="mr-2 h-4 w-4" />
               Upload Variables
             </Button>
-          </div>
+          </div> */}
         </div>
 
         {/* Payroll Stepper */}
@@ -812,9 +812,9 @@ export default function PayrollPage() {
         )}
 
         {/* Modals */}
-        {showVariableUpload && <VariableUpload onClose={() => setShowVariableUpload(false)} />}
+        {/* {showVariableUpload && <VariableUpload onClose={() => setShowVariableUpload(false)} />} */}
         {showSalaryHold && <SalaryHoldModal onClose={() => setShowSalaryHold(false)} />}
-        {showCloneSite && <CloneSiteModal onClose={() => setShowCloneSite(false)} />}
+        {/* {showCloneSite && <CloneSiteModal onClose={() => setShowCloneSite(false)} />} */}
       </div>
     </MainLayout>
   )
