@@ -154,26 +154,42 @@ export default function PayrollPage() {
         case 2:
           await new Promise((resolve) => setTimeout(resolve, 3000))
 
-          // 2. Calculate all salary components
+          // Calculate all salary components with LOP adjustment
           const calculations = attendanceData.map((emp) => {
-            const earnedBasic = emp.basicSalary
-            const da = earnedBasic * 0.15 // 15% of basic
-            const hra = earnedBasic * 0.20 // 20% of basic
-            const cca = 1000 // Fixed
-            const pt = 200 // Fixed
-            const lwf = 50
-            const perDaySalary = (emp.basicSalary + da + hra + cca) / emp.totalDays
+            const paidDays = emp.totalDays - emp.lop
+            const dayRatio = paidDays / emp.totalDays
 
-            const overtimePay = emp.overtime * 200 // ₹200 per hour
+            // Actual earned (pro-rata) components
+            const earnedBasic = emp.basicSalary * dayRatio
+            const da = earnedBasic * 0.15
+            const hra = earnedBasic * 0.20
+            const cca = 1000 * dayRatio
+
+            // Given (full) components for reference
+            const givenBasic = emp.basicSalary
+            const givenDa = givenBasic * 0.15
+            const givenHra = givenBasic * 0.20
+            const givenCca = 1000
+
+            const pt = 200
+            const lwf = 50
+            const overtimePay = emp.overtime * 200
+
+            // Gross salary
             const grossSalary = earnedBasic + da + hra + cca + overtimePay
+            const givenGrossSalary = givenBasic + givenDa + givenHra + givenCca + overtimePay
+
             const pf = earnedBasic > 15000 ? 1800 : earnedBasic * 0.12
             const esi = grossSalary > 21000 ? 0 : grossSalary * 0.0175
-            const lopDeduction = perDaySalary * emp.lop
+
+            const lopDeduction = (givenBasic + givenDa + givenHra + givenCca) - (earnedBasic + da + hra + cca)
             const totalDeductions = pf + esi + pt + lwf + lopDeduction
             const netSalary = grossSalary - totalDeductions
 
             return {
               ...emp,
+              paidDays,
+              // Actual earned
               earnedBasic: Math.round(earnedBasic),
               da: Math.round(da),
               hra: Math.round(hra),
@@ -187,6 +203,12 @@ export default function PayrollPage() {
               lopDeduction: Math.round(lopDeduction),
               totalDeductions: Math.round(totalDeductions),
               netSalary: Math.round(netSalary),
+              // Given (full) components
+              givenBasic: Math.round(givenBasic),
+              givenDa: Math.round(givenDa),
+              givenHra: Math.round(givenHra),
+              givenCca: Math.round(givenCca),
+              givenGrossSalary: Math.round(givenGrossSalary),
             }
           })
 
@@ -687,16 +709,21 @@ export default function PayrollPage() {
                       <th className="text-left p-2">Overtime</th>
                       {currentStep >= 3 && (
                         <>
-                          <th className="text-left p-2">Basic</th>
-                          <th className="text-left p-2">DA</th>
-                          <th className="text-left p-2">HRA</th>
-                          <th className="text-left p-2">CCA</th>
-                          <th className="text-left p-2">Gross Salary</th>
+                          <th className="text-left p-2">Basic<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">DA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">HRA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">CCA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">OverTime Pay</th>
+                          
+                          <th className="text-left p-2">
+                            Gross Salary<br />
+                            <span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span>
+                          </th>
                           <th className="text-left p-2">PF</th>
                           <th className="text-left p-2">ESIC</th>
                           <th className="text-left p-2">PT</th>
                           <th className="text-left p-2">LWF</th>
-                          <th className="text-left p-2">LOP deductions</th>
+                          {/* <th className="text-left p-2">LOP deductions</th> */}
 
                           <th className="text-left p-2">Deductions</th>
                           <th className="text-left p-2">Net Salary</th>
@@ -726,16 +753,50 @@ export default function PayrollPage() {
                         </td>
                         {currentStep >= 3 && (
                           <>
-                            <td className="p-2">₹{emp.earnedBasic?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.da?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.hra?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.cca?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.grossSalary?.toLocaleString()}</td>
+                            <td className="p-2">
+                              ₹{emp.givenBasic?.toLocaleString()}
+                              <br />
+                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
+                                ₹{emp.earnedBasic?.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="p-2">
+                              ₹{emp.givenDa?.toLocaleString()}
+                              <br />
+                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
+                                ₹{emp.da?.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="p-2">
+                              ₹{emp.givenHra?.toLocaleString()}
+                              <br />
+                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
+                                ₹{emp.hra?.toLocaleString()}
+                              </span>
+                            </td>
+                            <td className="p-2">
+                              ₹{emp.givenCca?.toLocaleString()}
+                              <br />
+                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
+                                ₹{emp.cca?.toLocaleString()}
+                              </span>
+                            </td>
+                                <td className="p-2">
+                              ₹{emp.overtimePay.toLocaleString()}
+                            
+                            </td>
+                            <td className="p-2">
+                              ₹{emp.givenGrossSalary?.toLocaleString()}
+                              <br />
+                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
+                                ₹{emp.grossSalary?.toLocaleString()}
+                              </span>
+                            </td>
                             <td className="p-2">₹{emp.pf?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.esi?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.pt?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.lwf?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.lopDeduction?.toLocaleString()}</td>
+                            {/* <td className="p-2">₹{emp.lopDeduction?.toLocaleString()}</td> */}
 
                             <td className="p-2">₹{emp.totalDeductions?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
