@@ -264,50 +264,7 @@ export default function StatutoryPage() {
           </Card>
         </div>
 
-        {/* Filters */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground">Report Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-[240px] justify-start text-left font-normal",
-                      !selectedMonth && "text-muted-foreground",
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedMonth ? format(selectedMonth, "MMMM yyyy") : <span>Select month</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedMonth}
-                    onSelect={(date) => date && setSelectedMonth(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <Select value={selectedSite} onValueChange={setSelectedSite}>
-                <SelectTrigger className="w-48 bg-background">
-                  <SelectValue placeholder="Filter by site" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sites</SelectItem>
-                  <SelectItem value="site-a">Site A - Corporate</SelectItem>
-                  <SelectItem value="site-b">Site B - Manufacturing</SelectItem>
-                  <SelectItem value="site-c">Site C - Warehouse</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+    
 
         {/* Reports Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -316,7 +273,7 @@ export default function StatutoryPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg text-foreground">{report.title}</CardTitle>
-                  {getStatusBadge(report.status, report.dueDate)}
+                  {/* {getStatusBadge(report.status, report.dueDate)} */}
                 </div>
                 <p className="text-sm text-muted-foreground">{report.description}</p>
               </CardHeader>
