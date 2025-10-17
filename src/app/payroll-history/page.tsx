@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Select,
   SelectTrigger,
@@ -38,74 +38,74 @@ const sites = [
 
 
 // Now payrollHistory with detailed employee info for payslip
-const payrollHistory = [
-  {
-    id: 1,
-    employee: {
-      name: "John Doe",
-      designation: "HK",
-      department: "Housekeeping",
-      site: "Site X",
-      pan: "ABCDE1234F",
-      uan: "100200300",
-      esic: "1234567890",
-      joiningDate: "2022-01-15"
-    },
-    clientId: 1,
-    siteId: 1,
-    amount: 50000,
-    date: "2025-10-01",
-    salary: {
-      basic: 20000,
-      hra: 8000,
-      da: 5000,
-      conveyance: 2000,
-      medical: 1500,
-      others: 1500,
-      deductions: 5000,
+// const payrollHistory = [
+//   {
+//     id: 1,
+//     employee: {
+//       name: "John Doe",
+//       designation: "HK",
+//       department: "Housekeeping",
+//       site: "Site X",
+//       pan: "ABCDE1234F",
+//       uan: "100200300",
+//       esic: "1234567890",
+//       joiningDate: "2022-01-15"
+//     },
+//     clientId: 1,
+//     siteId: 1,
+//     amount: 50000,
+//     date: "2025-10-01",
+//     salary: {
+//       basic: 20000,
+//       hra: 8000,
+//       da: 5000,
+//       conveyance: 2000,
+//       medical: 1500,
+//       others: 1500,
+//       deductions: 5000,
     
      
-    },
-    attendance:{
-      workingDays:30,
-      present: 23,
-      leaves :1,
-      lop: 0,
-      wo:4,
-      ot:0
+//     },
+//     attendance:{
+//       workingDays:30,
+//       present: 23,
+//       leaves :1,
+//       lop: 0,
+//       wo:4,
+//       ot:0
 
-    }
+//     }
    
-  },
-  {
-    id: 2,
-    employee: {
-      name: "Jane Smith",
-      designation: "Supervisor",
-      department: "Management",
-      site: "Site Z",
-      pan: "XYZAB5678C",
-      uan: "200300400",
-      esic: "0987654321",
-      joiningDate: "2020-03-20"
-    },
-    clientId: 2,
-    siteId: 3,
-    amount: 60000,
-    date: "2025-10-05",
-    salary: {
-      basic: 25000,
-      hra: 9000,
-      da: 6000,
-      conveyance: 2500,
-      medical: 2000,
-      others: 1500,
-      deductions: 6000,
-      netPay: 60000
-    }
-  },
-  // Add more records with similar structure
-];
+//   },
+//   {
+//     id: 2,
+//     employee: {
+//       name: "Jane Smith",
+//       designation: "Supervisor",
+//       department: "Management",
+//       site: "Site Z",
+//       pan: "XYZAB5678C",
+//       uan: "200300400",
+//       esic: "0987654321",
+//       joiningDate: "2020-03-20"
+//     },
+//     clientId: 2,
+//     siteId: 3,
+//     amount: 60000,
+//     date: "2025-10-05",
+//     salary: {
+//       basic: 25000,
+//       hra: 9000,
+//       da: 6000,
+//       conveyance: 2500,
+//       medical: 2000,
+//       others: 1500,
+//       deductions: 6000,
+//       netPay: 60000
+//     }
+//   },
+//   // Add more records with similar structure
+// ];
 
 
 
@@ -120,6 +120,17 @@ const months = [
 ];
 
 export default function PayrollHistoryPage() {
+   const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Only run on client
+    if (typeof window !== "undefined") {
+      const storedData = localStorage.getItem("reviewData");
+      if (storedData) {
+        setPayrollHistory(JSON.parse(storedData));
+      }
+    }
+  }, []);
   const [selectedClient, setSelectedClient] = useState<string>("all");
   const [selectedSite, setSelectedSite] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("2025-10");
@@ -131,23 +142,33 @@ const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
       : sites;
 
 
-const filteredHistory = payrollHistory.filter((record) => {
-  const clientMatch =
-    selectedClient !== "all" ? record.clientId === Number(selectedClient) : true;
-  const siteMatch =
-    selectedSite !== "all" ? record.siteId === Number(selectedSite) : true;
-  const monthMatch = record.date.startsWith(selectedMonth);
-  const searchMatch = record.employee.name.toLowerCase().includes(searchTerm.toLowerCase());
+// const filteredHistory = payrollHistory.filter((record) => {
+//   const clientMatch =
+//     selectedClient !== "all" ? record.clientId === Number(selectedClient) : true;
+//   const siteMatch =
+//     selectedSite !== "all" ? record.siteId === Number(selectedSite) : true;
+//   const monthMatch = record.date.startsWith(selectedMonth);
+//   const searchMatch = record.employee.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-  return clientMatch && siteMatch && monthMatch && searchMatch;
+//   return clientMatch && siteMatch && monthMatch && searchMatch;
+// });
+const filteredHistory = payrollHistory.filter((record) =>
+  record.name.toLowerCase().includes(searchTerm.toLowerCase())
+);
+
+
+  // // Count by designation
+  // const designationSummary: Record<string, number> = {};
+  // designations.forEach((des) => {
+  //   designationSummary[des] = filteredHistory.filter((rec) => rec.employee.designation === des).length;
+  // });
+  const designationSummary: Record<string, number> = {};
+designations.forEach((des) => {
+  designationSummary[des] = filteredHistory.filter(
+    (rec: any) => rec.designation === des
+  ).length;
 });
 
-
-  // Count by designation
-  const designationSummary: Record<string, number> = {};
-  designations.forEach((des) => {
-    designationSummary[des] = filteredHistory.filter((rec) => rec.employee.designation === des).length;
-  });
 
   return (
     <MainLayout>
@@ -287,6 +308,37 @@ const filteredHistory = payrollHistory.filter((record) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
+  {filteredHistory.length === 0 ? (
+    <TableRow>
+      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+        No records found.
+      </TableCell>
+    </TableRow>
+  ) : (
+    filteredHistory.map((record, idx) => (
+      <TableRow key={idx}>
+        <TableCell>{record.name}</TableCell>
+        <TableCell>{record.designation || "-"}</TableCell>
+        <TableCell>{record.zone || "-"}</TableCell>
+        <TableCell>{record.state || "-"}</TableCell>
+        <TableCell className="text-right">
+          ₹{record.netSalary?.toLocaleString() || 0}
+        </TableCell>
+        <TableCell>
+          {record.totalDays ? `${record.daysPresent}/${record.totalDays}` : "-"}
+        </TableCell>
+        <TableCell className="text-center">
+          <Eye
+            className="h-5 w-5 text-muted-foreground hover:text-primary cursor-pointer"
+            onClick={() => setSelectedRecord(record)}
+          />
+        </TableCell>
+      </TableRow>
+    ))
+  )}
+</TableBody>
+
+                {/* <TableBody>
                   {filteredHistory.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
@@ -317,7 +369,7 @@ const filteredHistory = payrollHistory.filter((record) => {
                       </TableRow>
                     ))
                   )}
-                </TableBody>
+                </TableBody> */}
               </Table>
             </div>
           </CardContent>

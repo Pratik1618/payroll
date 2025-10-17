@@ -189,6 +189,7 @@ export default function PayrollPage() {
             return {
               ...emp,
               paidDays,
+                overtime: emp.overtime ?? 0,
               // Actual earned
               earnedBasic: Math.round(earnedBasic),
               da: Math.round(da),
@@ -547,6 +548,37 @@ export default function PayrollPage() {
       },
     })
   }
+
+useEffect(() => {
+  if (currentStep === 4 && payrollCalculations.length > 0) {
+    const earnedData = payrollCalculations.map(emp => ({
+      empId: emp.empId,
+      name: emp.name,
+      designation: emp.designation,
+        totalDays: emp.totalDays,
+      daysPresent: emp.daysPresent,
+      leaves: emp.leaves,
+      lop: emp.lop,
+pf:emp.pf,
+pt:emp.pt,
+esic:emp.esic,
+lwf:emp.lwf,
+      earnedBasic: emp.earnedBasic,
+      da: emp.da,
+      hra: emp.hra,
+      cca: emp.cca,
+      overtimePay: emp.overtimePay,
+      grossSalary: emp.grossSalary,  // earned gross
+      totalDeductions: emp.totalDeductions,
+      netSalary: emp.netSalary,
+      lopDeduction:emp.lopDeduction,
+      otHours:emp.overtime
+    }));
+
+    localStorage.setItem("reviewData", JSON.stringify(earnedData));
+    console.log("✅ Earned salary structure saved to localStorage");
+  }
+}, [currentStep, payrollCalculations]);
 
   return (
     <MainLayout>
