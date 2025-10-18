@@ -134,13 +134,13 @@ export default function PayrollPage() {
           }))
 
           // Simulate fetching pending leave count for selected client/sites
-          const simulatedPendingLeaves =
-            getAvailableSites()
-              .filter((site) => selectedSites.includes(site.id))
-              .reduce((sum) => sum, 0) + (selectedSites.length > 1 ? 3 : selectedSites.length > 0 ? 2 : 0)
-          setPendingLeavesCount(simulatedPendingLeaves)
-          setOverridePendingLeaves(false)
-          setOverrideReason("")
+          // const simulatedPendingLeaves =
+          //   getAvailableSites()
+          //     .filter((site) => selectedSites.includes(site.id))
+          //     .reduce((sum) => sum, 0) + (selectedSites.length > 1 ? 3 : selectedSites.length > 0 ? 2 : 0)
+          // setPendingLeavesCount(simulatedPendingLeaves)
+          // setOverridePendingLeaves(false)
+          // setOverrideReason("")
 
           toast("Attendance Imported", {
             description: `Successfully imported attendance data for ${totalEmployees} employees from ${selectedSites.length} sites.`,
@@ -183,7 +183,7 @@ export default function PayrollPage() {
             const esi = grossSalary > 21000 ? 0 : grossSalary * 0.0175
 
             const lopDeduction = (givenBasic + givenDa + givenHra + givenCca) - (earnedBasic + da + hra + cca)
-            const totalDeductions = pf + esi + pt + lwf + lopDeduction
+            const totalDeductions = pf + esi + pt + lwf 
             const netSalary = grossSalary - totalDeductions
 
             return {

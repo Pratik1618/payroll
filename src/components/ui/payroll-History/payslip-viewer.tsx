@@ -517,7 +517,7 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 <div className="flex justify-between"><span>TDS</span><span>{formatCurrency(tds)}</span></div>
                 <div className="flex justify-between"><span>PT</span><span>{formatCurrency(pt)}</span></div>
                 <div className="flex justify-between"><span>LWF</span><span>{formatCurrency(lwf)}</span></div>
-                <div className="flex justify-between"><span>LOP DEDUCTION</span><span>{formatCurrency(lopDeduction)}</span></div>
+                {/* <div className="flex justify-between"><span>LOP DEDUCTION</span><span>{formatCurrency(lopDeduction)}</span></div> */}
                 
                 <div className="flex justify-between border-t border-red-300 pt-2 font-bold">
                   <span>Total Deductions</span>
