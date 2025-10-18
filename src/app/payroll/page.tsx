@@ -73,7 +73,7 @@ export default function PayrollPage() {
     totalEmployees: 0,
     grossPayroll: 0,
     overtimeHours: 0,
-    onHold: 8,
+    onHold: 0,//
     attendanceImported: false,
     payrollCalculated: false,
     reviewCompleted: false,
@@ -128,6 +128,7 @@ export default function PayrollPage() {
           setAttendanceData(mockAttendanceData)
           setPayrollData((prev) => ({
             ...prev,
+            onHold:2,
             attendanceImported: true,
             totalEmployees,
             overtimeHours: mockAttendanceData.reduce((sum, emp) => sum + emp.overtime, 0),

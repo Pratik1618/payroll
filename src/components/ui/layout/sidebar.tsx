@@ -8,8 +8,8 @@ import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, User
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Employee Master", href: "/employee", icon: Users },
-  { name: "Attendance", href: "/attendance", icon: Clock },
-  { name: "Leave & LOP", href: "/leave", icon: Calendar },
+  // { name: "Attendance", href: "/attendance", icon: Clock },
+  // { name: "Leave & LOP", href: "/leave", icon: Calendar },
   { name: "Payroll Processing", href: "/payroll", icon: Calculator },
   {name: 'Payroll History',href :"/payroll-history",icon:HistoryIcon},
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
