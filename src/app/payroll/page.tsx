@@ -48,12 +48,13 @@ const mockSites = [
 ]
 
 // 1. Add basicSalary to each employee in mockAttendanceData
+//  Add two overtime types: clientOvertime and ismartOvertime
 const mockAttendanceData = [
-  { empId: "EMP001", name: "John Doe", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, overtime: 8, basicSalary: 28000 },
-  { empId: "EMP002", name: "Jane Smith", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, overtime: 12, basicSalary: 32000 },
-  { empId: "EMP003", name: "Mike Johnson", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, overtime: 15, basicSalary: 25000 },
-  { empId: "EMP004", name: "Sarah Wilson", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, overtime: 5, basicSalary: 22000 },
-  { empId: "EMP005", name: "David Brown", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, overtime: 10, basicSalary: 35000 },
+  { empId: "EMP001", name: "John Doe", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, clientOvertime: 5, ismartOvertime: 3, basicSalary: 28000 },
+  { empId: "EMP002", name: "Jane Smith", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, clientOvertime: 8, ismartOvertime: 4, basicSalary: 32000 },
+  { empId: "EMP003", name: "Mike Johnson", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, clientOvertime: 10, ismartOvertime: 5, basicSalary: 25000 },
+  { empId: "EMP004", name: "Sarah Wilson", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, clientOvertime: 2, ismartOvertime: 1, basicSalary: 22000 },
+  { empId: "EMP005", name: "David Brown", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000 },
 ]
 
 export default function PayrollPage() {
@@ -72,7 +73,7 @@ export default function PayrollPage() {
   const [payrollData, setPayrollData] = useState({
     totalEmployees: 0,
     grossPayroll: 0,
-    overtimeHours: 0,
+    overtimeHours: 0, // will store total (client + ismart)
     onHold: 0,//
     attendanceImported: false,
     payrollCalculated: false,
@@ -92,7 +93,6 @@ export default function PayrollPage() {
     }))
     setPayrollSteps(updatedSteps)
   }, [currentStep])
-
 
   const getAvailableSites = () => {
     if (!selectedClient) return []
@@ -126,22 +126,16 @@ export default function PayrollPage() {
           }, 0)
 
           setAttendanceData(mockAttendanceData)
+          // compute total overtime (client + ismart) for dashboard
+          const totalOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.clientOvertime || 0) + (emp.ismartOvertime || 0), 0)
+
           setPayrollData((prev) => ({
             ...prev,
             onHold:2,
             attendanceImported: true,
             totalEmployees,
-            overtimeHours: mockAttendanceData.reduce((sum, emp) => sum + emp.overtime, 0),
+            overtimeHours: totalOT,
           }))
-
-          // Simulate fetching pending leave count for selected client/sites
-          // const simulatedPendingLeaves =
-          //   getAvailableSites()
-          //     .filter((site) => selectedSites.includes(site.id))
-          //     .reduce((sum) => sum, 0) + (selectedSites.length > 1 ? 3 : selectedSites.length > 0 ? 2 : 0)
-          // setPendingLeavesCount(simulatedPendingLeaves)
-          // setOverridePendingLeaves(false)
-          // setOverrideReason("")
 
           toast("Attendance Imported", {
             description: `Successfully imported attendance data for ${totalEmployees} employees from ${selectedSites.length} sites.`,
@@ -156,6 +150,10 @@ export default function PayrollPage() {
           await new Promise((resolve) => setTimeout(resolve, 3000))
 
           // Calculate all salary components with LOP adjustment
+          // separate rates for overtime types
+          const clientOtRate = 200 // per hour for client OT
+          const ismartOtRate = 150 // per hour for ismart OT
+
           const calculations = attendanceData.map((emp) => {
             const paidDays = emp.totalDays - emp.lop
             const dayRatio = paidDays / emp.totalDays
@@ -174,11 +172,16 @@ export default function PayrollPage() {
 
             const pt = 200
             const lwf = 50
-            const overtimePay = emp.overtime * 200
+
+            // compute OT breakdown & pay
+            const clientOvertime = emp.clientOvertime || 0
+            const ismartOvertime = emp.ismartOvertime || 0
+            const totalOvertime = clientOvertime + ismartOvertime
+            const overtimePay = Math.round(clientOvertime * clientOtRate + ismartOvertime * ismartOtRate)
 
             // Gross salary
             const grossSalary = earnedBasic + da + hra + cca + overtimePay
-            const givenGrossSalary = givenBasic + givenDa + givenHra + givenCca + overtimePay
+            const givenGrossSalary = givenBasic + givenDa + givenHra + givenCca + (clientOvertime + ismartOvertime) * clientOtRate
 
             const pf = earnedBasic > 15000 ? 1800 : earnedBasic * 0.12
             const esi = grossSalary > 21000 ? 0 : grossSalary * 0.0175
@@ -190,13 +193,15 @@ export default function PayrollPage() {
             return {
               ...emp,
               paidDays,
-                overtime: emp.overtime ?? 0,
+              clientOvertime,
+              ismartOvertime,
+              overtime: totalOvertime,
+              overtimePay: Math.round(overtimePay),
               // Actual earned
               earnedBasic: Math.round(earnedBasic),
               da: Math.round(da),
               hra: Math.round(hra),
               cca: Math.round(cca),
-              overtimePay: Math.round(overtimePay),
               grossSalary: Math.round(grossSalary),
               pf: Math.round(pf),
               esi: Math.round(esi),
@@ -216,11 +221,13 @@ export default function PayrollPage() {
 
           setPayrollCalculations(calculations)
           const totalGross = calculations.reduce((sum, emp) => sum + emp.grossSalary, 0)
+          const totalOtHours = calculations.reduce((sum, emp) => sum + (emp.overtime || 0), 0)
 
           setPayrollData((prev) => ({
             ...prev,
             payrollCalculated: true,
             grossPayroll: totalGross,
+            overtimeHours: totalOtHours,
           }))
 
           toast("Payroll Calculated", {
@@ -390,9 +397,12 @@ export default function PayrollPage() {
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                      {attendanceData.reduce((sum, emp) => sum + emp.overtime, 0)}
+                      {/* show combined OT hours and breakdown in tooltip-like text */}
+                      {payrollData.overtimeHours}
                     </div>
-                    <div className="text-sm text-blue-600 dark:text-blue-400">Overtime Hours</div>
+                    <div className="text-sm text-blue-600 dark:text-blue-400">
+                      Total OT (client + ismart)
+                    </div>
                   </div>
                 </div>
               </div>
@@ -556,19 +566,21 @@ useEffect(() => {
       empId: emp.empId,
       name: emp.name,
       designation: emp.designation,
-        totalDays: emp.totalDays,
+      totalDays: emp.totalDays,
       daysPresent: emp.daysPresent,
       leaves: emp.leaves,
       lop: emp.lop,
-pf:emp.pf,
-pt:emp.pt,
-esic:emp.esic,
-lwf:emp.lwf,
+      pf: emp.pf,
+      pt: emp.pt,
+      esic: emp.esi,
+      lwf: emp.lwf,
       earnedBasic: emp.earnedBasic,
       da: emp.da,
       hra: emp.hra,
       cca: emp.cca,
       overtimePay: emp.overtimePay,
+      clientOvertime: emp.clientOvertime,
+      ismartOvertime: emp.ismartOvertime,
       grossSalary: emp.grossSalary,  // earned gross
       totalDeductions: emp.totalDeductions,
       netSalary: emp.netSalary,
@@ -589,16 +601,6 @@ lwf:emp.lwf,
             <h1 className="text-3xl font-bold text-foreground">Payroll Processing</h1>
             <p className="text-muted-foreground">Process monthly payroll with step-by-step workflow</p>
           </div>
-          {/* <div className="flex space-x-2">
-            <Button variant="outline" onClick={() => setShowCloneSite(true)} disabled={payrollData.payrollLocked}>
-              <Copy className="mr-2 h-4 w-4" />
-              Clone Site
-            </Button>
-            <Button variant="outline" onClick={() => setShowVariableUpload(true)} disabled={payrollData.payrollLocked}>
-              <Upload className="mr-2 h-4 w-4" />
-              Upload Variables
-            </Button>
-          </div> */}
         </div>
 
         {/* Payroll Stepper */}
@@ -692,7 +694,7 @@ lwf:emp.lwf,
               </div>
               <div className="mt-2">
                 <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                  15 exceed limit
+                  client + ismart
                 </Badge>
               </div>
             </CardContent>
@@ -739,7 +741,9 @@ lwf:emp.lwf,
                       <th className="text-left p-2">Present Days</th>
                       <th className="text-left p-2">Leaves</th>
                       <th className="text-left p-2">LOP</th>
-                      <th className="text-left p-2">Overtime</th>
+                      <th className="text-left p-2">Client OT</th>
+                      <th className="text-left p-2">iSmart OT</th>
+                      <th className="text-left p-2">Total OT</th>
                       {currentStep >= 3 && (
                         <>
                           <th className="text-left p-2">Basic<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
@@ -756,7 +760,6 @@ lwf:emp.lwf,
                           <th className="text-left p-2">ESIC</th>
                           <th className="text-left p-2">PT</th>
                           <th className="text-left p-2">LWF</th>
-                          {/* <th className="text-left p-2">LOP deductions</th> */}
 
                           <th className="text-left p-2">Deductions</th>
                           <th className="text-left p-2">Net Salary</th>
@@ -781,9 +784,18 @@ lwf:emp.lwf,
                         <td className="p-2">
                           <Badge variant={emp.lop > 0 ? "destructive" : "secondary"}>{emp.lop}</Badge>
                         </td>
+
+                        {/* show OT breakdown */}
                         <td className="p-2">
-                          <Badge variant={emp.overtime > 10 ? "destructive" : "secondary"}>{emp.overtime}h</Badge>
+                          <Badge variant={emp.clientOvertime > 0 ? "secondary" : undefined}>{emp.clientOvertime ?? (emp.clientOvertime === 0 ? "0" : "-")}</Badge>
                         </td>
+                        <td className="p-2">
+                          <Badge variant={emp.ismartOvertime > 0 ? "secondary" : undefined}>{emp.ismartOvertime ?? (emp.ismartOvertime === 0 ? "0" : "-")}</Badge>
+                        </td>
+                        <td className="p-2">
+                          <Badge variant={(emp.clientOvertime + (emp.ismartOvertime || 0)) > 10 ? "destructive" : "secondary"}>{(emp.clientOvertime || 0) + (emp.ismartOvertime || 0)}h</Badge>
+                        </td>
+
                         {currentStep >= 3 && (
                           <>
                             <td className="p-2">
@@ -815,7 +827,7 @@ lwf:emp.lwf,
                               </span>
                             </td>
                                 <td className="p-2">
-                              ₹{emp.overtimePay.toLocaleString()}
+                              ₹{emp.overtimePay?.toLocaleString()}
                             
                             </td>
                             <td className="p-2">
@@ -829,7 +841,6 @@ lwf:emp.lwf,
                             <td className="p-2">₹{emp.esi?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.pt?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.lwf?.toLocaleString()}</td>
-                            {/* <td className="p-2">₹{emp.lopDeduction?.toLocaleString()}</td> */}
 
                             <td className="p-2">₹{emp.totalDeductions?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
@@ -845,9 +856,7 @@ lwf:emp.lwf,
         )}
 
         {/* Modals */}
-        {/* {showVariableUpload && <VariableUpload onClose={() => setShowVariableUpload(false)} />} */}
         {showSalaryHold && <SalaryHoldModal onClose={() => setShowSalaryHold(false)} />}
-        {/* {showCloneSite && <CloneSiteModal onClose={() => setShowCloneSite(false)} />} */}
       </div>
     </MainLayout>
   )
