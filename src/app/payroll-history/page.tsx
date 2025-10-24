@@ -63,8 +63,8 @@ const sites = [
 //       medical: 1500,
 //       others: 1500,
 //       deductions: 5000,
-    
-     
+
+
 //     },
 //     attendance:{
 //       workingDays:30,
@@ -75,7 +75,7 @@ const sites = [
 //       ot:0
 
 //     }
-   
+
 //   },
 //   {
 //     id: 2,
@@ -120,7 +120,7 @@ const months = [
 ];
 
 export default function PayrollHistoryPage() {
-   const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
+  const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
 
   useEffect(() => {
     // Only run on client
@@ -134,27 +134,27 @@ export default function PayrollHistoryPage() {
   const [selectedClient, setSelectedClient] = useState<string>("all");
   const [selectedSite, setSelectedSite] = useState<string>("all");
   const [selectedMonth, setSelectedMonth] = useState<string>("2025-10");
-const [searchTerm, setSearchTerm] = useState<string>("");
-const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const filteredSites =
     selectedClient !== "all"
       ? sites.filter((site) => site.clientId === Number(selectedClient))
       : sites;
 
 
-// const filteredHistory = payrollHistory.filter((record) => {
-//   const clientMatch =
-//     selectedClient !== "all" ? record.clientId === Number(selectedClient) : true;
-//   const siteMatch =
-//     selectedSite !== "all" ? record.siteId === Number(selectedSite) : true;
-//   const monthMatch = record.date.startsWith(selectedMonth);
-//   const searchMatch = record.employee.name.toLowerCase().includes(searchTerm.toLowerCase());
+  // const filteredHistory = payrollHistory.filter((record) => {
+  //   const clientMatch =
+  //     selectedClient !== "all" ? record.clientId === Number(selectedClient) : true;
+  //   const siteMatch =
+  //     selectedSite !== "all" ? record.siteId === Number(selectedSite) : true;
+  //   const monthMatch = record.date.startsWith(selectedMonth);
+  //   const searchMatch = record.employee.name.toLowerCase().includes(searchTerm.toLowerCase());
 
-//   return clientMatch && siteMatch && monthMatch && searchMatch;
-// });
-const filteredHistory = payrollHistory.filter((record) =>
-  record.name.toLowerCase().includes(searchTerm.toLowerCase())
-);
+  //   return clientMatch && siteMatch && monthMatch && searchMatch;
+  // });
+  const filteredHistory = payrollHistory.filter((record) =>
+    record.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
 
   // // Count by designation
@@ -163,22 +163,22 @@ const filteredHistory = payrollHistory.filter((record) =>
   //   designationSummary[des] = filteredHistory.filter((rec) => rec.employee.designation === des).length;
   // });
   const designationSummary: Record<string, number> = {};
-designations.forEach((des) => {
-  designationSummary[des] = filteredHistory.filter(
-    (rec: any) => rec.designation === des
-  ).length;
-});
+  designations.forEach((des) => {
+    designationSummary[des] = filteredHistory.filter(
+      (rec: any) => rec.designation === des
+    ).length;
+  });
 
 
   return (
     <MainLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Payroll History</h1>
-          <p className="text-muted-foreground text-sm">
-            Filter and view processed payroll data by client, site, and month.
-          </p>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Payroll History</h1>
+            <p className="text-muted-foreground text-sm">
+              Filter and view processed payroll data by client, site, and month.
+            </p>
           </div>
         </div>
 
@@ -258,7 +258,7 @@ designations.forEach((des) => {
         {/* Designation Summary */}
         <Card>
           <CardContent className="p-6">
-          
+
 
             <h2 className="text-xl font-semibold mb-4">Designation Summary</h2>
             {filteredHistory.length === 0 ? (
@@ -284,15 +284,15 @@ designations.forEach((des) => {
         {/* Detailed Table */}
         <Card>
           <CardContent className="p-0">
-              <div className="flex justify-end mb-4">
-  <Input
-    type="text"
-    placeholder="Search employee..."
-    className="w-full max-w-sm"
-    value={searchTerm}
-    onChange={(e) => setSearchTerm(e.target.value)}
-  />
-</div>
+            <div className="flex justify-end mb-4">
+              <Input
+                type="text"
+                placeholder="Search employee..."
+                className="w-full max-w-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -308,35 +308,35 @@ designations.forEach((des) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-  {filteredHistory.length === 0 ? (
-    <TableRow>
-      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-        No records found.
-      </TableCell>
-    </TableRow>
-  ) : (
-    filteredHistory.map((record, idx) => (
-      <TableRow key={idx}>
-        <TableCell>{record.name}</TableCell>
-        <TableCell>{record.designation || "-"}</TableCell>
-        <TableCell>{record.zone || "-"}</TableCell>
-        <TableCell>{record.state || "-"}</TableCell>
-        <TableCell className="text-right">
-          ₹{record.netSalary?.toLocaleString() || 0}
-        </TableCell>
-        <TableCell>
-          {record.totalDays ? `${record.daysPresent}/${record.totalDays}` : "-"}
-        </TableCell>
-        <TableCell className="text-center">
-          <Eye
-            className="h-5 w-5 text-muted-foreground hover:text-primary cursor-pointer"
-            onClick={() => setSelectedRecord(record)}
-          />
-        </TableCell>
-      </TableRow>
-    ))
-  )}
-</TableBody>
+                  {filteredHistory.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                        No records found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredHistory.map((record, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{record.name}</TableCell>
+                        <TableCell>{record.designation || "-"}</TableCell>
+                        <TableCell>{record.zone || "-"}</TableCell>
+                        <TableCell>{record.state || "-"}</TableCell>
+                        <TableCell className="text-right">
+                          ₹{record.netSalary?.toLocaleString() || 0}
+                        </TableCell>
+                        <TableCell>
+                          {record.totalDays ? `${record.daysPresent}/${record.totalDays}` : "-"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Eye
+                            className="h-5 w-5 text-muted-foreground hover:text-primary cursor-pointer"
+                            onClick={() => setSelectedRecord(record)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
 
                 {/* <TableBody>
                   {filteredHistory.length === 0 ? (
@@ -376,13 +376,13 @@ designations.forEach((des) => {
         </Card>
       </div>
       {selectedRecord && (
-  <PayslipViewer
-    employeeId={selectedRecord.id}
-    record={selectedRecord}
-  month={selectedMonth}
-  onClose={() => setSelectedRecord(null)}
-  />
-)}
+        <PayslipViewer
+          employeeId={selectedRecord.id}
+          record={selectedRecord}
+          month={selectedMonth}
+          onClose={() => setSelectedRecord(null)}
+        />
+      )}
     </MainLayout>
   );
 }

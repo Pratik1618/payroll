@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock } from "lucide-react"
+import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock, Percent } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -17,7 +17,9 @@ const navigation = [
   { name: "Bank Disbursement", href: "/bank", icon: CreditCard },
   { name: "F&F Settlement", href: "/fnf", icon: UserX },
   {name: "Salary Status",href:"/salary-status",icon:Lock},
+  {name :"Tax Declartions", href:"/taxRegime",icon:Percent},
   { name: "Reports", href: "/reports", icon: BarChart3 },
+
 ]
 
 export function Sidebar() {
