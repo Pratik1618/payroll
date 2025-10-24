@@ -421,6 +421,12 @@ export default function Fnfpage() {
                                     </option>
                                 ))}
                             </select>
+                              <div className="flex justify-end">
+                    <Button onClick={handleGeneratePayments} variant="default">
+                        <Download className="mr-2 h-4 w-4" />
+                        Generate Payments (Approved)
+                    </Button>
+                </div>
                         </div>
                         <div className="overflow-x-auto">
                             <Table>
@@ -478,12 +484,7 @@ export default function Fnfpage() {
                 </Card>
 
                 {/* Generate Payments Button */}
-                <div className="flex justify-end">
-                    <Button onClick={handleGeneratePayments} variant="default">
-                        <Download className="mr-2 h-4 w-4" />
-                        Generate Payments (Approved)
-                    </Button>
-                </div>
+              
             </div>
 
             {/* F&F Processing Modal */}
