@@ -280,6 +280,7 @@ export default function TaxRegimePage() {
                             </Card>
                           </TableCell>
                           <TableCell>₹{monthlyTDS.toLocaleString("en-IN")}</TableCell>
+                          
                           <TableCell>
                             {betterRegime === "Equal" ? "Equal" : `${betterRegime} (₹${saving.toLocaleString("en-IN")} saved)`}
                           </TableCell>
