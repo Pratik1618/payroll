@@ -38,7 +38,15 @@ const dummyEmployees: Employee[] = [
   { empId: "EMP001", name: "John Doe", grossSalary: 50000, deductions: 100000, taxRegime: "Old", pan: "ABCDE1234F", clientId: "client-1", siteId: "site-a" },
   { empId: "EMP002", name: "Jane Smith", grossSalary: 70000, deductions: 120000, taxRegime: "New", pan: "XYZAB5678K", clientId: "client-2", siteId: "site-c" },
   { empId: "EMP003", name: "Mike Johnson", grossSalary: 45000, deductions: 80000, taxRegime: "Old", pan: "LMNOP2345Q", clientId: "client-1", siteId: "site-b" },
+  { empId: "EMP004", name: "Aarav Patel", grossSalary: 85000, deductions: 150000, taxRegime: "New", pan: "PQRSX1234L", clientId: "client-3", siteId: "site-e" },
+  { empId: "EMP005", name: "Priya Mehta", grossSalary: 60000, deductions: 110000, taxRegime: "Old", pan: "FGHIJ5678R", clientId: "client-1", siteId: "site-b" },
+  { empId: "EMP006", name: "Rohit Sharma", grossSalary: 95000, deductions: 130000, taxRegime: "New", pan: "QRSTU9101V", clientId: "client-2", siteId: "site-d" },
+  { empId: "EMP007", name: "Sneha Kapoor", grossSalary: 40000, deductions: 60000, taxRegime: "Old", pan: "WXYZA2223B", clientId: "client-3", siteId: "site-e" },
+  { empId: "EMP008", name: "Vikram Nair", grossSalary: 120000, deductions: 160000, taxRegime: "New", pan: "DEFGH3344C", clientId: "client-1", siteId: "site-a" },
+  { empId: "EMP009", name: "Ananya Reddy", grossSalary: 55000, deductions: 95000, taxRegime: "Old", pan: "IJKLM4455D", clientId: "client-2", siteId: "site-c" },
+  { empId: "EMP010", name: "Karan Singh", grossSalary: 78000, deductions: 125000, taxRegime: "New", pan: "NOPQR5566E", clientId: "client-1", siteId: "site-b" },
 ];
+
 
 // Tax slabs
 // Updated Tax slabs for FY 2025-26
@@ -166,7 +174,7 @@ export default function TaxRegimePage() {
 
               {/* Client filter */}
               <div className="w-full sm:w-auto">
-             
+
                 <select
                   value={selectedClient}
                   onChange={(e) => {
@@ -185,7 +193,7 @@ export default function TaxRegimePage() {
 
               {/* Site filter */}
               <div className="w-full sm:w-auto">
-               
+
                 <select
                   value={selectedSite}
                   onChange={(e) => setSelectedSite(e.target.value)}
@@ -244,9 +252,9 @@ export default function TaxRegimePage() {
                               {emp.siteId ? `• ${mockSites.find(s => s.id === emp.siteId)?.name}` : ""}
                             </div>
                           </TableCell>
-                          <TableCell>₹{emp.grossSalary.toLocaleString()}</TableCell>
-                          <TableCell>₹{annualIncome.toLocaleString()}</TableCell>
-                          <TableCell>₹{emp.deductions.toLocaleString()}</TableCell>
+                          <TableCell>₹{emp.grossSalary.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>₹{annualIncome.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>₹{emp.deductions.toLocaleString("en-IN")}</TableCell>
                           <TableCell>
                             <select
                               className="rounded-md border px-2 py-1"
@@ -261,19 +269,19 @@ export default function TaxRegimePage() {
                           </TableCell>
                           <TableCell>
                             <Card className={`p-2 text-center ${taxOld <= taxNew ? "bg-green-100" : "bg-red-100"}`}>
-                              <CardTitle className="text-sm font-medium">₹{taxOld.toLocaleString()}</CardTitle>
+                              <CardTitle className="text-sm font-medium">₹{taxOld.toLocaleString("en-IN")}</CardTitle>
                               <div className="text-xs text-muted-foreground">Annual</div>
                             </Card>
                           </TableCell>
                           <TableCell>
                             <Card className={`p-2 text-center ${taxNew <= taxOld ? "bg-green-100" : "bg-red-100"}`}>
-                              <CardTitle className="text-sm font-medium">₹{taxNew.toLocaleString()}</CardTitle>
+                              <CardTitle className="text-sm font-medium">₹{taxNew.toLocaleString("en-IN")}</CardTitle>
                               <div className="text-xs text-muted-foreground">Annual</div>
                             </Card>
                           </TableCell>
-                          <TableCell>₹{monthlyTDS.toLocaleString()}</TableCell>
+                          <TableCell>₹{monthlyTDS.toLocaleString("en-IN")}</TableCell>
                           <TableCell>
-                            {betterRegime === "Equal" ? "Equal" : `${betterRegime} (₹${saving.toLocaleString()} saved)`}
+                            {betterRegime === "Equal" ? "Equal" : `${betterRegime} (₹${saving.toLocaleString("en-IN")} saved)`}
                           </TableCell>
                           <TableCell>{emp.pan}</TableCell>
                         </TableRow>
@@ -285,9 +293,6 @@ export default function TaxRegimePage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* Slabs info */}
-        
       </div>
     </MainLayout>
   );
