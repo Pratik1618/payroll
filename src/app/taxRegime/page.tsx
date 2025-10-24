@@ -5,6 +5,9 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { MainLayout } from "@/components/ui/layout/main-layout";
+import { Info } from "lucide-react"; // add this at the top for an info icon
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 
 interface Employee {
   empId: string;
@@ -107,22 +110,49 @@ export default function TaxRegimePage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Tax Regime</h1>
-          <p className="text-muted-foreground">Manage employees' tax regime and see estimated tax impact.</p>
+          <div className="flex items-center gap-2">
+            <p className="text-muted-foreground">Manage employees' tax regime and see estimated tax impact.</p>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    className="p-1 rounded-full hover:bg-muted transition"
+                    aria-label="View tax slabs"
+                  >
+                    <Info className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="right"
+                  className="max-w-xs p-3 text-sm bg-white border border-gray-200 text-gray-900 shadow-md"
+                >
+                  <div>
+                    <p className="font-semibold text-foreground mb-1">Old Regime:</p>
+                    <ul className="mb-2 list-disc pl-4">
+                      {taxSlabs.Old.map((slab, idx) => (
+                        <li key={idx}>
+                          Up to ₹{slab.upto === Infinity ? "∞" : slab.upto.toLocaleString()} → {slab.rate}%
+                        </li>
+                      ))}
+                    </ul>
+
+                    <p className="font-semibold text-foreground mb-1">New Regime:</p>
+                    <ul className="list-disc pl-4">
+                      {taxSlabs.New.map((slab, idx) => (
+                        <li key={idx}>
+                          Up to ₹{slab.upto === Infinity ? "∞" : slab.upto.toLocaleString()} → {slab.rate}%
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {(["Old", "New"] as const).map(regime => (
-            <Card key={regime} className="p-4">
-              <CardTitle className="text-lg font-semibold">{regime} Regime Slabs</CardTitle>
-              <ul className="mt-2 text-sm">
-                {taxSlabs[regime].map((slab, idx) => (
-                  <li key={idx}>
-                    Up to ₹{slab.upto === Infinity ? "∞" : slab.upto.toLocaleString()} → {slab.rate}%
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          ))}
-        </div>
+
+
         <Card>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4 mb-4 items-start sm:items-center">
