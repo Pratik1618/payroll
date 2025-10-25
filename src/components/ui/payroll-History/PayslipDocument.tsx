@@ -1,14 +1,21 @@
 // PayslipDocument.tsx
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
 
 //@ts-ignore
 import { toWords } from "number-to-words";
 
+
+Font.register({
+  family: 'Noto Sans',
+  fonts: [
+    { src: "/fonts/NotoSans-Regular.ttf", fontWeight: 'normal' },
+  ]
+})
 const styles = StyleSheet.create({
   page: {
     padding: 20,
     fontSize: 10,
-    fontFamily: "Helvetica",
+    fontFamily: "Noto Sans",
     backgroundColor: "#f9fafb",
   },
   header: {
