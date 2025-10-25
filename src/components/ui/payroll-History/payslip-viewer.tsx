@@ -299,6 +299,8 @@ import { X, Download, Mail, Building, Calendar, User } from "lucide-react"
 import { format } from "date-fns"
 // @ts-ignore
 import { toWords } from "number-to-words"
+import { PDFDownloadLink } from "@react-pdf/renderer"
+import { PayslipDocument } from "./PayslipDocument"
 
 interface PayslipViewerProps {
   employeeId: string
@@ -325,15 +327,15 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
     overtimePay = 0,
     grossSalary = 0,
     totalDeductions = 0,
-    lopDeduction=0,
+    lopDeduction = 0,
     netSalary = 0,
     incentive = 0, // if present
     pf = 0,
-    lwf=0,
+    lwf = 0,
     esic = 0,
     tds = 0,
     pt = 0,
-    otHours=0
+    otHours = 0
   } = record
 
   const attendance = {
@@ -370,8 +372,16 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
             Payslip - {record?.date ? format(new Date(record.date), "MMMM yyyy") : period}
           </CardTitle>
           <div className="flex space-x-2">
-            <Button variant="outline" onClick={handleDownload}>
-              <Download className="mr-2 h-4 w-4" /> Download PDF
+            <Button variant="outline" >
+             
+              <PDFDownloadLink
+                document={<PayslipDocument employeeId={employeeId} month={month} record={record} />}
+                fileName={`Payslip-${record.name}-${month}.pdf`}
+              >
+                  <Download className="mr-2 h-4 w-6" /> 
+
+              </PDFDownloadLink>
+             
             </Button>
             <Button variant="outline" onClick={handleEmail}>
               <Mail className="mr-2 h-4 w-4" /> Email
@@ -518,7 +528,7 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 <div className="flex justify-between"><span>PT</span><span>{formatCurrency(pt)}</span></div>
                 <div className="flex justify-between"><span>LWF</span><span>{formatCurrency(lwf)}</span></div>
                 {/* <div className="flex justify-between"><span>LOP DEDUCTION</span><span>{formatCurrency(lopDeduction)}</span></div> */}
-                
+
                 <div className="flex justify-between border-t border-red-300 pt-2 font-bold">
                   <span>Total Deductions</span>
                   <span>{formatCurrency(totalDeductions)}</span>
@@ -539,10 +549,10 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                   <span>{formatCurrency(netSalary)}</span>
                 </div>
                 <div className="text-center mt-2">
-                                <Badge
-         variant="secondary"
-        className="bg-blue-100 text-blue-800 block max-w-full whitespace-normal break-words px-2 py-1"
-        >
+                  <Badge
+                    variant="secondary"
+                    className="bg-blue-100 text-blue-800 block max-w-full whitespace-normal break-words px-2 py-1"
+                  >
                     Amount in Words: {toWords(netSalary)} rupees only
                   </Badge>
                 </div>
