@@ -741,6 +741,7 @@ useEffect(() => {
                       <th className="text-left p-2">Present Days</th>
                       <th className="text-left p-2">Leaves</th>
                       <th className="text-left p-2">LOP</th>
+                      <th className = "text-left p-2">Paid Days</th>
                       <th className="text-left p-2">Client OT</th>
                       <th className="text-left p-2">iSmart OT</th>
                       <th className="text-left p-2">Total OT</th>
@@ -784,6 +785,7 @@ useEffect(() => {
                         <td className="p-2">
                           <Badge variant={emp.lop > 0 ? "destructive" : "secondary"}>{emp.lop}</Badge>
                         </td>
+                        <td className="p-2">{emp.daysPresent+emp.leaves}</td>
 
                         {/* show OT breakdown */}
                         <td className="p-2">
