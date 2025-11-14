@@ -110,7 +110,7 @@
     const [selectedClient, setSelectedClient] = useState<string>("");
     const [selectedSite, setSelectedSite] = useState<string>("");
 
-    const getSitesForClient = (clientId: string) =>
+    const getSitesForClient = (clientId: string) =>  
       mockSites.filter((s) => s.clientId === clientId);
 
     const filteredEmployees = employees.filter(emp =>
