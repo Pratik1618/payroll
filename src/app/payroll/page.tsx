@@ -57,6 +57,18 @@ const mockAttendanceData = [
   { empId: "EMP005", name: "David Brown", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000 },
 ]
 
+// add an initial payroll-data constant for easy reset
+const initialPayrollData = {
+  totalEmployees: 0,
+  grossPayroll: 0,
+  overtimeHours: 0,
+  onHold: 0,
+  attendanceImported: false,
+  payrollCalculated: false,
+  reviewCompleted: false,
+  payrollLocked: false,
+}
+
 export default function PayrollPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [payrollSteps, setPayrollSteps] = useState(initialPayrollSteps)
@@ -70,16 +82,8 @@ export default function PayrollPage() {
   const [attendanceData, setAttendanceData] = useState<any[]>([])
   const [payrollCalculations, setPayrollCalculations] = useState<any[]>([])
 
-  const [payrollData, setPayrollData] = useState({
-    totalEmployees: 0,
-    grossPayroll: 0,
-    overtimeHours: 0, // will store total (client + ismart)
-    onHold: 0,//
-    attendanceImported: false,
-    payrollCalculated: false,
-    reviewCompleted: false,
-    payrollLocked: false,
-  })
+  // use the shared initialPayrollData
+  const [payrollData, setPayrollData] = useState(initialPayrollData)
 
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0)
   const [overridePendingLeaves, setOverridePendingLeaves] = useState(false)
@@ -558,40 +562,49 @@ export default function PayrollPage() {
         onClick: () => console.log("ok"),
       },
     })
+
+    // --- NEW: reset state and go back to first step ---
+    setPayrollCalculations([])
+    setAttendanceData([])
+    setSelectedClient("")
+    setSelectedSites([])
+    setPayrollData(initialPayrollData)
+    setCurrentStep(1)
+    // --- end new code ---
   }
 
-useEffect(() => {
-  if (currentStep === 4 && payrollCalculations.length > 0) {
-    const earnedData = payrollCalculations.map(emp => ({
-      empId: emp.empId,
-      name: emp.name,
-      designation: emp.designation,
-      totalDays: emp.totalDays,
-      daysPresent: emp.daysPresent,
-      leaves: emp.leaves,
-      lop: emp.lop,
-      pf: emp.pf,
-      pt: emp.pt,
-      esic: emp.esi,
-      lwf: emp.lwf,
-      earnedBasic: emp.earnedBasic,
-      da: emp.da,
-      hra: emp.hra,
-      cca: emp.cca,
-      overtimePay: emp.overtimePay,
-      clientOvertime: emp.clientOvertime,
-      ismartOvertime: emp.ismartOvertime,
-      grossSalary: emp.grossSalary,  // earned gross
-      totalDeductions: emp.totalDeductions,
-      netSalary: emp.netSalary,
-      lopDeduction:emp.lopDeduction,
-      otHours:emp.overtime
-    }));
+  useEffect(() => {
+    if (currentStep === 4 && payrollCalculations.length > 0) {
+      const earnedData = payrollCalculations.map(emp => ({
+        empId: emp.empId,
+        name: emp.name,
+        designation: emp.designation,
+        totalDays: emp.totalDays,
+        daysPresent: emp.daysPresent,
+        leaves: emp.leaves,
+        lop: emp.lop,
+        pf: emp.pf,
+        pt: emp.pt,
+        esic: emp.esi,
+        lwf: emp.lwf,
+        earnedBasic: emp.earnedBasic,
+        da: emp.da,
+        hra: emp.hra,
+        cca: emp.cca,
+        overtimePay: emp.overtimePay,
+        clientOvertime: emp.clientOvertime,
+        ismartOvertime: emp.ismartOvertime,
+        grossSalary: emp.grossSalary,  // earned gross
+        totalDeductions: emp.totalDeductions,
+        netSalary: emp.netSalary,
+        lopDeduction:emp.lopDeduction,
+        otHours:emp.overtime
+      }));
 
-    localStorage.setItem("reviewData", JSON.stringify(earnedData));
-    console.log("✅ Earned salary structure saved to localStorage");
-  }
-}, [currentStep, payrollCalculations]);
+      localStorage.setItem("reviewData", JSON.stringify(earnedData));
+      console.log("✅ Earned salary structure saved to localStorage");
+    }
+  }, [currentStep, payrollCalculations]);
 
   return (
     <MainLayout>
@@ -863,5 +876,3 @@ useEffect(() => {
     </MainLayout>
   )
 }
-
-
