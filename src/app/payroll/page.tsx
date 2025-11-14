@@ -479,7 +479,7 @@ export default function PayrollPage() {
                       aria-disabled={!overridePendingLeaves}
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground  ">
                     An override is auditable. Ensure the Leave module resolves these items post-cycle.
                   </p>
                 </div>
