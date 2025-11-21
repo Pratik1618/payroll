@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payroll-frontend
+  namespace: payroll
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payroll-frontend
+  template:
+    metadata:
+      labels:
+        app: payroll-frontend
+    spec:
+      containers:
+      - name: payroll-frontend
+        image: kadampratik21/payroll-frontend:v1   # <-- Use this exact image name
+        imagePullPolicy: Never                     # <-- Use local image, don’t pull
+        ports:
+        - containerPort: 3000
