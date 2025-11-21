@@ -50,11 +50,11 @@ const mockSites = [
 // 1. Add basicSalary to each employee in mockAttendanceData
 //  Add two overtime types: clientOvertime and ismartOvertime
 const mockAttendanceData = [
-   { empId: "EMP001", name: "John Doe", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, clientOvertime: 5, ismartOvertime: 3, basicSalary: 28000 ,advanceRemaining:1000},
-  { empId: "EMP002", name: "Jane Smith", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, clientOvertime: 8, ismartOvertime: 4, basicSalary: 32000 ,advanceRemaining:500},
-  { empId: "EMP003", name: "Mike Johnson", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, clientOvertime: 10, ismartOvertime: 5, basicSalary: 25000,advanceRemaining:0},
-  { empId: "EMP004", name: "Sarah Wilson", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, clientOvertime: 2, ismartOvertime: 1, basicSalary: 22000 ,advanceRemaining:700},
-  { empId: "EMP005", name: "David Brown", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000 ,advanceRemaining:0},
+  { empId: "EMP001", name: "John Doe", designation:"housekeeper",daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, clientOvertime: 5, ismartOvertime: 3, basicSalary: 28000, advanceRemaining: 1000 },
+  { empId: "EMP002", name: "Jane Smith",designation:"Receptionist", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, clientOvertime: 8, ismartOvertime: 4, basicSalary: 32000, advanceRemaining: 500 },
+  { empId: "EMP003", name: "Mike Johnson",designation:"housekeeper" ,daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, clientOvertime: 10, ismartOvertime: 5, basicSalary: 25000, advanceRemaining: 0 },
+  { empId: "EMP004", name: "Sarah Wilson",designation:"chambermaid", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, clientOvertime: 2, ismartOvertime: 1, basicSalary: 22000, advanceRemaining: 700 },
+  { empId: "EMP005", name: "David Brown",designation:"supervisor", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000, advanceRemaining: 0 },
 ]
 
 // add an initial payroll-data constant for easy reset
@@ -135,7 +135,7 @@ export default function PayrollPage() {
 
           setPayrollData((prev) => ({
             ...prev,
-            onHold:2,
+            onHold: 2,
             attendanceImported: true,
             totalEmployees,
             overtimeHours: totalOT,
@@ -191,7 +191,7 @@ export default function PayrollPage() {
             const esi = grossSalary > 21000 ? 0 : grossSalary * 0.0175
 
             const lopDeduction = (givenBasic + givenDa + givenHra + givenCca) - (earnedBasic + da + hra + cca)
-            const totalDeductions = pf + esi + pt + lwf 
+            const totalDeductions = pf + esi + pt + lwf
             const netSalary = grossSalary - totalDeductions
             const inHandSalary = netSalary - emp.advanceRemaining
             const advanceRemaining = emp.advanceRemaining
@@ -217,14 +217,14 @@ export default function PayrollPage() {
               totalDeductions: Math.round(totalDeductions),
               netSalary: Math.round(netSalary),
               advanceRemaining: Math.round(advanceRemaining),
-              inHandSalary : Math.round(inHandSalary),
+              inHandSalary: Math.round(inHandSalary),
               // Given (full) components
               givenBasic: Math.round(givenBasic),
               givenDa: Math.round(givenDa),
               givenHra: Math.round(givenHra),
               givenCca: Math.round(givenCca),
               givenGrossSalary: Math.round(givenGrossSalary),
-              
+
             }
           })
 
@@ -517,7 +517,7 @@ export default function PayrollPage() {
     }
   }
 
-  const generateBankFile = () => {
+ const generateBankFile = async () => {
     if (!payrollData.payrollLocked || payrollCalculations.length === 0) {
       toast.error("Cannot Generate Bank File", {
         description: "Payroll must be locked and calculations must be completed.",
@@ -529,38 +529,58 @@ export default function PayrollPage() {
       return
     }
 
-    // Updated header as per your latest format
-    const header = "TYPE,DEBIT BANK A/C NO,DEBIT AMT,CUR,BENEFICIARY A/C NO,IFSC CODE,NARRATION/NAME (NOT MORE THAN 20)"
+    // Import XLSX dynamically
+   const XLSX = await import("xlsx");
 
     // Generate a random 12-digit beneficiary account number for each row
     const randomAccountNumber = () =>
       Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("")
 
-    const bankFileData = payrollCalculations.map((emp) => [
-      "NEFT", // TYPE
-      "12345678901234", // DEBIT BANK A/C NO (mocked, replace as needed)
-      emp.inHandSalary?.toString() ?? "", // DEBIT AMT
-      "INR", // CUR
-      randomAccountNumber(), // BENEFICIARY A/C NO (random 12-digit number)
-      emp.ifsc || "HDFC0001234", // IFSC CODE (mock or real if available)
-      (emp.name || "").substring(0, 20), // NARRATION/NAME (NOT MORE THAN 20)
-    ].join(","))
+    // Sheet 1: Bank Transaction Data
+    const bankFileData = payrollCalculations.map((emp) => ({
+      "TYPE": "NEFT",
+      "DEBIT BANK A/C NO": "12345678901234",
+      "DEBIT AMT": emp.inHandSalary || 0,
+      "CUR": "INR",
+      "BENEFICIARY A/C NO": randomAccountNumber(),
+      "IFSC CODE": emp.ifsc || "HDFC0001234",
+      "NARRATION/NAME (NOT MORE THAN 20)": (emp.name || "").substring(0, 20),
+    }))
 
-    const csvContent = [header, ...bankFileData].join("\n")
+    // Sheet 2: Designation-wise Count
+    const designationCount = payrollCalculations.reduce((acc, emp) => {
+      const designation = emp.designation || "Unknown"
+      acc[designation] = (acc[designation] || 0) + 1
+      return acc
+    }, {})
 
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-    link.setAttribute("download", `bank_upload_${new Date().toISOString().split("T")[0]}.csv`)
-    link.style.visibility = "hidden"
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const designationData = Object.entries(designationCount).map(([designation, count]) => ({
+      "Designation": designation,
+      "Employee Count": count,
+    }))
+
+    // Add total row
+    designationData.push({
+      "Designation": "TOTAL",
+      "Employee Count": payrollCalculations.length,
+    })
+
+    // Create workbook
+    const wb = XLSX.utils.book_new()
+
+    // Add Sheet 1: Bank Transactions
+    const ws1 = XLSX.utils.json_to_sheet(bankFileData)
+    XLSX.utils.book_append_sheet(wb, ws1, "Bank Transactions")
+
+    // Add Sheet 2: Designation Summary
+    const ws2 = XLSX.utils.json_to_sheet(designationData)
+    XLSX.utils.book_append_sheet(wb, ws2, "Designation Summary")
+
+    // Generate file and download
+    XLSX.writeFile(wb, `bank_upload_${new Date().toISOString().split("T")[0]}.xlsx`)
 
     toast("Bank File Generated", {
-      description: "Bank file has been generated and downloaded.",
+      description: "Excel file with bank transactions and designation summary has been generated.",
       className: "bg-green-600 text-white",
       action: {
         label: "OK",
@@ -568,14 +588,13 @@ export default function PayrollPage() {
       },
     })
 
-    // --- NEW: reset state and go back to first step ---
+    // Reset state and go back to first step
     setPayrollCalculations([])
     setAttendanceData([])
     setSelectedClient("")
     setSelectedSites([])
     setPayrollData(initialPayrollData)
     setCurrentStep(1)
-    // --- end new code ---
   }
 
   useEffect(() => {
@@ -602,10 +621,10 @@ export default function PayrollPage() {
         grossSalary: emp.grossSalary,  // earned gross
         totalDeductions: emp.totalDeductions,
         netSalary: emp.netSalary,
-        inHandSalary:emp.inHandSalary,
+        inHandSalary: emp.inHandSalary,
         advanceRemaining: emp.advanceRemaining,
-        lopDeduction:emp.lopDeduction,
-        otHours:emp.overtime
+        lopDeduction: emp.lopDeduction,
+        otHours: emp.overtime
       }));
 
       localStorage.setItem("reviewData", JSON.stringify(earnedData));
@@ -757,11 +776,11 @@ export default function PayrollPage() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-2">Employee</th>
-                      <th className="text-left p-2">Emp Code</th>
+                      <th className="text-left p-2">Designation</th>
                       <th className="text-left p-2">Present Days</th>
                       <th className="text-left p-2">Leaves</th>
                       <th className="text-left p-2">LOP</th>
-                      <th className = "text-left p-2">Paid Days</th>
+                      <th className="text-left p-2">Paid Days</th>
                       <th className="text-left p-2">Client OT</th>
                       <th className="text-left p-2">iSmart OT</th>
                       <th className="text-left p-2">Total OT</th>
@@ -772,7 +791,7 @@ export default function PayrollPage() {
                           <th className="text-left p-2">HRA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">CCA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">OverTime Pay</th>
-                          
+
                           <th className="text-left p-2">
                             Gross Salary<br />
                             <span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span>
@@ -785,7 +804,7 @@ export default function PayrollPage() {
                           <th className="text-left p-2">Deductions</th>
                           <th className="text-left p-2">Net Salary</th>
                           <th className="text-left p-2">Advance Remaining</th>
-                          <th className="text-left p-2">InHand Salary<br/> 
+                          <th className="text-left p-2">InHand Salary<br />
                             <span className="text-xs text-muted-foreground">(net salary - advance)</span>
 
                           </th>
@@ -803,7 +822,7 @@ export default function PayrollPage() {
                             <div className="text-xs text-muted-foreground">{emp.empId}</div>
                           </div>
                         </td>
-                        <td className="p-2">{emp.empId}</td>
+                        <td className="p-2">{emp.designation}</td>
                         <td className="p-2">
                           {emp.daysPresent}/{emp.totalDays}
                         </td>
@@ -811,7 +830,7 @@ export default function PayrollPage() {
                         <td className="p-2">
                           <Badge variant={emp.lop > 0 ? "destructive" : "secondary"}>{emp.lop}</Badge>
                         </td>
-                        <td className="p-2">{emp.daysPresent+emp.leaves}</td>
+                        <td className="p-2">{emp.daysPresent + emp.leaves}</td>
 
                         {/* show OT breakdown */}
                         <td className="p-2">
@@ -854,9 +873,9 @@ export default function PayrollPage() {
                                 ₹{emp.cca?.toLocaleString()}
                               </span>
                             </td>
-                                <td className="p-2">
+                            <td className="p-2">
                               ₹{emp.overtimePay?.toLocaleString()}
-                            
+
                             </td>
                             <td className="p-2">
                               ₹{emp.givenGrossSalary?.toLocaleString()}
@@ -874,7 +893,7 @@ export default function PayrollPage() {
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.advanceRemaining?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.inHandSalary?.toLocaleString()}</td>
-                          
+
                           </>
                         )}
                       </tr>
