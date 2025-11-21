@@ -13,7 +13,7 @@ const navigation = [
   { name: "Payroll Processing", href: "/payroll", icon: Calculator },
   {name: 'Payroll History',href :"/payroll-history",icon:HistoryIcon},
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
-  { name: "Payslip Viewer", href: "/payslip", icon: Receipt },
+  // { name: "Payslip Viewer", href: "/payslip", icon: Receipt },
   { name: "Bank Disbursement", href: "/bank", icon: CreditCard },
   { name: "F&F Settlement", href: "/fnf", icon: UserX },
   {name: "Salary Status",href:"/salary-status",icon:Lock},

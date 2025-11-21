@@ -6,9 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Download, FileText, CalendarIcon, AlertCircle, CheckCircle } from "lucide-react"
+import { Download, FileText, CalendarIcon, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 
@@ -197,6 +196,79 @@ export default function StatutoryPage() {
     })
   }
 
+  // MonthPicker: compact month-only picker with year navigation
+  function MonthPicker({ selected, onSelect }: { selected?: Date; onSelect: (d: Date) => void }) {
+    const [year, setYear] = useState<number>((selected || new Date()).getFullYear())
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+    const selectMonth = (mIndex: number) => {
+      const d = new Date(year, mIndex, 1)
+      onSelect(d)
+    }
+
+    return (
+      <div className="w-64">
+        <div className="flex items-center justify-between px-2 pb-2">
+          <button
+            type="button"
+            aria-label="Previous year"
+            onClick={() => setYear((y) => y - 1)}
+            className="p-1 rounded hover:bg-muted"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="text-sm font-medium">{year}</div>
+          <button
+            type="button"
+            aria-label="Next year"
+            onClick={() => setYear((y) => y + 1)}
+            className="p-1 rounded hover:bg-muted"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 px-2">
+          {months.map((m, idx) => {
+            const isSelected =
+              selected &&
+              selected.getFullYear() === year &&
+              selected.getMonth() === idx
+
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => selectMonth(idx)}
+                className={cn(
+                  "py-2 rounded-md text-sm w-full flex items-center justify-center",
+                  isSelected
+                    ? "bg-primary text-primary-foreground font-medium"
+                    : "hover:bg-muted"
+                )}
+              >
+                {m}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="px-2 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              setYear(new Date().getFullYear())
+              onSelect(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+            }}
+            className="text-xs text-muted-foreground hover:underline"
+          >
+            Today
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -327,7 +399,7 @@ export default function StatutoryPage() {
                         </SelectContent>
                       </Select>
 
-                      <Popover>
+                       <Popover>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
@@ -341,12 +413,14 @@ export default function StatutoryPage() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={pfMonth}
-                            onSelect={(date) => date && setPfMonth(date)}
-                            initialFocus
-                          />
+                          <div className="p-3">
+                            <MonthPicker
+                              selected={pfMonth}
+                              onSelect={(date) => {
+                                if (date) setPfMonth(date)
+                              }}
+                            />
+                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -411,12 +485,14 @@ export default function StatutoryPage() {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={esicMonth}
-                            onSelect={(date) => date && setEsicMonth(date)}
-                            initialFocus
-                          />
+                          <div className="p-3">
+                            <MonthPicker
+                              selected={esicMonth}
+                              onSelect={(date) => {
+                                if (date) setEsicMonth(date)
+                              }}
+                            />
+                          </div>
                         </PopoverContent>
                       </Popover>
                     </div>
