@@ -50,11 +50,11 @@ const mockSites = [
 // 1. Add basicSalary to each employee in mockAttendanceData
 //  Add two overtime types: clientOvertime and ismartOvertime
 const mockAttendanceData = [
-  { empId: "EMP001", name: "John Doe", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, clientOvertime: 5, ismartOvertime: 3, basicSalary: 28000 },
-  { empId: "EMP002", name: "Jane Smith", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, clientOvertime: 8, ismartOvertime: 4, basicSalary: 32000 },
-  { empId: "EMP003", name: "Mike Johnson", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, clientOvertime: 10, ismartOvertime: 5, basicSalary: 25000 },
-  { empId: "EMP004", name: "Sarah Wilson", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, clientOvertime: 2, ismartOvertime: 1, basicSalary: 22000 },
-  { empId: "EMP005", name: "David Brown", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000 },
+   { empId: "EMP001", name: "John Doe", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, clientOvertime: 5, ismartOvertime: 3, basicSalary: 28000 ,advanceRemaining:1000},
+  { empId: "EMP002", name: "Jane Smith", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, clientOvertime: 8, ismartOvertime: 4, basicSalary: 32000 ,advanceRemaining:500},
+  { empId: "EMP003", name: "Mike Johnson", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, clientOvertime: 10, ismartOvertime: 5, basicSalary: 25000,advanceRemaining:0},
+  { empId: "EMP004", name: "Sarah Wilson", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, clientOvertime: 2, ismartOvertime: 1, basicSalary: 22000 ,advanceRemaining:700},
+  { empId: "EMP005", name: "David Brown", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000 ,advanceRemaining:0},
 ]
 
 // add an initial payroll-data constant for easy reset
@@ -193,6 +193,8 @@ export default function PayrollPage() {
             const lopDeduction = (givenBasic + givenDa + givenHra + givenCca) - (earnedBasic + da + hra + cca)
             const totalDeductions = pf + esi + pt + lwf 
             const netSalary = grossSalary - totalDeductions
+            const inHandSalary = netSalary - emp.advanceRemaining
+            const advanceRemaining = emp.advanceRemaining
 
             return {
               ...emp,
@@ -214,12 +216,15 @@ export default function PayrollPage() {
               lopDeduction: Math.round(lopDeduction),
               totalDeductions: Math.round(totalDeductions),
               netSalary: Math.round(netSalary),
+              advanceRemaining: Math.round(advanceRemaining),
+              inHandSalary : Math.round(inHandSalary),
               // Given (full) components
               givenBasic: Math.round(givenBasic),
               givenDa: Math.round(givenDa),
               givenHra: Math.round(givenHra),
               givenCca: Math.round(givenCca),
               givenGrossSalary: Math.round(givenGrossSalary),
+              
             }
           })
 
@@ -534,7 +539,7 @@ export default function PayrollPage() {
     const bankFileData = payrollCalculations.map((emp) => [
       "NEFT", // TYPE
       "12345678901234", // DEBIT BANK A/C NO (mocked, replace as needed)
-      emp.netSalary?.toString() ?? "", // DEBIT AMT
+      emp.inHandSalary?.toString() ?? "", // DEBIT AMT
       "INR", // CUR
       randomAccountNumber(), // BENEFICIARY A/C NO (random 12-digit number)
       emp.ifsc || "HDFC0001234", // IFSC CODE (mock or real if available)
@@ -597,6 +602,8 @@ export default function PayrollPage() {
         grossSalary: emp.grossSalary,  // earned gross
         totalDeductions: emp.totalDeductions,
         netSalary: emp.netSalary,
+        inHandSalary:emp.inHandSalary,
+        advanceRemaining: emp.advanceRemaining,
         lopDeduction:emp.lopDeduction,
         otHours:emp.overtime
       }));
@@ -777,6 +784,12 @@ export default function PayrollPage() {
 
                           <th className="text-left p-2">Deductions</th>
                           <th className="text-left p-2">Net Salary</th>
+                          <th className="text-left p-2">Advance Remaining</th>
+                          <th className="text-left p-2">InHand Salary<br/> 
+                            <span className="text-xs text-muted-foreground">(net salary - advance)</span>
+
+                          </th>
+
                         </>
                       )}
                     </tr>
@@ -859,6 +872,9 @@ export default function PayrollPage() {
 
                             <td className="p-2">₹{emp.totalDeductions?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
+                            <td className="p-2 font-medium">₹{emp.advanceRemaining?.toLocaleString()}</td>
+                            <td className="p-2 font-medium">₹{emp.inHandSalary?.toLocaleString()}</td>
+                          
                           </>
                         )}
                       </tr>

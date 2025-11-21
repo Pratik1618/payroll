@@ -295,7 +295,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X, Download, Mail, Building, Calendar, User } from "lucide-react"
+import { X, Download, Mail, Building, Calendar, User, Wallet } from "lucide-react"
 import { format } from "date-fns"
 // @ts-ignore
 import { toWords } from "number-to-words"
@@ -329,6 +329,8 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
     totalDeductions = 0,
     lopDeduction = 0,
     netSalary = 0,
+    inHandSalary =0,
+    advanceRemaining=0,
     incentive = 0, // if present
     pf = 0,
     lwf = 0,
@@ -560,6 +562,28 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
             </Card>
           </div>
 
+<Card className="mt-6 bg-accent/50 border-border">
+           <CardHeader>
+            <CardTitle className="text-sm text-foreground flex items-center">
+               <Wallet className="mr-2 h-4 w-4" /> In-hand Salary
+             </CardTitle>            </CardHeader>
+           <CardContent>
+             <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                 <span className="text-muted-foreground">Advance Remaining</span>
+                 <span className="font-medium text-foreground">{formatCurrency(advanceRemaining ?? 0)}</span>
+                </div>
+               <div className="flex justify-between">
+                  <span className="text-muted-foreground">Net Salary</span>
+                 <span className="font-medium text-foreground">{formatCurrency(netSalary ?? 0)}</span>
+                </div>
+                <div className="flex justify-between border-t border-border pt-2 font-bold">
+                  <span>In-hand Salary</span>
+                 <span className="text-blue-800">{formatCurrency(inHandSalary)}</span>
+               </div>
+             </div>
+            </CardContent>
+         </Card>
           {/* Footer */}
           <div className="mt-8 pt-4 border-t border-border text-center text-xs text-muted-foreground">
             <p>This is a computer-generated payslip and does not require a signature.</p>
