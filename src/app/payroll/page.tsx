@@ -7,12 +7,16 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Stepper } from "@/components/ui/stepper"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload, Lock, Copy, AlertTriangle, CheckCircle } from "lucide-react"
+import { Upload, Lock, Copy, AlertTriangle, CheckCircle, Calendar } from "lucide-react"
 import { VariableUpload } from "@/components/ui/payroll/variable-upload"
 import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
 import { CloneSiteModal } from "@/components/ui/payroll/clone-site-modal"
 import { toast } from "sonner"
 import { SitesDropdown } from "@/components/ui/sites-dropdown"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
 const initialPayrollSteps = [
   {
@@ -88,6 +92,9 @@ export default function PayrollPage() {
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0)
   const [overridePendingLeaves, setOverridePendingLeaves] = useState(false)
   const [overrideReason, setOverrideReason] = useState("")
+
+    const [fromDate, setFromDate] = useState<Date>()
+  const [toDate, setToDate] = useState<Date>()
 
   useEffect(() => {
     const updatedSteps = payrollSteps.map((step, index) => ({
@@ -332,7 +339,7 @@ export default function PayrollPage() {
               <p className="text-muted-foreground mb-4">Select client and sites to import attendance data</p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select Client</label>
                 <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -358,6 +365,61 @@ export default function PayrollPage() {
                   label="Select Sites"
                 />
               </div>
+              <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">From Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !fromDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {fromDate ? format(fromDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={fromDate}
+                      onSelect={setFromDate}
+                      disabled={(date) => toDate ? date > toDate : false}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">To Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !toDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {toDate ? format(toDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={toDate}
+                      onSelect={setToDate}
+                      disabled={(date) => fromDate ? date < fromDate : false}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
             </div>
 
             {selectedClient && selectedSites.length > 0 && (
