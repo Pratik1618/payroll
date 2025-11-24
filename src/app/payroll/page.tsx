@@ -44,11 +44,19 @@ const mockClients = [
 ]
 
 const mockSites = [
-  { id: "site-a", name: "Corporate Office", employees: 450, clientId: "client-1" },
-  { id: "site-b", name: "Manufacturing Unit", employees: 520, clientId: "client-1" },
-  { id: "site-c", name: "Warehouse", employees: 277, clientId: "client-2" },
-  { id: "site-d", name: "Distribution Center", employees: 180, clientId: "client-2" },
-  { id: "site-e", name: "Tech Hub", employees: 320, clientId: "client-3" },
+  { id: "site-a", name: "Corporate Office", employees: 450, clientId: "client-1", branchId: "branch-1" },
+  { id: "site-b", name: "Manufacturing Unit", employees: 520, clientId: "client-1", branchId: "branch-2" },
+  { id: "site-c", name: "Warehouse", employees: 277, clientId: "client-2", branchId: "branch-1" },
+  { id: "site-d", name: "Distribution Center", employees: 180, clientId: "client-2", branchId: "branch-3" },
+  { id: "site-e", name: "Tech Hub", employees: 320, clientId: "client-3", branchId: "branch-2" },
+]
+
+// added: branches (states) list
+const mockBranches = [
+  { id: "branch-1", name: "Gujarat" },
+  { id: "branch-2", name: "Maharashtra" },
+  { id: "branch-3", name: "Karnataka" },
+  { id: "branch-4", name: "Tamil Nadu" },
 ]
 
 // 1. Add basicSalary to each employee in mockAttendanceData
@@ -83,6 +91,7 @@ export default function PayrollPage() {
 
   const [selectedClient, setSelectedClient] = useState("")
   const [selectedSites, setSelectedSites] = useState<string[]>([])
+  const [selectedBranch, setSelectedBranch] = useState<string>("") // new: branch/state selection
   const [attendanceData, setAttendanceData] = useState<any[]>([])
   const [payrollCalculations, setPayrollCalculations] = useState<any[]>([])
 
@@ -106,6 +115,11 @@ export default function PayrollPage() {
   }, [currentStep])
 
   const getAvailableSites = () => {
+    // If a branch is selected, show all sites under that branch (bulk import scenario)
+    if (selectedBranch) {
+      return mockSites.filter((site) => site.branchId === selectedBranch)
+    }
+
     if (!selectedClient) return []
     return mockSites.filter((site) => site.clientId === selectedClient)
   }
@@ -116,9 +130,10 @@ export default function PayrollPage() {
     try {
       switch (currentStep) {
         case 1:
-          if (!selectedClient || selectedSites.length === 0) {
+          // If branch selected -> bulk import across all clients/sites in branch.
+          if (!selectedBranch && (!selectedClient || selectedSites.length === 0)) {
             toast("Selection Required", {
-              description: "Please select a client and at least one site.",
+              description: "Please select a client and at least one site, or select a branch for bulk import.",
               action: {
                 label: "OK",
                 onClick: () => console.log("ok"),
@@ -127,35 +142,57 @@ export default function PayrollPage() {
             setIsProcessing(false)
             return
           }
-
-          await new Promise((resolve) => setTimeout(resolve, 2000))
-
-          // Generate attendance data for selected sites
-          const totalEmployees = selectedSites.reduce((sum, siteId) => {
-            const site = mockSites.find((s) => s.id === siteId)
-            return sum + (site?.employees || 0)
-          }, 0)
-
-          setAttendanceData(mockAttendanceData)
-          // compute total overtime (client + ismart) for dashboard
-          const totalOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.clientOvertime || 0) + (emp.ismartOvertime || 0), 0)
-
-          setPayrollData((prev) => ({
-            ...prev,
-            onHold: 2,
-            attendanceImported: true,
-            totalEmployees,
-            overtimeHours: totalOT,
-          }))
-
-          toast("Attendance Imported", {
-            description: `Successfully imported attendance data for ${totalEmployees} employees from ${selectedSites.length} sites.`,
-            action: {
-              label: "OK",
-              onClick: () => console.log("ok"),
-            },
-          })
-          break
+ 
+           // Bulk import when branch selected
+           const totalOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.clientOvertime || 0) + (emp.ismartOvertime || 0), 0)
+ 
+           if (selectedBranch) {
+             const sitesInBranch = mockSites.filter((s) => s.branchId === selectedBranch)
+             const totalEmployees = sitesInBranch.reduce((sum, s) => sum + (s.employees || 0), 0)
+             const sitesCount = sitesInBranch.length
+             const clientsCount = Array.from(new Set(sitesInBranch.map((s) => s.clientId))).length
+ 
+             setAttendanceData(mockAttendanceData)
+             setPayrollData((prev) => ({
+               ...prev,
+               onHold: 2,
+               attendanceImported: true,
+               totalEmployees,
+               overtimeHours: totalOT,
+             }))
+ 
+             toast("Branch Bulk Attendance Imported", {
+               description: `Imported attendance for ${totalEmployees} employees across ${sitesCount} site(s) and ${clientsCount} client(s) in the selected branch.`,
+               action: {
+                 label: "OK",
+                 onClick: () => console.log("ok"),
+               },
+             })
+           } else {
+             // Generate attendance data for selected sites
+             const totalEmployees = selectedSites.reduce((sum, siteId) => {
+               const site = mockSites.find((s) => s.id === siteId)
+               return sum + (site?.employees || 0)
+             }, 0)
+ 
+             setAttendanceData(mockAttendanceData)
+             setPayrollData((prev) => ({
+               ...prev,
+               onHold: 2,
+               attendanceImported: true,
+               totalEmployees,
+               overtimeHours: totalOT,
+             }))
+ 
+             toast("Attendance Imported", {
+               description: `Successfully imported attendance data for ${totalEmployees} employees from ${selectedSites.length} sites.`,
+               action: {
+                 label: "OK",
+                 onClick: () => console.log("ok"),
+               },
+             })
+           }
+           break
 
         case 2:
           await new Promise((resolve) => setTimeout(resolve, 3000))
@@ -314,7 +351,8 @@ export default function PayrollPage() {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return selectedClient && selectedSites.length > 0
+        // allow proceed if branch selected (bulk import) or client+sites selected
+        return !!selectedBranch || (selectedClient && selectedSites.length > 0)
       case 2:
         return payrollData.attendanceImported
       case 3:
@@ -339,7 +377,25 @@ export default function PayrollPage() {
               <p className="text-muted-foreground mb-4">Select client and sites to import attendance data</p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
+              {/* Branch / State Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Branch</label>
+                <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a branch (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    
+                    {mockBranches.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>
+                        {b.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select Client</label>
                 <Select value={selectedClient} onValueChange={setSelectedClient}>
@@ -693,6 +749,14 @@ export default function PayrollPage() {
       console.log("✅ Earned salary structure saved to localStorage");
     }
   }, [currentStep, payrollCalculations]);
+
+  // when branch selected -> clear client/site selections (branch triggers bulk import)
+  useEffect(() => {
+    if (selectedBranch) {
+      setSelectedClient("")
+      setSelectedSites([])
+    }
+  }, [selectedBranch])
 
   return (
     <MainLayout>
