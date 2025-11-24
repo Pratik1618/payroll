@@ -90,6 +90,7 @@ export default function PayrollPage() {
   const [showCloneSite, setShowCloneSite] = useState(false)
 
   const [selectedClient, setSelectedClient] = useState("")
+  const [selectedClients, setSelectedClients] = useState<string[]>([]) // when branch selected: multi-client selection
   const [selectedSites, setSelectedSites] = useState<string[]>([])
   const [selectedBranch, setSelectedBranch] = useState<string>("") // new: branch/state selection
   const [attendanceData, setAttendanceData] = useState<any[]>([])
@@ -115,13 +116,26 @@ export default function PayrollPage() {
   }, [currentStep])
 
   const getAvailableSites = () => {
-    // If a branch is selected, show all sites under that branch (bulk import scenario)
+    // If a branch is selected, show sites under that branch.
+    // If selectedClients has values, limit to those clients; otherwise show all clients in branch.
     if (selectedBranch) {
-      return mockSites.filter((site) => site.branchId === selectedBranch)
+      const sites = mockSites.filter((site) => site.branchId === selectedBranch)
+      if (selectedClients.length > 0) {
+        return sites.filter((s) => selectedClients.includes(s.clientId))
+      }
+      return sites
     }
 
     if (!selectedClient) return []
     return mockSites.filter((site) => site.clientId === selectedClient)
+  }
+
+  const toggleClientSelection = (clientId: string) => {
+    setSelectedClients((prev) => (prev.includes(clientId) ? prev.filter((c) => c !== clientId) : [...prev, clientId]))
+  }
+
+  const selectAllBranchClients = (clientIds: string[]) => {
+    setSelectedClients(clientIds)
   }
 
   const processCurrentStep = async () => {
@@ -147,7 +161,11 @@ export default function PayrollPage() {
            const totalOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.clientOvertime || 0) + (emp.ismartOvertime || 0), 0)
  
            if (selectedBranch) {
-             const sitesInBranch = mockSites.filter((s) => s.branchId === selectedBranch)
+             // Sites in branch, optionally filtered by selectedClients (if any)
+             let sitesInBranch = mockSites.filter((s) => s.branchId === selectedBranch)
+             if (selectedClients.length > 0) {
+               sitesInBranch = sitesInBranch.filter((s) => selectedClients.includes(s.clientId))
+             }
              const totalEmployees = sitesInBranch.reduce((sum, s) => sum + (s.employees || 0), 0)
              const sitesCount = sitesInBranch.length
              const clientsCount = Array.from(new Set(sitesInBranch.map((s) => s.clientId))).length
@@ -396,20 +414,66 @@ export default function PayrollPage() {
                 </Select>
               </div>
 
+              {/* Client selection:
+                  - when branch selected: allow selecting some/all clients (checkbox list)
+                  - when no branch: single client Select */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select Client</label>
-                <Select value={selectedClient} onValueChange={setSelectedClient}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockClients.map((client) => (
-                      <SelectItem key={client.id} value={client.id}>
-                        {client.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {selectedBranch ? (
+                  <div className="border rounded p-2 bg-background">
+                    {/* compute clients that have sites in this branch */}
+                    {(() => {
+                      const branchClientIds = Array.from(
+                        new Set(mockSites.filter((s) => s.branchId === selectedBranch).map((s) => s.clientId))
+                      )
+                      const branchClients = mockClients.filter((c) => branchClientIds.includes(c.id))
+                      const allSelected = branchClients.length > 0 && branchClients.every((c) => selectedClients.includes(c.id))
+                      return (
+                        <>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={allSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) selectAllBranchClients(branchClients.map((c) => c.id))
+                                  else setSelectedClients([])
+                                }}
+                              />
+                              <span className="font-medium">Select All</span>
+                            </label>
+                          </div>
+                          <div className="grid gap-1">
+                            {branchClients.map((c) => (
+                              <label key={c.id} className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedClients.includes(c.id)}
+                                  onChange={() => toggleClientSelection(c.id)}
+                                />
+                                <span>{c.name}</span>
+                              </label>
+                            ))}
+                            {branchClients.length === 0 && <div className="text-xs text-muted-foreground">No clients found for this branch.</div>}
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </div>
+                ) : (
+                  <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedSites([]) }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a client" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockClients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {/* Sites Dropdown with Search and Select All */}
@@ -478,21 +542,30 @@ export default function PayrollPage() {
             </div>
             </div>
 
-            {selectedClient && selectedSites.length > 0 && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="font-medium">Ready to Import</span>
-                </div>
+            {(selectedBranch && (selectedClients.length > 0 || getAvailableSites().length > 0)) || (selectedClient && selectedSites.length > 0) ? (
+               <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                 <div className="flex items-center space-x-2 text-blue-700 dark:text-blue-300">
+                   <CheckCircle className="h-5 w-5" />
+                   <span className="font-medium">Ready to Import</span>
+                 </div>
                 <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                  {selectedSites.length} sites selected with{" "}
-                  {getAvailableSites()
-                    .filter((site) => selectedSites.includes(site.id))
-                    .reduce((sum, site) => sum + site.employees, 0)}{" "}
-                  total employees
+                  {(() => {
+                    if (selectedBranch) {
+                      const sites = getAvailableSites()
+                      const totalEmployees = sites.reduce((sum, s) => sum + (s.employees || 0), 0)
+                      const sitesCount = sites.length
+                      const clientsCount = Array.from(new Set(sites.map((s) => s.clientId))).length
+                      return `${sitesCount} site(s) across ${clientsCount} client(s) selected with ${totalEmployees} total employees`
+                    } else {
+                      const totalEmployees = getAvailableSites()
+                        .filter((site) => selectedSites.includes(site.id))
+                        .reduce((sum, site) => sum + site.employees, 0)
+                      return `${selectedSites.length} sites selected with ${totalEmployees} total employees`
+                    }
+                  })()}
                 </p>
-              </div>
-            )}
+               </div>
+            ) : null}
           </div>
         )
       case 2:
@@ -755,6 +828,7 @@ export default function PayrollPage() {
     if (selectedBranch) {
       setSelectedClient("")
       setSelectedSites([])
+      setSelectedClients([])
     }
   }, [selectedBranch])
 
@@ -916,6 +990,7 @@ export default function PayrollPage() {
                           <th className="text-left p-2">DA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">HRA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">CCA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                         
                           <th className="text-left p-2">OverTime Pay</th>
 
                           <th className="text-left p-2">
