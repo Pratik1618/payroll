@@ -74,6 +74,8 @@ const initialPayrollData = {
   totalEmployees: 0,
   grossPayroll: 0,
   overtimeHours: 0,
+  ismartOt:0,
+  clientOt:0,
   onHold: 0,
   attendanceImported: false,
   payrollCalculated: false,
@@ -159,7 +161,8 @@ export default function PayrollPage() {
  
            // Bulk import when branch selected
            const totalOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.clientOvertime || 0) + (emp.ismartOvertime || 0), 0)
- 
+          const totalClientOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.clientOvertime || 0), 0)
+const totalIsmartOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.ismartOvertime || 0), 0)
            if (selectedBranch) {
              // Sites in branch, optionally filtered by selectedClients (if any)
              let sitesInBranch = mockSites.filter((s) => s.branchId === selectedBranch)
@@ -176,6 +179,8 @@ export default function PayrollPage() {
                onHold: 2,
                attendanceImported: true,
                totalEmployees,
+               clientOt:totalClientOT,
+               ismartOt:totalIsmartOT,
                overtimeHours: totalOT,
              }))
  
@@ -922,22 +927,23 @@ export default function PayrollPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Overtime Hours</p>
-                  <p className="text-2xl font-bold text-foreground">{payrollData.overtimeHours.toLocaleString()}</p>
-                </div>
-                <AlertTriangle className="h-8 w-8 text-orange-500" />
-              </div>
-              <div className="mt-2">
-                <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-                  client + ismart
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
+      <Card className="bg-card border-border">
+  <CardContent className="p-4">
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm text-muted-foreground">Client Overtime</p>
+        <p className="text-center text-2xl font-bold text-foreground">{payrollData.clientOt.toLocaleString()}</p>
+      </div>
+      <div>
+        <p className="text-sm text-muted-foreground">iSmart Overtime</p>
+        <p className="text-center text-2xl font-bold text-foreground">{payrollData.ismartOt.toLocaleString()}</p>
+      </div>
+      <AlertTriangle className="h-8 w-8 text-orange-500" />
+    </div>
+ 
+  </CardContent>
+</Card>
+
 
           <Card className="bg-card border-border">
             <CardContent className="p-4">

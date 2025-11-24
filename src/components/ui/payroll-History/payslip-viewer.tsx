@@ -348,6 +348,8 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
     wo: record.wo || 0,
     // ensure we read both possible keys saved earlier and expose otHours
     otHours: record.otHours ?? record.ot ?? 0,
+    clientOvertime: record.clientOvertime,
+    ismartOvertime : record.ismartOvertime,
   }
 
   const employee = {
@@ -469,7 +471,7 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-6 text-sm">
+              <div className="grid gap-4 md:grid-cols-7 text-sm">
                 <div className="text-center">
                   <div className="text-muted-foreground">Total Days</div>
                   <div className="text-lg font-bold text-foreground">{attendance.workingDays}</div>
@@ -491,8 +493,12 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                   <div className="text-lg font-bold text-gray-600">4</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-muted-foreground">OT Hours</div>
-                  <div className="text-lg font-bold text-purple-600">{attendance.otHours}</div>
+                  <div className="text-muted-foreground">Ismart OT</div>
+                  <div className="text-lg font-bold text-purple-600">{attendance.ismartOvertime}</div>
+                </div>
+                 <div className="text-center">
+                  <div className="text-muted-foreground">Client OT</div>
+                  <div className="text-lg font-bold text-purple-600">{attendance.clientOvertime}</div>
                 </div>
               </div>
             </CardContent>
@@ -589,6 +595,7 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
           <div className="mt-8 pt-4 border-t border-border text-center text-xs text-muted-foreground">
             <p>This is a computer-generated payslip and does not require a signature.</p>
             <p>For any queries, please contact HR Department.</p>
+            <p>toll free no : 9326558563 | email: hr@ismartfacitech.com</p>
           </div>
         </CardContent>
       </Card>
