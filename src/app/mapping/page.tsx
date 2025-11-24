@@ -1,0 +1,237 @@
+"use client"
+
+import { useState } from "react"
+import { MainLayout } from "@/components/ui/layout/main-layout" 
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { toast } from "sonner"
+import { MapPin, Plus, Trash2 } from "lucide-react"
+
+const mockCycles = [
+  { id: "1", name: "7 to 7", startDate: "7", endDate: "7" },
+  { id: "2", name: "10 to 10", startDate: "10", endDate: "10" },
+  { id: "3", name: "15 to 15", startDate: "15", endDate: "15" },
+  { id: "4", name: "1 to 30", startDate: "1", endDate: "30" },
+]
+
+const mockSites = [
+  { id: "1", name: "Site A", client: "Acme Corp" },
+  { id: "2", name: "Site B", client: "Acme Corp" },
+  { id: "3", name: "Site C", client: "TechFlow Inc" },
+  { id: "4", name: "Site D", client: "TechFlow Inc" },
+  { id: "5", name: "Site E", client: "Global Services" },
+]
+
+export default function CycleMappingPage() {
+  const [selectedCycle, setSelectedCycle] = useState<string>("")
+  const [siteSearchQuery, setSiteSearchQuery] = useState<string>("")
+  const [mappedSites, setMappedSites] = useState<string[]>([])
+  const [mappings, setMappings] = useState<Array<{ id: string; cycleId: string; cycleName: string; sites: string[] }>>([
+    {
+      id: "map-1",
+      cycleId: "1",
+      cycleName: "7 to 7",
+      sites: ["1", "2", "5"],
+    },
+  ])
+
+  const filteredSites = mockSites.filter(
+    (site) =>
+      site.name.toLowerCase().includes(siteSearchQuery.toLowerCase()) ||
+      site.client.toLowerCase().includes(siteSearchQuery.toLowerCase()),
+  )
+
+  const handleSiteToggle = (siteId: string) => {
+    const updatedSites = mappedSites.includes(siteId)
+      ? mappedSites.filter((id) => id !== siteId)
+      : [...mappedSites, siteId]
+    setMappedSites(updatedSites)
+  }
+
+  const handleCreateMapping = () => {
+    if (!selectedCycle) {
+      toast.error("Please select a salary cycle")
+      return
+    }
+    if (!mappedSites.length) {
+      toast.error("Please select at least one site")
+      return
+    }
+
+    const cycle = mockCycles.find((c) => c.id === selectedCycle)
+    const newMapping = {
+      id: `map-${Date.now()}`,
+      cycleId: selectedCycle,
+      cycleName: cycle?.name || "",
+      sites: [...mappedSites],
+    }
+
+    setMappings([...mappings, newMapping])
+    setSelectedCycle("")
+    setMappedSites([])
+    setSiteSearchQuery("")
+    const siteNames = [...mappedSites].map((id) => mockSites.find((s) => s.id === id)?.name).join(", ")
+    toast.success(`Mapping created: ${siteNames} mapped to ${cycle?.name}`)
+  }
+
+  const getSiteNames = (siteIds: string[]) => {
+    return siteIds
+      .map((id) => mockSites.find((s) => s.id === id)?.name)
+      .filter(Boolean)
+      .join(", ")
+  }
+
+  return (
+    <MainLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Cycle Mapping</h1>
+          <p className="text-muted-foreground mt-1">Map salary cycles to multiple sites</p>
+        </div>
+
+        {/* Create Mapping Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5" />
+              Create New Mapping
+            </CardTitle>
+            <CardDescription>Select a salary cycle and assign it to multiple sites</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Cycle Selection */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-foreground">Select Salary Cycle</label>
+              <Select value={selectedCycle} onValueChange={setSelectedCycle}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a cycle..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {mockCycles.map((cycle) => (
+                    <SelectItem key={cycle.id} value={cycle.id}>
+                      {cycle.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sites Selection - Multi-select dropdown */}
+            <div className="space-y-3">
+              <label className="block text-sm font-medium text-foreground">Select Sites</label>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Search sites by name or client..."
+                  value={siteSearchQuery}
+                  onChange={(e) => setSiteSearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+
+                {/* Multi-select checkboxes with filtered results */}
+                <div className="border border-input rounded-md max-h-64 overflow-y-auto space-y-1 p-2">
+                  {filteredSites.length > 0 ? (
+                    filteredSites.map((site) => (
+                      <div
+                        key={site.id}
+                        className="flex items-center gap-2 px-2 py-2 hover:bg-accent rounded cursor-pointer transition-colors"
+                        onClick={() => handleSiteToggle(site.id)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={mappedSites.includes(site.id)}
+                          onChange={() => {}}
+                          className="w-4 h-4 cursor-pointer"
+                        />
+                        <label className="flex-1 cursor-pointer text-sm">
+                          {site.name} <span className="text-muted-foreground">({site.client})</span>
+                        </label>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground p-2 text-center">No sites found</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Display mapped sites */}
+              {mappedSites.length > 0 && (
+                <div className="border border-border rounded-lg p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Mapped Sites:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {mappedSites.map((siteId) => {
+                      const site = mockSites.find((s) => s.id === siteId)
+                      return (
+                        <Badge key={siteId} variant="secondary" className="flex items-center gap-1">
+                          {site?.name}
+                          <button onClick={() => handleSiteToggle(siteId)} className="ml-1 hover:text-destructive">
+                            ×
+                          </button>
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+              <div className="text-sm text-muted-foreground">{mappedSites.length} site(s) selected</div>
+            </div>
+
+            {/* Create Button */}
+            <Button
+              onClick={handleCreateMapping}
+              className="w-full"
+              disabled={!selectedCycle || mappedSites.length === 0}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Mapping
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Existing Mappings */}
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Active Mappings</h2>
+          {mappings.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No cycle mappings created yet
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3">
+              {mappings.map((mapping) => (
+                <Card key={mapping.id}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{mapping.cycleName}</Badge>
+                          <Badge variant="secondary">{mapping.sites.length} sites</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Assigned to: {getSiteNames(mapping.sites)}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setMappings(mappings.filter((m) => m.id !== mapping.id))
+                          toast.success("Mapping deleted")
+                        }}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </MainLayout>
+  )
+}
