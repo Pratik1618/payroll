@@ -14,7 +14,7 @@ const navigation = [
   {name: 'Payroll History',href :"/payroll-history",icon:HistoryIcon},
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
   // { name: "Payslip Viewer", href: "/payslip", icon: Receipt },
-  { name: "Bank Disbursement", href: "/bank", icon: CreditCard },
+  // { name: "Bank Disbursement", href: "/bank", icon: CreditCard },
   { name: "F&F Settlement", href: "/fnf", icon: UserX },
   {name: "Salary Status",href:"/salary-status",icon:Lock},
   {name :"Tax Declartions", href:"/taxRegime",icon:Percent},
