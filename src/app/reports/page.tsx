@@ -26,7 +26,7 @@ export default function MISReportsPage() {
     { value: "09", label: "September" },
     { value: "10", label: "October" },
     { value: "11", label: "November" },
-    { value: "12", label: "December" },
+    { value: "12", label: "December"},
   ]
 
   const years = ["2024", "2025", "2026"]
