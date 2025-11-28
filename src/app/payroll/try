@@ -65,7 +65,7 @@ const mockAttendanceData = [
   { empId: "EMP001", name: "John Doe", designation: "housekeeper", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, clientOvertime: 5, ismartOvertime: 3, basicSalary: 28000, advanceRemaining: 1000 },
   { empId: "EMP002", name: "Jane Smith", designation: "Receptionist", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, clientOvertime: 8, ismartOvertime: 4, basicSalary: 32000, advanceRemaining: 500 },
   { empId: "EMP003", name: "Mike Johnson", designation: "housekeeper", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, clientOvertime: 10, ismartOvertime: 5, basicSalary: 25000, advanceRemaining: 0 },
-  { empId: "EMP004", name: "Sarah Wilson", designation: "chambermaid", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, clientOvertime: 2, ismartOvertime: 1, basicSalary: 22000, advanceRemaining: 700 },
+  { empId: "EMP004", name: "Sarah Wilson", designation: "chambermaid", totalDays: 26, leaves: 3, lop: 3, clientOvertime: 2, ismartOvertime: 1, basicSalary: 22000, advanceRemaining: 700 },
   { empId: "EMP005", name: "David Brown", designation: "supervisor", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000, advanceRemaining: 0 },
 ]
 
@@ -229,63 +229,38 @@ export default function PayrollPage() {
             const dayRatio = paidDays / emp.totalDays
 
             // Actual earned (pro-rata) components
-
-            //fixed component
             const earnedBasic = emp.basicSalary * dayRatio
             const da = earnedBasic * 0.15
             const hra = earnedBasic * 0.20
-            const conveyance = 0
-            const washingAllowance = 0
-            const otherAllowance = 0
-            const leaveWithWages = 0
             const cca = 1000 * dayRatio
-
+            const washingAllowance = 0
             const educationalAllowance = 0
             const medicalAllowance = 0
-            const specialAllowance = 0
-            const bonus = 0
-            const meal = 0
             const siteAllowance = 0
             const performanceAllowance = 0
+            const cashRiskAllowance = 0
+            const incentive = 0
             const food = 0
             const metroCityAllowance = 0
             const stipend = 0
-
-
-
-
-            //non fixed components
-            const convy = 0
+            const specialAllowance = 0
             const reimbursement = 0
-            const cashRiskAllowance = 0
-            const incentive = 0
-
-
-
-
+            const bonus = 0
+            const meal = 0
+            const otherAllowance = 0
+            const leaveWithWages = 0
 
             // Given (full) components for reference
             const givenBasic = emp.basicSalary
             const givenDa = givenBasic * 0.15
             const givenHra = givenBasic * 0.20
-            const givenConveyance = 0
-            const givenWashingAllowance = 0
-            const givenOtherAllowance = 0
-            const givenLeaveWithWages = 0
             const givenCca = 1000
+            const givenWashingAllowance = 0
             const givenEducationalAllowance = 0
             const givenMedicalAllowance = 0
-            const givenSpecialAllowance = 0
-            const givenBonus = 0
-            const givenMeal = 0
             const givenSiteAllowance = 0
             const givenPerformanceAllowance = 0
-            const givenFood = 0
-            const givenMetroCityAllowance = 0
-            const givenStipend = 0
-
-
-
+            const givenCashRiskAllowance = 0
 
 
 
@@ -297,17 +272,17 @@ export default function PayrollPage() {
 
             // Gross salary
             const grossSalary = Math.round(
-              earnedBasic + da + hra + conveyance + convy + cca + washingAllowance + educationalAllowance +
+              earnedBasic + da + hra + cca + washingAllowance + educationalAllowance +
               medicalAllowance + siteAllowance + performanceAllowance + cashRiskAllowance +
               incentive + food + metroCityAllowance + stipend + specialAllowance +
               reimbursement + bonus + meal + otherAllowance + leaveWithWages + overtimePay
             )
+
             const givenGrossSalary = Math.round(
-              givenBasic + givenBonus + givenCca + givenCca + givenConveyance +
-              givenDa + givenEducationalAllowance + givenFood + givenHra +
-              givenLeaveWithWages + givenMeal + givenMedicalAllowance + givenMetroCityAllowance + givenOtherAllowance +
-              givenPerformanceAllowance + givenSiteAllowance +
-              givenSpecialAllowance + givenStipend + givenWashingAllowance
+              givenBasic + givenDa + givenHra + givenCca + givenWashingAllowance +
+              givenEducationalAllowance + givenMedicalAllowance + givenSiteAllowance +
+              givenPerformanceAllowance + givenCashRiskAllowance +
+              (clientOvertime + ismartOvertime) * clientOtRate
             )
 
             const pf = earnedBasic > 15000 ? 1800 : earnedBasic * 0.12
@@ -321,7 +296,9 @@ export default function PayrollPage() {
             const hraDeduction = 0
             const staffWelfareFund = 50
             const backgroundVerification = 0
+
             const lopDeduction = (givenBasic + givenDa + givenHra + givenCca) - (earnedBasic + da + hra + cca)
+
             const totalDeductions = Math.round(
               pf + esi + pt + lwf + uniform + + otherDeduction +
               messDeduction + uniformDeduction + hraDeduction + staffWelfareFund +
@@ -342,36 +319,12 @@ export default function PayrollPage() {
               earnedBasic: Math.round(earnedBasic),
               da: Math.round(da),
               hra: Math.round(hra),
-              conveyance: Math.round(conveyance),
-              washingAllowance: Math.round(washingAllowance),
-              otherAllowance: Math.round(otherAllowance),
               cca: Math.round(cca),
-              educationalAllowance: Math.round(educationalAllowance),
-              medicalAllowance: Math.round(medicalAllowance),
-              specialAllowance: Math.round(specialAllowance),
-              bonus: Math.round(bonus),
-              meal: Math.round(meal),
-              siteAllowance: Math.round(siteAllowance),
-              performanceAllowance: Math.round(performanceAllowance),
-              food: Math.round(food),
-              metroCityAllowance: Math.round(metroCityAllowance),
-              stipend: Math.round(stipend),
-              convy: Math.round(convy),
-              reimbursement: Math.round(reimbursement),
-              cashRiskAllowance: Math.round(cashRiskAllowance),
-              incentive: Math.round(incentive),
               grossSalary: Math.round(grossSalary),
               pf: Math.round(pf),
               esi: Math.round(esi),
               pt: Math.round(pt),
               lwf: Math.round(lwf),
-              uniform: Math.round(uniform),
-              otherDeduction: Math.round(otherDeduction),
-              messDeduction: Math.round(messDeduction),
-              uniformDeduction: Math.round(uniformDeduction),
-              hraDeduction: Math.round(hraDeduction),
-              staffWelfareFund: Math.round(staffWelfareFund),
-              backgroundVerification: Math.round(backgroundVerification),
               lopDeduction: Math.round(lopDeduction),
               totalDeductions: Math.round(totalDeductions),
               netSalary: Math.round(netSalary),
@@ -381,21 +334,7 @@ export default function PayrollPage() {
               givenBasic: Math.round(givenBasic),
               givenDa: Math.round(givenDa),
               givenHra: Math.round(givenHra),
-              givenConveyance: Math.round(givenConveyance),
-              givenWashingAllowance: Math.round(givenWashingAllowance),
-              givenOtherAllowance: Math.round(givenOtherAllowance),
-              givenLeaveWithWages: Math.round(givenLeaveWithWages),
               givenCca: Math.round(givenCca),
-              givenEducationalAllowance: Math.round(givenEducationalAllowance),
-              givenMedicalAllowance: Math.round(givenMedicalAllowance),
-              givenSpecialAllowance: Math.round(givenSpecialAllowance),
-              givenBonus: Math.round(givenBonus),
-              givenMeal: Math.round(givenMeal),
-              givenSiteAllowance: Math.round(givenSiteAllowance),
-              givenPerformanceAllowance: Math.round(givenPerformanceAllowance),
-              givenFood: Math.round(givenFood),
-              givenMetroCityAllowance: Math.round(givenMetroCityAllowance),
-              givenStipend: Math.round(givenStipend),
               givenGrossSalary: Math.round(givenGrossSalary),
 
             }
@@ -1049,29 +988,25 @@ export default function PayrollPage() {
                           <th className="text-left p-2">Basic<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">DA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">HRA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                          <th className="text-left p-2">CONVEYANCE<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-
-                          <th className="text-left p-2">Washing<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                          <th className="text-left p-2">Other all.<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                          <th className="text-left p-2">Leave w/ Wages<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">CCA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-
+                          <th className="text-left p-2">Washing<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">Educational<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">Medical<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                          <th className="text-left p-2">Spl Allow<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                          <th className="text-left p-2">Bonus<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                          <th className="text-left p-2">Meal<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">Site Allowance<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">Performance<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">Cash Risk<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">Incentive<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">Food<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">Metro City<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
                           <th className="text-left p-2">Stipend<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                          <th className="text-left p-2 b">OT Amount</th>
-                          <th className="text-left p-2">Reimburse</th>
-                          <th className="text-left p-2">Cony</th>
-                          <th className="text-left p-2">Cash Risk</th>
-                          <th className="text-left p-2">Incentive</th>
-
+                          <th className="text-left p-2">Spl Allow<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">Reimburse<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">Bonus<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">Meal<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">Other Allow<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">Leave w/ Wages<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2 b">OT Amount<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
+                          <th className="text-left p-2">OverTime Pay<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
 
                           <th className="text-left p-2">
                             Gross Salary<br />
@@ -1081,18 +1016,14 @@ export default function PayrollPage() {
                           <th className="text-left p-2">ESIC</th>
                           <th className="text-left p-2">PT</th>
                           <th className="text-left p-2">LWF</th>
-                          <th className="text-left p-2">Other Ded</th>
                           <th className="text-left p-2">Uniform</th>
-
-
+                          <th className="text-left p-">Advance</th>
+                          <th className="text-left p-2">Other Ded</th>
                           <th className="text-left p-2">Mess</th>
+                          <th className="text-left p-2">Uniform Ded</th>
                           <th className="text-left p-2">HRA Ded</th>
                           <th className="text-left p-2">Welfare Fund</th>
                           <th className="text-left p-2">BG Verification</th>
-
-
-                          <th className="text-left p-2">Uniform Ded</th>
-
                           <th className="text-left p-2">Deductions</th>
                           <th className="text-left p-2">Net Salary</th>
                           <th className="text-left p-2">Advance Remaining</th>
@@ -1159,14 +1090,13 @@ export default function PayrollPage() {
                               </span>
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenConveyance?.toLocaleString()}
+                              ₹{emp.givenCca?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.conveyance?.toLocaleString()}
+                                ₹{emp.cca?.toLocaleString()}
                               </span>
                             </td>
-
-                            <td className="p-2">
+                              <td className="p-2">
                               ₹{emp.givenWashingAllowance?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
@@ -1174,128 +1104,20 @@ export default function PayrollPage() {
                               </span>
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenOtherAllowance?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.otherAllowance?.toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="p-2">
-                              ₹{emp.givenLeaveWithWages?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.leaveWithWages?.toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="p-2">
-                              ₹{emp.givenCca?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.cca?.toLocaleString()}
-                              </span>
-                            </td>
-                 <td className="p-2">
-                              ₹{emp.givenEducationalAllowance?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.educationalAllowance?.toLocaleString()}
-                              </span>
-                            </td>
-                           
-                            <td className="p-2">
-                              ₹{emp.givenMedicalAllowance?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.medicalAllowance?.toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="p-2">
-                              ₹{emp.givenSpecialAllowance?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.specialAllowance?.toLocaleString()}
-                              </span>
-                            </td>  <td className="p-2">
-                              ₹{emp.givenBonus?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.bonus?.toLocaleString()}
-                              </span>
-                            </td>  <td className="p-2">
-                              ₹{emp.givenMeal?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.meal?.toLocaleString()}
-                              </span>
-                            </td>  <td className="p-2">
-                              ₹{emp.givenSiteAllowance?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.siteAllowance?.toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="p-2">
-                              ₹{emp.givenPerformanceAllowance?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.performanceAllowance?.toLocaleString()}
-                              </span>
-                            </td> <td className="p-2">
-                              ₹{emp.givenFood?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.food?.toLocaleString()}
-                              </span>
-                            </td> <td className="p-2">
-                              ₹{emp.givenMetroCityAllowance?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.metroCityAllowance?.toLocaleString()}
-                              </span>
-                            </td> <td className="p-2">
-                              ₹{emp.givenStipend?.toLocaleString()}
-                              <br />
-                              <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.stipend?.toLocaleString()}
-                              </span>
-                            </td>
-                            <td className="p-2">
                               ₹{emp.overtimePay?.toLocaleString()}
-                              
-                              
-                            </td><td className="p-2">
-                              ₹{emp.reimbursement?.toLocaleString()}
-                              
-                            </td><td className="p-2">
-                              ₹{emp.convy?.toLocaleString()}
-                              
-                            </td><td className="p-2">
-                              ₹{emp.cashRiskAllowance?.toLocaleString()}
-                              
+
                             </td>
-                              <td className="p-2">
-                              ₹{emp.incentive?.toLocaleString()}
-                              
-                            </td>
-                             <td className="p-2">
+                            <td className="p-2">
                               ₹{emp.givenGrossSalary?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
                                 ₹{emp.grossSalary?.toLocaleString()}
                               </span>
                             </td>
-
                             <td className="p-2">₹{emp.pf?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.esi?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.pt?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.lwf?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.otherDeduction?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.uniform?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.messDeduction?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.hraDeduction?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.staffWelfareFund?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.backgroundVerification?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.uniformDeduction?.toLocaleString()}</td>
 
                             <td className="p-2">₹{emp.totalDeductions?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
