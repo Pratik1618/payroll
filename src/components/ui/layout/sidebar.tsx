@@ -18,7 +18,7 @@ const navigation = [
   { name: "F&F Settlement", href: "/fnf", icon: UserX },
   {name: "Salary Status",href:"/salary-status",icon:Lock},
   {name :"Tax Declartions", href:"/taxRegime",icon:Percent},
-  { name: "Reports", href: "/reports", icon: BarChart3 },
+  { name: "MIS Reports", href: "/reports", icon: BarChart3 },
   {name:"Cycle Mapping",href:"/mapping",icon:Webhook},
   {name:"Salary Hold/Unhold",href:"/salaryhold",icon:OctagonPause}
 

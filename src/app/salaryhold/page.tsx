@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,7 +22,14 @@ import {
   CommandList,
 } from "@/components/ui/command"
 
-import { AlertCircle, Check, ChevronDown } from "lucide-react"
+import {
+  AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react"
+
 import { cn } from "@/lib/utils"
 
 // ------------------------------------------------------------
@@ -53,14 +60,11 @@ const mockEmployees = [
   { employeeId: "EMP005", employeeName: "Vikram Desai", department: "Operations" },
 ]
 
-// Payroll months
-const months = [
-  "January 2025", "February 2025", "March 2025", "April 2025",
-  "May 2025", "June 2025", "July 2025", "August 2025",
-  "September 2025", "October 2025", "November 2025", "December 2025",
-]
+// ------------------------------------------------------------
+// HELPERS
+// ------------------------------------------------------------
 
-// Convert month string to index
+// Converts "March 2025" → 2
 const getMonthIndex = (monthString: string): number => {
   const [monthName] = monthString.split(" ")
   const map: Record<string, number> = {
@@ -70,7 +74,7 @@ const getMonthIndex = (monthString: string): number => {
   return map[monthName]
 }
 
-// Check if a month is editable (current + future)
+// Returns true for current+future months
 const isMonthEditable = (monthString: string): boolean => {
   const today = new Date()
   const currentMonth = today.getMonth()
@@ -82,34 +86,97 @@ const isMonthEditable = (monthString: string): boolean => {
 
   if (monthYear < currentYear) return false
   if (monthYear > currentYear) return true
-
   return monthIndex >= currentMonth
 }
 
+// Generate months for ANY year
+const getMonthsForYear = (year: number) => {
+  const base = [
+    "January", "February", "March", "April",
+    "May", "June", "July", "August",
+    "September", "October", "November", "December",
+  ]
+  return base.map((m) => `${m} ${year}`)
+}
+
 // ------------------------------------------------------------
-// MAIN PAGE COMPONENT
+// MAIN PAGE
 // ------------------------------------------------------------
 
 export default function SalaryHoldPage() {
+  const currentSystemYear = new Date().getFullYear()
+  const [selectedYear, setSelectedYear] = useState(currentSystemYear)
+
   const [selectedEmployee, setSelectedEmployee] = useState("EMP001")
 
-  // Initialize employee hold states
-  const [employeeHoldData, setEmployeeHoldData] = useState(() => {
+  // ------------------------------
+  // INIT EMPLOYEE HOLD DATA
+  // ------------------------------
+
+  const [employeeHoldData, setEmployeeHoldData] = useState<Record<string, EmployeeHoldData>>(() => {
     const data: Record<string, EmployeeHoldData> = {}
 
     mockEmployees.forEach((emp) => {
       const records: Record<string, HoldRecord> = {}
-      months.forEach((m) => (records[m] = { month: m, isHeld: false }))
+
+      // initialize only current year; other years generate dynamically later
+      getMonthsForYear(currentSystemYear).forEach((m) => {
+        records[m] = { month: m, isHeld: false }
+      })
+
       data[emp.employeeId] = { ...emp, holdRecords: records }
     })
 
     return data
   })
 
+  // ------------------------------
+  // LOCAL STORAGE LOAD ON MOUNT
+  // ------------------------------
+
+  useEffect(() => {
+    const stored = localStorage.getItem("employeeHoldData")
+    if (stored) {
+      setEmployeeHoldData(JSON.parse(stored))
+    }
+  }, [])
+
+  // ------------------------------
+  // LOCAL STORAGE SAVE
+  // ------------------------------
+
+  useEffect(() => {
+    localStorage.setItem("employeeHoldData", JSON.stringify(employeeHoldData))
+  }, [employeeHoldData])
+
+  const months = getMonthsForYear(selectedYear)
   const currentEmployee = employeeHoldData[selectedEmployee]
+
+  // Auto-create missing months when switching years
+  useEffect(() => {
+    setEmployeeHoldData((prev) => {
+      const updated = { ...prev }
+
+      mockEmployees.forEach((emp) => {
+        const employee = updated[emp.employeeId]
+
+        months.forEach((m) => {
+          if (!employee.holdRecords[m]) {
+            employee.holdRecords[m] = { month: m, isHeld: false }
+          }
+        })
+      })
+
+      return updated
+    })
+  }, [selectedYear])
+
   const heldCount = Object.values(currentEmployee.holdRecords).filter((r) => r.isHeld).length
 
-  // Toggle hold / unhold
+  // ------------------------------
+  // ACTIONS
+  // ------------------------------
+
   const toggleHold = (month: string) => {
     if (!isMonthEditable(month)) {
       toast.error("Past months are locked and cannot be edited.")
@@ -130,12 +197,9 @@ export default function SalaryHoldPage() {
       },
     }))
 
-    toast.success(
-      newState ? `Salary held for ${month}` : `Salary released for ${month}`
-    )
+    toast.success(newState ? `Salary held for ${month}` : `Salary released for ${month}`)
   }
 
-  // Hold all editable
   const holdAllMonths = () => {
     const updated = { ...currentEmployee.holdRecords }
 
@@ -151,7 +215,6 @@ export default function SalaryHoldPage() {
     toast.success("All editable months held.")
   }
 
-  // Release all editable
   const releaseAllMonths = () => {
     const updated = { ...currentEmployee.holdRecords }
 
@@ -167,16 +230,19 @@ export default function SalaryHoldPage() {
     toast.success("All editable months released.")
   }
 
+  // ------------------------------------------------------------
+  // RENDER
+  // ------------------------------------------------------------
+
   return (
     <MainLayout>
 
       <div className="space-y-6 p-6">
 
-        {/* Page Header */}
         <h1 className="text-3xl font-bold">Salary Hold / Unhold</h1>
         <p className="text-muted-foreground">Manage monthly salary hold settings</p>
 
-        {/* SEARCHABLE EMPLOYEE DROPDOWN */}
+        {/* EMPLOYEE DROPDOWN */}
         <Card>
           <CardHeader>
             <CardTitle>Select Employee</CardTitle>
@@ -186,11 +252,7 @@ export default function SalaryHoldPage() {
           <CardContent>
             <Popover>
               <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  className="w-full max-w-md justify-between"
-                >
+                <Button variant="outline" role="combobox" className="w-full max-w-md justify-between">
                   {currentEmployee.employeeName} ({currentEmployee.employeeId})
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
@@ -210,10 +272,7 @@ export default function SalaryHoldPage() {
                           onSelect={() => setSelectedEmployee(emp.employeeId)}
                         >
                           <div className="flex items-center justify-between w-full">
-                            <span>
-                              {emp.employeeName} ({emp.employeeId})
-                            </span>
-
+                            <span>{emp.employeeName} ({emp.employeeId})</span>
                             <Check
                               className={cn(
                                 "h-4 w-4",
@@ -231,9 +290,8 @@ export default function SalaryHoldPage() {
           </CardContent>
         </Card>
 
-        {/* Stats Cards */}
+        {/* STATS CARDS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
           <Card>
             <CardHeader><CardTitle>Total Held Months</CardTitle></CardHeader>
             <CardContent><div className="text-3xl font-bold">{heldCount}</div></CardContent>
@@ -251,7 +309,6 @@ export default function SalaryHoldPage() {
               <p className="text-muted-foreground text-sm">{currentEmployee.department}</p>
             </CardContent>
           </Card>
-
         </div>
 
         {/* MONTH CALENDAR */}
@@ -262,9 +319,39 @@ export default function SalaryHoldPage() {
               <CardDescription>Current month shows ONLY Hold / Held</CardDescription>
             </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={releaseAllMonths}>Release All</Button>
-              <Button size="sm" onClick={holdAllMonths}>Hold All</Button>
+            <div className="flex items-center gap-4">
+
+              {/* YEAR ARROWS */}
+              <div className="flex items-center gap-2 border rounded px-3 py-1">
+                <ChevronLeft
+                  className="h-5 w-5 cursor-pointer"
+                  onClick={() => setSelectedYear((y) => y - 1)}
+                />
+
+                {/* YEAR DROPDOWN */}
+                <select
+                  className="border rounded px-2 py-1 bg-white text-sm"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                >
+                  {Array.from({ length: 10 }).map((_, i) => {
+                    const year = currentSystemYear - 3 + i
+                    return (
+                      <option key={year} value={year}>{year}</option>
+                    )
+                  })}
+                </select>
+
+                <ChevronRight
+                  className="h-5 w-5 cursor-pointer"
+                  onClick={() => setSelectedYear((y) => y + 1)}
+                />
+              </div>
+
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={releaseAllMonths}>Release All</Button>
+                <Button size="sm" onClick={holdAllMonths}>Hold All</Button>
+              </div>
             </div>
           </CardHeader>
 
@@ -272,7 +359,8 @@ export default function SalaryHoldPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
 
               {months.map((month) => {
-                const record = currentEmployee.holdRecords[month]
+               const record = currentEmployee.holdRecords[month] ?? { month, isHeld: false }
+
                 const editable = isMonthEditable(month)
 
                 const monthIndex = getMonthIndex(month)
@@ -281,8 +369,8 @@ export default function SalaryHoldPage() {
                 const currentYear = today.getFullYear()
                 const [, yearStr] = month.split(" ")
                 const monthYear = Number(yearStr)
-
-                const isCurrentMonth = monthIndex === currentMonth && monthYear === currentYear
+                const isCurrentMonth =
+                  monthIndex === currentMonth && monthYear === currentYear
 
                 return (
                   <Button
@@ -294,7 +382,6 @@ export default function SalaryHoldPage() {
                   >
                     <span className="text-sm font-medium">{month}</span>
 
-                    {/* BADGE LOGIC */}
                     {!editable ? (
                       <Badge variant="outline">
                         <AlertCircle className="h-3 w-3 mr-1" /> Locked
