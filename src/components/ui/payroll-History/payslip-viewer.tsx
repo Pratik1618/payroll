@@ -93,9 +93,6 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
             <CardTitle className="text-foreground text-lg">
               Payslip - {record?.date ? format(new Date(record.date), "MMMM yyyy") : period}
             </CardTitle>
-            <div className="text-sm text-muted-foreground">
-              {record?.date ? format(new Date(record.date), "dd MMMM, yyyy") : period}
-            </div>
           </div>
 
           <div className="flex-shrink-0">

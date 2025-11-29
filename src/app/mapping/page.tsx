@@ -150,21 +150,19 @@ export default function CycleMappingPage() {
             <div className="flex gap-2 border-b border-border">
               <button
                 onClick={() => setMappingMode("predefined")}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  mappingMode === "predefined"
+                className={`px-4 py-2 text-sm font-medium transition-colors ${mappingMode === "predefined"
                     ? "text-primary border-b-2 border-primary"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 Predefined Cycles
               </button>
               <button
                 onClick={() => setMappingMode("custom")}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
-                  mappingMode === "custom"
+                className={`px-4 py-2 text-sm font-medium transition-colors ${mappingMode === "custom"
                     ? "text-primary border-b-2 border-primary"
                     : "text-muted-foreground hover:text-foreground"
-                }`}
+                  }`}
               >
                 Custom Dates
               </button>
@@ -252,7 +250,7 @@ export default function CycleMappingPage() {
                         <input
                           type="checkbox"
                           checked={mappedSites.includes(site.id)}
-                          onChange={() => {}}
+                          onChange={() => { }}
                           className="w-4 h-4 cursor-pointer"
                         />
                         <label className="flex-1 cursor-pointer text-sm">
@@ -326,9 +324,20 @@ export default function CycleMappingPage() {
                             Day {mapping.fromDate} - Day {mapping.toDate}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          Assigned to: {getSiteNamesWithClient(mapping.sites)}
-                        </p>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <span className="font-medium">Assigned to:</span>
+                          <div className="flex flex-col gap-1 mt-1">
+                            {mapping.sites.map((siteId) => {
+                              const site = mockSites.find((s) => s.id === siteId)
+                              return (
+                                <span key={siteId}>
+                                  {site?.name} ({site?.client})
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </div>
+
                       </div>
                       <Button
                         variant="ghost"

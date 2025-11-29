@@ -13,10 +13,6 @@ import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
 import { CloneSiteModal } from "@/components/ui/payroll/clone-site-modal"
 import { toast } from "sonner"
 import { SitesDropdown } from "@/components/ui/sites-dropdown"
-import { Calendar as CalendarComponent } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
 
 const initialPayrollSteps = [
   {

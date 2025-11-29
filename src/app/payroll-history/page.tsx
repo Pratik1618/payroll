@@ -133,7 +133,7 @@ export default function PayrollHistoryPage() {
   }, []);
   const [selectedClient, setSelectedClient] = useState<string>("all");
   const [selectedSite, setSelectedSite] = useState<string>("all");
-  const [selectedMonth, setSelectedMonth] = useState<string>("2025-10");
+  const [selectedMonth, setSelectedMonth] = useState<string>("2025-October");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
   const filteredSites =
