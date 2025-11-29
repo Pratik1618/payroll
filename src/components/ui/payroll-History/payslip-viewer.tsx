@@ -1,295 +1,3 @@
-// "use client"
-
-// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-// import { Button } from "@/components/ui/button"
-// import { Badge } from "@/components/ui/badge"
-// import { X, Download, Mail, Building, Calendar, User } from "lucide-react"
-// import { format } from "date-fns";
-// // @ts-ignore
-// import { toWords} from 'number-to-words'
-
-// interface PayslipViewerProps {
-//   employeeId: number;
-//   record: any;
-//   month: string;
-//   onClose: () => void;
-// }
-
-// export function PayslipViewer({ employeeId, month, onClose, record }: PayslipViewerProps) {
-//   const formatCurrency = (amount: number) => {
-//     return new Intl.NumberFormat("en-IN", {
-//       style: "currency",
-//       currency: "INR",
-//       maximumFractionDigits: 0,
-//     }).format(amount);
-//   };
-
-//   const handleDownload = () => {
-//     console.log("Downloading payslip PDF");
-//   };
-
-//   const handleEmail = () => {
-//     console.log("Emailing payslip");
-//   };
-
-//   // Defensive checks in case some data is missing:
-//   const employee = record?.employee || {};
-//   const attendance = record?.attendance || {};
-//   const salary = record?.salary || {};
-//   const period = record?.period || month;
-//   const { basic, da, hra, conveyance, medical, others ,deductions} = record.salary;
-//   const  gross = basic + da + hra + conveyance + medical + others 
-//   const netPay = gross-deductions
-
-
-//   return (
-//     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-//       <Card className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-card border-border">
-//         <CardHeader className="flex flex-row items-center justify-between border-b border-border">
-//           <CardTitle className="text-foreground">
-//             Payslip - {record?.date ? format(new Date(record.date), "MMMM yyyy") : period}
-//           </CardTitle>
-//           <div className="flex space-x-2">
-//             <Button variant="outline" onClick={handleDownload}>
-//               <Download className="mr-2 h-4 w-4" />
-//               Download PDF
-//             </Button>
-//             <Button variant="outline" onClick={handleEmail}>
-//               <Mail className="mr-2 h-4 w-4" />
-//               Email
-//             </Button>
-//             <Button variant="ghost" size="icon" onClick={onClose}>
-//               <X className="h-4 w-4" />
-//             </Button>
-//           </div>
-//         </CardHeader>
-//         <CardContent className="p-6">
-//           {/* Company Header */}
-//           {/* <div className="text-center mb-6 pb-4 border-b border-border">
-//             <h2 className="text-2xl font-bold text-foreground">FacilityTech Solutions Pvt. Ltd.</h2>
-//             <p className="text-muted-foreground">Corporate Office: 123 Business Park, Mumbai - 400001</p>
-//             <p className="text-muted-foreground">Email: hr@facilitytech.com | Phone: +91-22-12345678</p>
-//           </div> */}
-
-//           {/* Employee Information */}
-//           <div className="grid gap-6 md:grid-cols-2 mb-6">
-//             <Card className="bg-accent/50 border-border">
-//               <CardHeader>
-//                 <CardTitle className="text-sm text-foreground flex items-center">
-//                   <User className="mr-2 h-4 w-4" />
-//                   Employee Details
-//                 </CardTitle>
-//               </CardHeader>
-//               <CardContent className="space-y-2 text-sm">
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">Name:</span>
-//                   <span className="font-medium text-foreground">{employee.name}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">Employee Code:</span>
-//                   <span className="text-foreground">{record.employeeId || employee.employeeId || employeeId}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">Designation:</span>
-//                   <span className="text-foreground">{employee.designation}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">Department:</span>
-//                   <span className="text-foreground">{employee.department}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">Site:</span>
-//                   <span className="text-foreground">{employee.site}</span>
-//                 </div>
-//               </CardContent>
-//             </Card>
-
-//             <Card className="bg-accent/50 border-border">
-//               <CardHeader>
-//                 <CardTitle className="text-sm text-foreground flex items-center">
-//                   <Building className="mr-2 h-4 w-4" />
-//                   Statutory Information
-//                 </CardTitle>
-//               </CardHeader>
-//               <CardContent className="space-y-2 text-sm">
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">PAN:</span>
-//                   <span className="text-foreground">{employee.pan}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">UAN:</span>
-//                   <span className="text-foreground">{employee.uan}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">ESIC:</span>
-//                   <span className="text-foreground">{employee.esic}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">Joining Date:</span>
-//                   <span className="text-foreground">
-//                     {employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString("en-IN") : ""}
-//                   </span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-muted-foreground">Pay Period:</span>
-//                   <span className="text-foreground">{period}</span>
-//                 </div>
-//               </CardContent>
-//             </Card>
-//           </div>
-
-//           {/* Attendance Summary */}
-//           <Card className="mb-6 bg-accent/50 border-border">
-//             <CardHeader>
-//               <CardTitle className="text-sm text-foreground flex items-center">
-//                 <Calendar className="mr-2 h-4 w-4" />
-//                 Attendance Summary
-//               </CardTitle>
-//             </CardHeader>
-//             <CardContent>
-//               <div className="grid gap-4 md:grid-cols-6 text-sm">
-//                 <div className="text-center">
-//                   <div className="text-muted-foreground">Working Days</div>
-//                   <div className="text-lg font-bold text-foreground">{attendance.workingDays}</div>
-//                 </div>
-//                 <div className="text-center">
-//                   <div className="text-muted-foreground">Present</div>
-//                   <div className="text-lg font-bold text-green-600">{attendance.present}</div>
-//                 </div>
-//                 <div className="text-center">
-//                   <div className="text-muted-foreground">Leave</div>
-//                   <div className="text-lg font-bold text-blue-600">{attendance.leaves}</div>
-//                 </div>
-//                 <div className="text-center">
-//                   <div className="text-muted-foreground">Lop</div>
-//                   <div className="text-lg font-bold text-red-600">{attendance.lop}</div>
-//                 </div>
-//                 <div className="text-center">
-//                   <div className="text-muted-foreground">Weekly Off</div>
-//                   <div className="text-lg font-bold text-gray-600">{attendance.wo}</div>
-//                 </div>
-//                 <div className="text-center">
-//                   <div className="text-muted-foreground">OT Hours</div>
-//                   <div className="text-lg font-bold text-purple-600">{attendance.ot}</div>
-//                 </div>
-//               </div>
-//             </CardContent>
-//           </Card>
-
-//           {/* Salary Breakdown */}
-//           <div className="grid gap-6 md:grid-cols-3">
-//             {/* Earnings */}
-//             <Card className="bg-green-50 border-green-200">
-//               <CardHeader>
-//                 <CardTitle className="text-sm text-green-800">Earnings</CardTitle>
-//               </CardHeader>
-//               <CardContent className="space-y-2 text-sm">
-//                 <div className="flex justify-between">
-//                   <span className="text-green-700">Basic Salary</span>
-//                   <span className="font-medium text-green-800">{formatCurrency(salary.basic)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-green-700">HRA</span>
-//                   <span className="font-medium text-green-800">{formatCurrency(salary.hra)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-green-700">Dearness Allowance</span>
-//                   <span className="font-medium text-green-800">{formatCurrency(salary.da)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-green-700">Conveyance</span>
-//                   <span className="font-medium text-green-800">{formatCurrency(salary.conveyance)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-green-700">Medical Allowance</span>
-//                   <span className="font-medium text-green-800">{formatCurrency(salary.medical)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-green-700">Overtime ({salary.otHours}h)</span>
-//                   <span className="font-medium text-green-800">{formatCurrency(salary.otAmount)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-green-700">Incentive</span>
-//                   <span className="font-medium text-green-800">{formatCurrency(salary.incentive)}</span>
-//                 </div>
-//                 <div className="flex justify-between border-t border-green-300 pt-2 font-bold">
-//                   <span className="text-green-800">Gross Earnings</span>
-//                   <span className="text-green-800">{formatCurrency(gross)}</span>
-//                 </div>
-//               </CardContent>
-//             </Card>
-
-//             {/* Deductions */}
-//             <Card className="bg-red-50 border-red-200">
-//               <CardHeader>
-//                 <CardTitle className="text-sm text-red-800">Deductions</CardTitle>
-//               </CardHeader>
-//               <CardContent className="space-y-2 text-sm">
-//                 <div className="flex justify-between">
-//                   <span className="text-red-700">Provident Fund</span>
-//                   <span className="font-medium text-red-800">{formatCurrency(salary.pf)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-red-700">ESI</span>
-//                   <span className="font-medium text-red-800">{formatCurrency(salary.esi)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-red-700">TDS</span>
-//                   <span className="font-medium text-red-800">{formatCurrency(salary.tds)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-red-700">Professional Tax</span>
-//                   <span className="font-medium text-red-800">{formatCurrency(salary.pt)}</span>
-//                 </div>
-//                 <div className="flex justify-between border-t border-red-300 pt-2 font-bold">
-//                   <span className="text-red-800">Total Deductions</span>
-//                   <span className="text-red-800">{formatCurrency(salary.totalDeductions)}</span>
-//                 </div>
-//               </CardContent>
-//             </Card>
-
-//             {/* Net Pay */}
-//             <Card className="bg-blue-50 border-blue-200">
-//               <CardHeader>
-//                 <CardTitle className="text-sm text-blue-800">Net Pay Summary</CardTitle>
-//               </CardHeader>
-//               <CardContent className="space-y-4 text-sm">
-//                 <div className="flex justify-between">
-//                   <span className="text-blue-700">Gross Earnings</span>
-//                   <span className="font-medium text-blue-800">{formatCurrency(gross)}</span>
-//                 </div>
-//                 <div className="flex justify-between">
-//                   <span className="text-blue-700">Total Deductions</span>
-//                   <span className="font-medium text-blue-800">-{formatCurrency(salary.deductions)}</span>
-//                 </div>
-//                 <div className="border-t border-blue-300 pt-4">
-//                   <div className="flex justify-between items-center">
-//                     <span className="text-lg font-bold text-blue-800">Net Pay</span>
-//                     <span className="text-2xl font-bold text-blue-900">{formatCurrency(netPay)}</span>
-//                   </div>
-//                   <div className="text-center mt-2">
-//                     <Badge
-//           variant="secondary"
-//           className="bg-blue-100 text-blue-800 block max-w-full whitespace-normal break-words px-2 py-1"
-//         >
-//           Amount in Words: {toWords(netPay)} rupees only
-//         </Badge>
-//                   </div>
-//                 </div>
-//               </CardContent>
-//             </Card>
-//           </div>
-
-//           {/* Footer */}
-//           <div className="mt-8 pt-4 border-t border-border text-center text-xs text-muted-foreground">
-//             <p>This is a computer-generated payslip and does not require a signature.</p>
-//             <p>For any queries, please contact HR Department at hr@facilitytech.com</p>
-//           </div>
-//         </CardContent>
-//       </Card>
-//     </div>
-//   );
-// }
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -349,7 +57,7 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
     // ensure we read both possible keys saved earlier and expose otHours
     otHours: record.otHours ?? record.ot ?? 0,
     clientOvertime: record.clientOvertime,
-    ismartOvertime : record.ismartOvertime,
+    ismartOvertime: record.ismartOvertime,
   }
 
   const employee = {
@@ -371,23 +79,32 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-auto bg-card border-border">
-        <CardHeader className="flex flex-row items-center justify-between border-b border-border">
-          <CardTitle className="text-foreground">
-            Payslip - {record?.date ? format(new Date(record.date), "MMMM yyyy") : period}
-          </CardTitle>
-          <div className="flex space-x-2">
-            <Button variant="outline" >
+        
+        {/* Logo, title/date and actions in a single header row */}
+        <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-border p-3">
+          <div className="text-left flex-1">
+            <CardTitle className="text-foreground text-lg">
+              Payslip - {record?.date ? format(new Date(record.date), "MMMM yyyy") : period}
+            </CardTitle>
+            <div className="text-sm text-muted-foreground">
+              {record?.date ? format(new Date(record.date), "dd MMMM, yyyy") : period}
+            </div>
+          </div>
 
+          <div className="flex-shrink-0">
+            <img src="/company-logo.png" alt="Company Logo" className="h-16 w-auto" />
+          </div>
+
+          <div className="flex items-center space-x-2 flex-1 justify-end">
+            <Button variant="outline" size="sm">
               <PDFDownloadLink
                 document={<PayslipDocument employeeId={employeeId} month={month} record={record} />}
-                fileName={`Payslip-${record.name}-${month}.pdf`}
+                fileName={`Payslip-${record?.name ?? employeeId}-${month}.pdf`}
               >
-                <Download className="mr-2 h-4 w-6" />
-
+                <div className="flex items-center"><Download className="mr-2 h-4 w-4" />Download</div>
               </PDFDownloadLink>
-
             </Button>
-            <Button variant="outline" onClick={handleEmail}>
+            <Button variant="outline" size="sm" onClick={handleEmail}>
               <Mail className="mr-2 h-4 w-4" /> Email
             </Button>
             <Button variant="ghost" size="icon" onClick={onClose}>
@@ -463,46 +180,76 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
             </Card>
           </div>
 
-          {/* Attendance */}
-          <Card className="mb-6 bg-accent/50 border-border">
-            <CardHeader>
-              <CardTitle className="text-sm text-foreground flex items-center">
-                <Calendar className="mr-2 h-4 w-4" /> Attendance Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-7 text-sm">
-                <div className="text-center">
-                  <div className="text-muted-foreground">Total Days</div>
-                  <div className="text-lg font-bold text-foreground">{attendance.workingDays}</div>
+          {/* Attendance & Leave Balance */}
+          <div className="grid gap-6 md:grid-cols-2 mb-6">
+            <Card className="bg-accent/50 border-border">
+              <CardHeader>
+                <CardTitle className="text-sm text-foreground flex items-center">
+                  <Calendar className="mr-2 h-4 w-4" /> Attendance Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 grid-cols-4 text-sm">
+                  <div className="text-center">
+                    <div className="text-muted-foreground">Total Days</div>
+                    <div className="text-lg font-bold text-foreground">{attendance.workingDays}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">Present</div>
+                    <div className="text-lg font-bold text-green-600">{attendance.present}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">Leave</div>
+                    <div className="text-lg font-bold text-blue-600">{attendance.leaves}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">LOP</div>
+                    <div className="text-lg font-bold text-red-600">{attendance.lop}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">Weekly Off</div>
+                    <div className="text-lg font-bold text-gray-600">4</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">Ismart OT</div>
+                    <div className="text-lg font-bold text-purple-600">{attendance.ismartOvertime}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">Client OT</div>
+                    <div className="text-lg font-bold text-purple-600">{attendance.clientOvertime}</div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-muted-foreground">Present</div>
-                  <div className="text-lg font-bold text-green-600">{attendance.present}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-accent/50 border-border">
+              <CardHeader>
+                <CardTitle className="text-sm text-foreground flex items-center">
+                  <Calendar className="mr-2 h-4 w-4" /> Leave Balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Opening Balance</span>
+                    <span className="text-lg font-bold text-foreground">{record.openingLeave || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Earned This Month</span>
+                    <span className="text-lg font-bold text-green-600">+{record.earnedLeave || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Leaves Taken</span>
+                    <span className="text-lg font-bold text-red-600">-{attendance.leaves}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-border pt-3">
+                    <span className="font-semibold text-foreground">Closing Balance</span>
+                    <span className="text-xl font-bold text-blue-600">{record.closingLeave || 0}</span>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-muted-foreground">Leave</div>
-                  <div className="text-lg font-bold text-blue-600">{attendance.leaves}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-muted-foreground">Lop</div>
-                  <div className="text-lg font-bold text-red-600">{attendance.lop}</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-muted-foreground">Weekly Off</div>
-                  <div className="text-lg font-bold text-gray-600">4</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-muted-foreground">Ismart OT</div>
-                  <div className="text-lg font-bold text-purple-600">{attendance.ismartOvertime}</div>
-                </div>
-                 <div className="text-center">
-                  <div className="text-muted-foreground">Client OT</div>
-                  <div className="text-lg font-bold text-purple-600">{attendance.clientOvertime}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Salary */}
           <div className="grid gap-6 md:grid-cols-3">
@@ -602,4 +349,3 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
     </div>
   )
 }
-
