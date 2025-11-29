@@ -95,8 +95,11 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
             </CardTitle>
           </div>
 
-          <div className="flex-shrink-0">
-            <img src="/company-logo.png" alt="Company Logo" className="h-16 w-auto" />
+          <div className="flex-shrink-0 text-center">
+            <img src="/company-logo.png" alt="Company Logo" className="h-16 w-auto mx-auto mb-2" />
+            <p className="text-xs text-muted-foreground font-medium max-w-[200px]">
+              317, A/2, Nilgiri CS Ltd, Near Wadala RTO, Wadala, Mumbai - 400037
+            </p>
           </div>
 
           <div className="flex items-center space-x-2 flex-1 justify-end">
