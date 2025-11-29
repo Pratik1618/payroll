@@ -345,7 +345,7 @@ export default function PayrollPage() {
               conveyance: Math.round(conveyance),
               washingAllowance: Math.round(washingAllowance),
               otherAllowance: Math.round(otherAllowance),
-              leaveWithWages:Math.round(leaveWithWages),
+              leaveWithWages: Math.round(leaveWithWages),
               cca: Math.round(cca),
               educationalAllowance: Math.round(educationalAllowance),
               medicalAllowance: Math.round(medicalAllowance),
@@ -1089,7 +1089,7 @@ export default function PayrollPage() {
 
                           <th className="text-left p-2">Mess</th>
                           <th className="text-left p-2">HRA Ded</th>
-                          <th className="text-left p-2">Welfare Fund</th>
+                          <th className="text-left p-2">Staff Welfare Fund</th>
                           <th className="text-left p-2">BG Verification</th>
 
 
