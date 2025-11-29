@@ -861,6 +861,7 @@ export default function PayrollPage() {
         pt: emp.pt,
         esic: emp.esi,
         lwf: emp.lwf,
+        wf: emp.staffWelfareFund,
         earnedBasic: emp.earnedBasic,
         da: emp.da,
         hra: emp.hra,
@@ -1194,14 +1195,14 @@ export default function PayrollPage() {
                                 ₹{emp.cca?.toLocaleString()}
                               </span>
                             </td>
-                 <td className="p-2">
+                            <td className="p-2">
                               ₹{emp.givenEducationalAllowance?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
                                 ₹{emp.educationalAllowance?.toLocaleString()}
                               </span>
                             </td>
-                           
+
                             <td className="p-2">
                               ₹{emp.givenMedicalAllowance?.toLocaleString()}
                               <br />
@@ -1261,23 +1262,23 @@ export default function PayrollPage() {
                             </td>
                             <td className="p-2">
                               ₹{emp.overtimePay?.toLocaleString()}
-                              
-                              
+
+
                             </td><td className="p-2">
                               ₹{emp.reimbursement?.toLocaleString()}
-                              
+
                             </td><td className="p-2">
                               ₹{emp.convy?.toLocaleString()}
-                              
+
                             </td><td className="p-2">
                               ₹{emp.cashRiskAllowance?.toLocaleString()}
-                              
+
                             </td>
-                              <td className="p-2">
+                            <td className="p-2">
                               ₹{emp.incentive?.toLocaleString()}
-                              
+
                             </td>
-                             <td className="p-2">
+                            <td className="p-2">
                               ₹{emp.givenGrossSalary?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">

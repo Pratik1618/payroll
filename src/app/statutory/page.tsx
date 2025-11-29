@@ -111,18 +111,20 @@ export default function StatutoryPage() {
     const header = [
       "UAN",
       "Member Name",
+      "Gross Wages",
       "EPF Wages",
       "EPS Wages",
       "EDLI Wages",
       "EPF Contribution",
       "EPS Contribution",
       "NCP Days",
+      "Refund of Advances",
       "Month",
     ]
     const rows = [
-      ["100200300400", "John Doe", "15000", "15000", "15000", "1800", "1250", "0", periodLabel],
-      ["200300400500", "Asha Devi", "18000", "15000", "18000", "2160", "1250", "1", periodLabel],
-      ["300400500600", "Ramesh Kumar", "20000", "15000", "20000", "2400", "1250", "0", periodLabel],
+      ["100200300400", "John Doe", "28000", "15000", "15000", "15000", "1800", "1250", "0", "0",periodLabel],
+      ["200300400500", "Asha Devi", "32000", "15000", "15000", "15000", "1800", "1250", "1", "1",periodLabel],
+      ["300400500600", "Ramesh Kumar", "30000", "15000", "15000", "15000", "1800", "1250", "0", "1",periodLabel],
     ]
 
     const csv = [header, ...rows].map((r) => r.join(",")).join("\n")

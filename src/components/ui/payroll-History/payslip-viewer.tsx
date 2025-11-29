@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X, Download, Mail, Building, Calendar, User, Wallet } from "lucide-react"
+import { X, Download, Mail, Building, Calendar, User, Wallet, MessageCircle } from "lucide-react"
 import { format } from "date-fns"
 // @ts-ignore
 import { toWords } from "number-to-words"
@@ -45,7 +45,8 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
     esic = 0,
     tds = 0,
     pt = 0,
-    otHours = 0
+    otHours = 0,
+    wf=0 
   } = record
 
   const attendance = {
@@ -75,6 +76,12 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
 
   const handleDownload = () => console.log("Downloading payslip PDF")
   const handleEmail = () => console.log("Emailing payslip")
+  const handleWhatsApp = () => {
+    const message = `Hello ${employee.name}, Please find attached your payslip for ${period}`
+    const phoneNumber = "9326558563" // Replace with actual phone number or use from record
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, "_blank")
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -101,11 +108,14 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 document={<PayslipDocument employeeId={employeeId} month={month} record={record} />}
                 fileName={`Payslip-${record?.name ?? employeeId}-${month}.pdf`}
               >
-                <div className="flex items-center"><Download className="mr-2 h-4 w-4" />Download</div>
+                <div className="flex items-center"><Download className="mr-2 h-4 w-4" /></div>
               </PDFDownloadLink>
             </Button>
             <Button variant="outline" size="sm" onClick={handleEmail}>
-              <Mail className="mr-2 h-4 w-4" /> Email
+              <Mail className="mr-2 h-4 w-4" /> 
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleWhatsApp}>
+              <MessageCircle className="mr-2 h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
@@ -155,15 +165,15 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">PAN:</span>
+                  <span className="text-muted-foreground">PAN no:</span>
                   <span className="text-foreground">{employee.pan}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">UAN:</span>
+                  <span className="text-muted-foreground">UAN no:</span>
                   <span className="text-foreground">{employee.uan}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">ESIC:</span>
+                  <span className="text-muted-foreground">ESIC no:</span>
                   <span className="text-foreground">{employee.esic}</span>
                 </div>
                 <div className="flex justify-between">
@@ -323,6 +333,7 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 <div className="flex justify-between"><span>PT</span><span>{formatCurrency(pt)}</span></div>
                 <div className="flex justify-between"><span>LWF</span><span>{formatCurrency(lwf)}</span></div>
                 {/* <div className="flex justify-between"><span>LOP DEDUCTION</span><span>{formatCurrency(lopDeduction)}</span></div> */}
+                <div className="flex justify-between"><span>Bonvolent fund</span><span>{formatCurrency(wf)}</span></div>
 
                 <div className="flex justify-between border-t border-red-300 pt-2 font-bold">
                   <span>Total Deductions</span>
