@@ -345,6 +345,7 @@ export default function PayrollPage() {
               conveyance: Math.round(conveyance),
               washingAllowance: Math.round(washingAllowance),
               otherAllowance: Math.round(otherAllowance),
+              leaveWithWages:Math.round(leaveWithWages),
               cca: Math.round(cca),
               educationalAllowance: Math.round(educationalAllowance),
               medicalAllowance: Math.round(medicalAllowance),
