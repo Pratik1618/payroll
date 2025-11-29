@@ -251,6 +251,46 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
             </Card>
           </div>
 
+          {/* Loan Details */}
+          {/* {(record.loanAmount > 0 || record.loanEMI > 0) && ( */}
+            <Card className="mb-6 bg-orange-50 border-orange-200">
+              <CardHeader>
+                <CardTitle className="text-sm text-orange-800 flex items-center">
+                  <Wallet className="mr-2 h-4 w-4" /> Loan Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-5 text-sm">
+                  <div className="text-center">
+                    <div className="text-muted-foreground">Loan Amount</div>
+                    <div className="text-lg font-bold text-orange-800">{formatCurrency(record.loanAmount || 0)}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">EMI Amount</div>
+                    <div className="text-lg font-bold text-red-600">{formatCurrency(record.loanEMI || 0)}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">EMI Paid</div>
+                    <div className="text-lg font-bold text-green-600">{record.emiPaid || 0}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">EMI Remaining</div>
+                    <div className="text-lg font-bold text-blue-600">{record.emiRemaining || 0}</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-muted-foreground">Balance Amount</div>
+                    <div className="text-lg font-bold text-orange-600">{formatCurrency(record.loanBalance || 0)}</div>
+                  </div>
+                </div>
+                {record.loanStartDate && (
+                  <div className="mt-3 text-xs text-center text-muted-foreground">
+                    Loan started: {new Date(record.loanStartDate).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          {/* )} */}
+
           {/* Salary */}
           <div className="grid gap-6 md:grid-cols-3">
             {/* Earnings */}
