@@ -3,13 +3,15 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock, Percent, Webhook, OctagonPause, BookLock } from "lucide-react"
+import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock, Percent, Webhook, OctagonPause, BookLock, Upload } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Employee Master", href: "/employee", icon: Users },
   // { name: "Attendance", href: "/attendance", icon: Clock },
   // { name: "Leave & LOP", href: "/leave", icon: Calendar },
+  { name: "Manual Attendance Upload", href: "/manualAttendance", icon: Upload },
+
   { name: "Payroll Processing", href: "/payroll", icon: Calculator },
   {name: 'Payroll History',href :"/payroll-history",icon:HistoryIcon},
   { name: "Statutory Reports", href: "/statutory", icon: FileText },

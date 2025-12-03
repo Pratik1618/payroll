@@ -100,10 +100,22 @@ export default function PayrollPage() {
   const [pendingLeavesCount, setPendingLeavesCount] = useState(0)
   const [overridePendingLeaves, setOverridePendingLeaves] = useState(false)
   const [overrideReason, setOverrideReason] = useState("")
+  const [salaryStructure, setSalaryStructure] = useState([]);
+  useEffect(() => {
+    fetch("/salary_structure.json")
+      .then(res => res.json())
+      .then(data => {
+        console.log("Salary JSON Loaded:", data);
+        setSalaryStructure(data);
+      })
+      .catch(err => console.error("Error loading JSON:", err));
+  }, []);
 
+  console.log(JSON.stringify(salaryStructure, null, 2))
 
 
   useEffect(() => {
+    
     const updatedSteps = payrollSteps.map((step, index) => ({
       ...step,
       completed: index < currentStep - 1,
