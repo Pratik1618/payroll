@@ -13,6 +13,7 @@ import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
 import { CloneSiteModal } from "@/components/ui/payroll/clone-site-modal"
 import { toast } from "sonner"
 import { SitesDropdown } from "@/components/ui/sites-dropdown"
+import * as XLSX from 'xlsx';
 
 const initialPayrollSteps = [
   {
@@ -92,6 +93,8 @@ export default function PayrollPage() {
   const [selectedSites, setSelectedSites] = useState<string[]>([])
   const [selectedBranch, setSelectedBranch] = useState<string>("") // new: branch/state selection
   const [attendanceData, setAttendanceData] = useState<any[]>([])
+  const [mergedData, setMergedData] = useState<any[]>([]);
+const [finalSalary, setFinalSalary] = useState<any[]>([])
   const [payrollCalculations, setPayrollCalculations] = useState<any[]>([])
 
   // use the shared initialPayrollData
@@ -503,6 +506,188 @@ export default function PayrollPage() {
         return false
     }
   }
+const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = (event) => {
+    if (!event.target) return;
+
+    const data = new Uint8Array(event.target.result as ArrayBuffer);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const attendanceJson = XLSX.utils.sheet_to_json(sheet);
+
+    console.log("Attendance JSON:", attendanceJson);
+    setAttendanceData(attendanceJson);
+
+    // ⭐ Step 1: Merge Salary Structure + Attendance
+    const merged = mergeSalaryWithAttendance(attendanceJson, salaryStructure);
+    setMergedData(merged);
+    console.log("Merged:", merged);
+
+    // ⭐ Step 2: Calculate Final Salary
+    const finalData = calculateFinalSalary(merged);
+    setFinalSalary(finalData);
+    console.log("Final Salary:", finalData);
+  };
+
+  reader.readAsArrayBuffer(file);
+};
+console.log("attendance",mergedData)
+
+// Convert formula string to actual numeric PF base value
+const calculatePFBase = (full: any) => {
+  if (!full?.PFFORMULA) return 0;
+
+  return full.PFFORMULA.split("+").reduce((sum: number, key: string) => {
+    const k = key.trim();
+    switch (k) {
+      case "BA": return sum + (full.BASIC || 0);
+      case "DA": return sum + (full.DA || 0);
+      case "CON": return sum + (full.CONV || 0);
+      case "OA": return sum + (full["OTHER ALW"] || 0);
+      default: return sum;
+    }
+  }, 0);
+};
+
+// Convert ESICFormula to numeric base (or fixed logic)
+const calculateESICBase = (full: any, sal: any) => {
+  if (full.ESICCOMPUTATION === "Fixed-Parameter") {
+    return full.GROSS;
+  }
+
+  if (!full.ESICFORMULA) return 0;
+
+  const fields: any = {
+    BA: sal.basic,
+    DA: sal.da,
+    HRA: sal.hra,
+    CON: sal.conveyance,
+    OA: sal.otherAllowance
+  };
+
+  return full.ESICFORMULA.split("+").reduce(
+    (sum: number, key: string) => sum + (fields[key.trim()] || 0),
+    0
+  );
+};
+
+
+const mergeSalaryWithAttendance = (attendanceData: any, salaryStructure: any) => {
+  return attendanceData.map((emp: any) => {
+    const sal = salaryStructure.find(
+      (s: any) =>
+        s.DESIGNATION?.trim().toLowerCase() ===
+        emp.DESIGNATIONNAME?.trim().toLowerCase()
+    );
+
+    if (!sal) {
+      return { ...emp, ERROR: "Salary Structure Missing for Designation" };
+    }
+
+    // Payable days (max 30)
+    const payableDays = Math.min(Number(emp.NORMALDAYS || 0), 30);
+    const totalMonthDays = 30;
+    const dayRatio = payableDays / totalMonthDays;
+
+    return {
+      ...emp,
+      payableDays,
+      lopDays: totalMonthDays - payableDays,
+      dayRatio,
+      salaryStructure: sal,
+      calculatedSalary: {
+        basic: sal.BASIC * dayRatio,
+        da: sal.DA * dayRatio,
+        hra: sal.HRA * dayRatio,
+        conveyance: sal.CONV * dayRatio,
+        washing: sal.WASHING * dayRatio,
+        otherAllowance: sal["OTHER ALW"] * dayRatio,
+        edu: sal["EDU. ALW"] * dayRatio,
+        medical: sal["MEDICAL ALLOWANCE"] * dayRatio,
+        splAllowance: sal["SPL ALLOWANCE"] * dayRatio,
+        cca: sal.CCA * dayRatio,
+        lww: (sal.LWW || 0) * dayRatio,
+        bonus: (sal.BONUS || 0) * dayRatio
+      },
+      otRates: {
+        normalOTRate: sal.OTRATE,
+        specialOTRate: sal.SPECIALOTRATE
+      }
+    };
+  });
+};
+
+const calculateFinalSalary = (mergedData: any) => {
+  return mergedData
+    .filter((emp: any) => emp.calculatedSalary)
+    .map((emp: any) => {
+      const sal = emp.calculatedSalary;
+      const full = emp.salaryStructure;
+
+      // OT
+      const normalOTAmount =
+        (emp.OTHOURS || 0) * (emp.otRates?.normalOTRate || 0);
+      const splOTAmount =
+        (emp.SPLOTHOURS || 0) * (emp.otRates?.specialOTRate || 0);
+
+      // PF
+      const pfBase = calculatePFBase(full);
+      const pfPercent = full?.PFPERCENTAGE || 12;
+      const pfAmount = (pfBase * pfPercent) / 100;
+      const finalPF = Math.min(pfAmount, full?.PFMAXAMOUNT || pfAmount);
+
+      // ESIC only if Gross <= Max limit (21k)
+      const grossMonthly = full?.GROSS || 0;
+      let finalESIC = 0;
+      if (grossMonthly <= 21000) {
+        const esicBase = calculateESICBase(full, sal);
+        const esicAmount =
+          (esicBase * (full?.ESICPERCENTAGE || 0.75)) / 100;
+        finalESIC =
+          full?.ESICMAXAMOUNT > 0
+            ? Math.min(esicAmount, full.ESICMAXAMOUNT)
+            : esicAmount;
+      }
+
+      // Gross
+      const grossPayable =
+        sal.basic +
+        sal.da +
+        sal.hra +
+        sal.conveyance +
+        sal.washing +
+        sal.otherAllowance +
+        sal.edu +
+        sal.medical +
+        sal.splAllowance +
+        sal.cca +
+        sal.lww +
+        sal.bonus;
+
+      // Net Salary
+      const netSalary =
+        grossPayable + normalOTAmount + splOTAmount - finalPF - finalESIC;
+
+      return {
+        ...emp,
+        normalOTAmount,
+        splOTAmount,
+        finalPF,
+        finalESIC,
+        grossPayable,
+        netSalary
+      };
+    });
+};
+
+
+
 
   const renderStepContent = () => {
     switch (currentStep) {
@@ -513,6 +698,25 @@ export default function PayrollPage() {
               <Upload className="h-16 w-16 mx-auto text-blue-500 mb-4" />
               <h3 className="text-lg font-semibold mb-2">Import Attendance Data</h3>
               <p className="text-muted-foreground mb-4">Select client and sites to import attendance data</p>
+            </div>
+             <div className="flex justify-center mb-4">
+              <div className="flex flex-col items-center gap-2">
+                <input
+                  type="file"
+                  id="attendance-upload"
+                  accept=".xlsx,.xls"
+                  onChange={handleUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="attendance-upload"
+                  className="cursor-pointer flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium"
+                >
+                  <Upload className="h-5 w-5" />
+                  Upload Attendance Excel
+                </label>
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Supports .xlsx and .xls formats</p>
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
@@ -1047,7 +1251,7 @@ export default function PayrollPage() {
                     <tr className="border-b">
                       <th className="text-left p-2">Employee</th>
                       <th className="text-left p-2">Designation</th>
-                      <th className="text-left p-2">Present Days</th>
+                      {/* <th className="text-left p-2">Present Days</th> */}
                       <th className="text-left p-2">Leaves</th>
                       <th className="text-left p-2">LOP</th>
                       <th className="text-left p-2">Paid Days</th>
@@ -1116,23 +1320,24 @@ export default function PayrollPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(currentStep >= 3 ? payrollCalculations : attendanceData).map((emp, index) => (
+                    {(currentStep >= 3 ? finalSalary : mergedData).map((emp, index) => (
                       <tr key={index} className="border-b">
                         <td className="p-2">
                           <div>
-                            <div className="font-medium">{emp.name}</div>
-                            <div className="text-xs text-muted-foreground">{emp.empId}</div>
+                            <div className="font-medium">{emp.EMPNAME}</div>
+                            <div className="text-xs text-muted-foreground">{emp.EMPCODE}</div>
                           </div>
                         </td>
-                        <td className="p-2">{emp.designation}</td>
+                        <td className="p-2">{emp.DESIGNATIONNAME}</td>
+                        {/* <td className="p-2">
+                          {emp.NORMALDAYS}/{30}
+                        </td> */}
+                        <td className="p-2">    {(emp.PL || 0) + (emp.CL || 0) + (emp.SL || 0)}
+</td>
                         <td className="p-2">
-                          {emp.daysPresent}/{emp.totalDays}
+                          <Badge variant={emp.lop > 0 ? "destructive" : "secondary"}>{emp.lopDays}</Badge>
                         </td>
-                        <td className="p-2">{emp.leaves}</td>
-                        <td className="p-2">
-                          <Badge variant={emp.lop > 0 ? "destructive" : "secondary"}>{emp.lop}</Badge>
-                        </td>
-                        <td className="p-2">{emp.daysPresent + emp.leaves}</td>
+                        <td className="p-2">{emp.payableDays}</td>
 
                         {/* show OT breakdown */}
                         <td className="p-2">
