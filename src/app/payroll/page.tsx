@@ -1260,7 +1260,7 @@ export default function PayrollPage() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-2">Employee</th>
-                      <th className="text-left p-2">Designation</th>
+                      <th className="text-left p-2 min-w-[150px]">Designation</th>
                       {/* <th className="text-left p-2">Present Days</th> */}
                       <th className="text-left p-2">Leaves</th>
                       <th className="text-left p-2">LOP</th>
