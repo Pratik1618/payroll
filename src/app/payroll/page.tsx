@@ -188,7 +188,7 @@ export default function PayrollPage() {
               ...prev,
               onHold: 2,
               attendanceImported: true,
-              totalEmployees,
+              // totalEmployees,
               clientOt: totalClientOT,
               ismartOt: totalIsmartOT,
               overtimeHours: totalOT,
@@ -213,7 +213,7 @@ export default function PayrollPage() {
               ...prev,
               onHold: 2,
               attendanceImported: true,
-              totalEmployees,
+              // totalEmployees,
               overtimeHours: totalOT,
             }))
 
@@ -414,7 +414,10 @@ export default function PayrollPage() {
           })
 
           setPayrollCalculations(calculations)
-          const totalGross = calculations.reduce((sum, emp) => sum + emp.grossSalary, 0)
+          const totalGross = finalSalary.reduce(
+            (sum, emp) => sum + (emp.grossPayable || 0),
+            0
+          );
           const totalOtHours = calculations.reduce((sum, emp) => sum + (emp.overtime || 0), 0)
 
           setPayrollData((prev) => ({
@@ -533,6 +536,10 @@ export default function PayrollPage() {
       const finalData = calculateFinalSalary(merged);
       setFinalSalary(finalData);
       console.log("Final Salary:", finalData);
+      setPayrollData(prev => ({
+        ...prev,
+        totalEmployees: finalData.length
+      }));
     };
 
     reader.readAsArrayBuffer(file);
@@ -643,6 +650,10 @@ export default function PayrollPage() {
         const esicCap = full?.ESICMAXAMOUNT || 0;
         const finalESIC = esicCap > 0 ? Math.min(Math.round(esicAmount), esicCap) : Math.round(esicAmount);
 
+        // 1-12 scale
+
+        // PT Calculation
+
 
         // Gross
         const grossPayable =
@@ -659,9 +670,30 @@ export default function PayrollPage() {
           sal.lww +
           sal.bonus;
 
+        //pt
+        const currentMonth = new Date().getMonth() + 1; // 1-12 scale
+
+        // PT Calculation
+        const gender = (emp.GENDER || "").toUpperCase();
+        const gross = grossPayable; // earned gross
+
+        let pt = 0;
+
+        if (gender === "M") {
+          if (gross > 10000) {
+            pt = currentMonth === 2 ? 300 : 200; // February special rule
+          } else if (gross >= 7501) {
+            pt = 175;
+          }
+        } else if (gender === "F") {
+          if (gross > 25000) {
+            pt = currentMonth === 2 ? 300 : 200;
+          }
+        }
+
         // Net Salary
         const netSalary =
-          grossPayable + normalOTAmount + splOTAmount - finalPF - finalESIC;
+          grossPayable + normalOTAmount + splOTAmount - finalPF - finalESIC - pt;
 
         return {
           ...emp,
@@ -670,6 +702,7 @@ export default function PayrollPage() {
           finalPF,
           finalESIC,
           grossPayable,
+          pt,
           netSalary
         };
       });
@@ -684,28 +717,16 @@ export default function PayrollPage() {
         return (
           <div className="space-y-6">
             <div className="text-center py-4">
-              <Upload className="h-16 w-16 mx-auto text-blue-500 mb-4" />
+              <input
+                type="file"
+                id="attendance-upload"
+                accept=".xlsx,.xls"
+                onChange={handleUpload}
+                className="hidden"
+              />
+              <Upload className="cursor-pointer h-16 w-16 mx-auto text-blue-500 mb-4" onClick={() => document.getElementById("attendance-upload")?.click()} />
               <h3 className="text-lg font-semibold mb-2">Import Attendance Data</h3>
               <p className="text-muted-foreground mb-4">Select client and sites to import attendance data</p>
-            </div>
-            <div className="flex justify-center mb-4">
-              <div className="flex flex-col items-center gap-2">
-                <input
-                  type="file"
-                  id="attendance-upload"
-                  accept=".xlsx,.xls"
-                  onChange={handleUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="attendance-upload"
-                  className="cursor-pointer flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium"
-                >
-                  <Upload className="h-5 w-5" />
-                  Upload Attendance Excel
-                </label>
-                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Supports .xlsx and .xls formats</p>
-              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-4">
@@ -1506,7 +1527,6 @@ export default function PayrollPage() {
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.advanceRemaining?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.inHandSalary?.toLocaleString()}</td>
-
                           </>
                         )}
                       </tr>
