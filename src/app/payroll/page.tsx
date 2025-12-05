@@ -94,7 +94,7 @@ export default function PayrollPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>("") // new: branch/state selection
   const [attendanceData, setAttendanceData] = useState<any[]>([])
   const [mergedData, setMergedData] = useState<any[]>([]);
-const [finalSalary, setFinalSalary] = useState<any[]>([])
+  const [finalSalary, setFinalSalary] = useState<any[]>([])
   const [payrollCalculations, setPayrollCalculations] = useState<any[]>([])
 
   // use the shared initialPayrollData
@@ -118,7 +118,7 @@ const [finalSalary, setFinalSalary] = useState<any[]>([])
 
 
   useEffect(() => {
-    
+
     const updatedSteps = payrollSteps.map((step, index) => ({
       ...step,
       completed: index < currentStep - 1,
@@ -506,185 +506,174 @@ const [finalSalary, setFinalSalary] = useState<any[]>([])
         return false
     }
   }
-const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const reader = new FileReader();
+    const reader = new FileReader();
 
-  reader.onload = (event) => {
-    if (!event.target) return;
+    reader.onload = (event) => {
+      if (!event.target) return;
 
-    const data = new Uint8Array(event.target.result as ArrayBuffer);
-    const workbook = XLSX.read(data, { type: "array" });
+      const data = new Uint8Array(event.target.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: "array" });
 
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const attendanceJson = XLSX.utils.sheet_to_json(sheet);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const attendanceJson = XLSX.utils.sheet_to_json(sheet);
 
-    console.log("Attendance JSON:", attendanceJson);
-    setAttendanceData(attendanceJson);
+      console.log("Attendance JSON:", attendanceJson);
+      setAttendanceData(attendanceJson);
 
-    // ⭐ Step 1: Merge Salary Structure + Attendance
-    const merged = mergeSalaryWithAttendance(attendanceJson, salaryStructure);
-    setMergedData(merged);
-    console.log("Merged:", merged);
+      // ⭐ Step 1: Merge Salary Structure + Attendance
+      const merged = mergeSalaryWithAttendance(attendanceJson, salaryStructure);
+      setMergedData(merged);
+      console.log("Merged:", merged);
 
-    // ⭐ Step 2: Calculate Final Salary
-    const finalData = calculateFinalSalary(merged);
-    setFinalSalary(finalData);
-    console.log("Final Salary:", finalData);
-  };
-
-  reader.readAsArrayBuffer(file);
-};
-console.log("attendance",mergedData)
-
-// Convert formula string to actual numeric PF base value
-const calculatePFBase = (full: any) => {
-  if (!full?.PFFORMULA) return 0;
-
-  return full.PFFORMULA.split("+").reduce((sum: number, key: string) => {
-    const k = key.trim();
-    switch (k) {
-      case "BA": return sum + (full.BASIC || 0);
-      case "DA": return sum + (full.DA || 0);
-      case "CON": return sum + (full.CONV || 0);
-      case "OA": return sum + (full["OTHER ALW"] || 0);
-      default: return sum;
-    }
-  }, 0);
-};
-
-// Convert ESICFormula to numeric base (or fixed logic)
-const calculateESICBase = (full: any, sal: any) => {
-  if (full.ESICCOMPUTATION === "Fixed-Parameter") {
-    return full.GROSS;
-  }
-
-  if (!full.ESICFORMULA) return 0;
-
-  const fields: any = {
-    BA: sal.basic,
-    DA: sal.da,
-    HRA: sal.hra,
-    CON: sal.conveyance,
-    OA: sal.otherAllowance
-  };
-
-  return full.ESICFORMULA.split("+").reduce(
-    (sum: number, key: string) => sum + (fields[key.trim()] || 0),
-    0
-  );
-};
-
-
-const mergeSalaryWithAttendance = (attendanceData: any, salaryStructure: any) => {
-  return attendanceData.map((emp: any) => {
-    const sal = salaryStructure.find(
-      (s: any) =>
-        s.DESIGNATION?.trim().toLowerCase() ===
-        emp.DESIGNATIONNAME?.trim().toLowerCase()
-    );
-
-    if (!sal) {
-      return { ...emp, ERROR: "Salary Structure Missing for Designation" };
-    }
-
-    // Payable days (max 30)
-    const payableDays = Math.min(Number(emp.NORMALDAYS || 0), 30);
-    const totalMonthDays = 30;
-    const dayRatio = payableDays / totalMonthDays;
-
-    return {
-      ...emp,
-      payableDays,
-      lopDays: totalMonthDays - payableDays,
-      dayRatio,
-      salaryStructure: sal,
-      calculatedSalary: {
-        basic: sal.BASIC * dayRatio,
-        da: sal.DA * dayRatio,
-        hra: sal.HRA * dayRatio,
-        conveyance: sal.CONV * dayRatio,
-        washing: sal.WASHING * dayRatio,
-        otherAllowance: sal["OTHER ALW"] * dayRatio,
-        edu: sal["EDU. ALW"] * dayRatio,
-        medical: sal["MEDICAL ALLOWANCE"] * dayRatio,
-        splAllowance: sal["SPL ALLOWANCE"] * dayRatio,
-        cca: sal.CCA * dayRatio,
-        lww: (sal.LWW || 0) * dayRatio,
-        bonus: (sal.BONUS || 0) * dayRatio
-      },
-      otRates: {
-        normalOTRate: sal.OTRATE,
-        specialOTRate: sal.SPECIALOTRATE
-      }
+      // ⭐ Step 2: Calculate Final Salary
+      const finalData = calculateFinalSalary(merged);
+      setFinalSalary(finalData);
+      console.log("Final Salary:", finalData);
     };
-  });
-};
 
-const calculateFinalSalary = (mergedData: any) => {
-  return mergedData
-    .filter((emp: any) => emp.calculatedSalary)
-    .map((emp: any) => {
-      const sal = emp.calculatedSalary;
-      const full = emp.salaryStructure;
+    reader.readAsArrayBuffer(file);
+  };
+  console.log("attendance", mergedData)
 
-      // OT
-      const normalOTAmount =
-        (emp.OTHOURS || 0) * (emp.otRates?.normalOTRate || 0);
-      const splOTAmount =
-        (emp.SPLOTHOURS || 0) * (emp.otRates?.specialOTRate || 0);
+  // Convert formula string to actual numeric PF base value
 
-      // PF
-      const pfBase = calculatePFBase(full);
-      const pfPercent = full?.PFPERCENTAGE || 12;
-      const pfAmount = (pfBase * pfPercent) / 100;
-      const finalPF = Math.min(pfAmount, full?.PFMAXAMOUNT || pfAmount);
 
-      // ESIC only if Gross <= Max limit (21k)
-      const grossMonthly = full?.GROSS || 0;
-      let finalESIC = 0;
-      if (grossMonthly <= 21000) {
-        const esicBase = calculateESICBase(full, sal);
-        const esicAmount =
-          (esicBase * (full?.ESICPERCENTAGE || 0.75)) / 100;
-        finalESIC =
-          full?.ESICMAXAMOUNT > 0
-            ? Math.min(esicAmount, full.ESICMAXAMOUNT)
-            : esicAmount;
+  const mergeSalaryWithAttendance = (attendanceData: any, salaryStructure: any) => {
+    return attendanceData.map((emp: any) => {
+      const sal = salaryStructure.find(
+        (s: any) =>
+          s.DESIGNATION?.trim().toLowerCase() ===
+          emp.DESIGNATIONNAME?.trim().toLowerCase()
+      );
+
+      if (!sal) {
+        return { ...emp, ERROR: "Salary Structure Missing for Designation" };
       }
 
-      // Gross
-      const grossPayable =
-        sal.basic +
-        sal.da +
-        sal.hra +
-        sal.conveyance +
-        sal.washing +
-        sal.otherAllowance +
-        sal.edu +
-        sal.medical +
-        sal.splAllowance +
-        sal.cca +
-        sal.lww +
-        sal.bonus;
-
-      // Net Salary
-      const netSalary =
-        grossPayable + normalOTAmount + splOTAmount - finalPF - finalESIC;
+      // Payable days (max 30)
+      const payableDays = Math.min(Number(emp.NORMALDAYS || 0), 30);
+      const totalMonthDays = 30;
+      const dayRatio = payableDays / totalMonthDays;
 
       return {
         ...emp,
-        normalOTAmount,
-        splOTAmount,
-        finalPF,
-        finalESIC,
-        grossPayable,
-        netSalary
+        payableDays,
+        lopDays: totalMonthDays - payableDays,
+        dayRatio,
+        salaryStructure: sal,
+        calculatedSalary: {
+          basic: sal.BASIC * dayRatio,
+          da: sal.DA * dayRatio,
+          hra: sal.HRA * dayRatio,
+          conveyance: sal.CONV * dayRatio,
+          washing: sal.WASHING * dayRatio,
+          otherAllowance: sal["OTHER ALW"] * dayRatio,
+          edu: sal["EDU. ALW"] * dayRatio,
+          medical: sal["MEDICAL ALLOWANCE"] * dayRatio,
+          splAllowance: sal["SPL ALLOWANCE"] * dayRatio,
+          cca: sal.CCA * dayRatio,
+          lww: (sal.LWW || 0) * dayRatio,
+          bonus: (sal.BONUS || 0) * dayRatio
+        },
+        otRates: {
+          normalOTRate: sal.OTRATE,
+          specialOTRate: sal.SPECIALOTRATE
+        }
       };
     });
-};
+  };
+
+  const calculateFinalSalary = (mergedData: any) => {
+    return mergedData
+      .filter((emp: any) => emp.calculatedSalary)
+      .map((emp: any) => {
+        const sal = emp.calculatedSalary;
+        const full = emp.salaryStructure;
+
+        // OT
+        const normalOTAmount =
+          (emp.OTHOURS || 0) * (emp.otRates?.normalOTRate || 0);
+        const splOTAmount =
+          (emp.SPLOTHOURS || 0) * (emp.otRates?.specialOTRate || 0);
+
+        // PF
+        // ---------------- PF Calculation (Earned & Formula-Based) ----------------
+        const pfFormula = full?.PFFORMULA || "";
+        let pfBase = 0;
+
+        pfFormula.split("+").forEach((key: string) => {
+          const k = key.trim().toUpperCase();
+          if (k === "BA") pfBase += sal.basic || 0;
+          if (k === "DA") pfBase += sal.da || 0;
+          if (k === "CON") pfBase += sal.conveyance || 0;
+          if (k === "OA") pfBase += sal.otherAllowance || 0;
+        });
+
+        // Wage capping before PF calculation (PFMAXAMOUNT = wage limit)
+        const pfWageCap = full?.PFMAXAMOUNT || 0;
+        const cappedPfBase = pfWageCap > 0 ? Math.min(pfBase, pfWageCap) : pfBase;
+
+        const pfPercent = full?.PFPERCENTAGE || 12;
+        const finalPF = Math.round((cappedPfBase * pfPercent) / 100);
+
+
+        // ---------------- ESIC Calculation (Earned & Formula-Based) ----------------
+        const esicFormula = full?.ESICFORMULA || "";
+        let esicBase = 0;
+
+        esicFormula.split("+").forEach((key: string) => {
+          const k = key.trim().toUpperCase();
+          if (k === "BA") esicBase += sal.basic || 0;
+          if (k === "DA") esicBase += sal.da || 0;
+          if (k === "HRA") esicBase += sal.hra || 0;
+          if (k === "OA") esicBase += sal.otherAllowance || 0;
+        });
+
+        // Eligibility check (Statutory Rule)
+        if (esicBase > 21000) esicBase = 0;
+
+        const esicPercent = full?.ESICPERCENTAGE || 0.75;
+        let esicAmount = (esicBase * esicPercent) / 100;
+
+        // ESIC cap if applicable
+        const esicCap = full?.ESICMAXAMOUNT || 0;
+        const finalESIC = esicCap > 0 ? Math.min(Math.round(esicAmount), esicCap) : Math.round(esicAmount);
+
+
+        // Gross
+        const grossPayable =
+          sal.basic +
+          sal.da +
+          sal.hra +
+          sal.conveyance +
+          sal.washing +
+          sal.otherAllowance +
+          sal.edu +
+          sal.medical +
+          sal.splAllowance +
+          sal.cca +
+          sal.lww +
+          sal.bonus;
+
+        // Net Salary
+        const netSalary =
+          grossPayable + normalOTAmount + splOTAmount - finalPF - finalESIC;
+
+        return {
+          ...emp,
+          normalOTAmount,
+          splOTAmount,
+          finalPF,
+          finalESIC,
+          grossPayable,
+          netSalary
+        };
+      });
+  };
 
 
 
@@ -699,7 +688,7 @@ const calculateFinalSalary = (mergedData: any) => {
               <h3 className="text-lg font-semibold mb-2">Import Attendance Data</h3>
               <p className="text-muted-foreground mb-4">Select client and sites to import attendance data</p>
             </div>
-             <div className="flex justify-center mb-4">
+            <div className="flex justify-center mb-4">
               <div className="flex flex-col items-center gap-2">
                 <input
                   type="file"
@@ -979,7 +968,7 @@ const calculateFinalSalary = (mergedData: any) => {
         )
     }
   }
-
+  console.log(finalSalary)
   const generateBankFile = async () => {
     if (!payrollData.payrollLocked || payrollCalculations.length === 0) {
       toast.error("Cannot Generate Bank File", {
@@ -1000,14 +989,14 @@ const calculateFinalSalary = (mergedData: any) => {
       Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join("")
 
     // Sheet 1: Bank Transaction Data
-    const bankFileData = payrollCalculations.map((emp) => ({
+    const bankFileData = finalSalary.map((emp) => ({
       "TYPE": "NEFT",
       "DEBIT BANK A/C NO": "12345678901234",
-      "DEBIT AMT": emp.inHandSalary || 0,
+      "DEBIT AMT": Math.round(emp.inHandSalary || emp.netSalary || 0),
       "CUR": "INR",
       "BENEFICIARY A/C NO": randomAccountNumber(),
       "IFSC CODE": emp.ifsc || "HDFC0001234",
-      "NARRATION/NAME (NOT MORE THAN 20)": (emp.name || "").substring(0, 20),
+      "NARRATION/NAME (NOT MORE THAN 20)": (emp.EMPNAME || "").substring(0, 20),
     }))
 
     // Sheet 2: Designation-wise Count
@@ -1333,7 +1322,7 @@ const calculateFinalSalary = (mergedData: any) => {
                           {emp.NORMALDAYS}/{30}
                         </td> */}
                         <td className="p-2">    {(emp.PL || 0) + (emp.CL || 0) + (emp.SL || 0)}
-</td>
+                        </td>
                         <td className="p-2">
                           <Badge variant={emp.lop > 0 ? "destructive" : "secondary"}>{emp.lopDays}</Badge>
                         </td>
@@ -1353,60 +1342,61 @@ const calculateFinalSalary = (mergedData: any) => {
                         {currentStep >= 3 && (
                           <>
                             <td className="p-2">
-                              ₹{emp.givenBasic?.toLocaleString()}
+                              ₹{emp.salaryStructure?.BASIC?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.earnedBasic?.toLocaleString()}
+                                ₹{emp.calculatedSalary?.basic?.toLocaleString()}
                               </span>
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenDa?.toLocaleString()}
+                              ₹{emp.salaryStructure?.DA?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.da?.toLocaleString()}
+                                ₹{emp.calculatedSalary?.da?.toLocaleString()}
                               </span>
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenHra?.toLocaleString()}
+                              ₹{emp.salaryStructure?.HRA?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.hra?.toLocaleString()}
+                                ₹{emp.calculatedSalary?.hra?.toLocaleString()}
+
                               </span>
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenConveyance?.toLocaleString()}
+                              ₹{emp.salaryStructure?.CONV?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.conveyance?.toLocaleString()}
+                                ₹{emp.calculatedSalary?.conveyance?.toLocaleString()}
                               </span>
                             </td>
 
                             <td className="p-2">
-                              ₹{emp.givenWashingAllowance?.toLocaleString()}
+                              ₹{emp.salaryStructure?.WASHING?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.washingAllowance?.toLocaleString()}
+                                ₹{emp.calculatedSalary?.washing?.toLocaleString()}
                               </span>
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenOtherAllowance?.toLocaleString()}
+                              ₹{emp.salaryStructure?.["OTHER ALW"]?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.otherAllowance?.toLocaleString()}
+                                ₹{emp.calculatedSalary?.otherAllowance?.toLocaleString()}
                               </span>
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenLeaveWithWages?.toLocaleString()}
+                              ₹{emp.LWW?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
                                 ₹{emp.leaveWithWages?.toLocaleString()}
                               </span>
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenCca?.toLocaleString()}
+                              ₹{emp.salaryStructure?.CCA?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.cca?.toLocaleString()}
+                                ₹{emp.calculatedSalary?.cca?.toLocaleString()}
                               </span>
                             </td>
                             <td className="p-2">
@@ -1431,7 +1421,7 @@ const calculateFinalSalary = (mergedData: any) => {
                                 ₹{emp.specialAllowance?.toLocaleString()}
                               </span>
                             </td>  <td className="p-2">
-                              ₹{emp.givenBonus?.toLocaleString()}
+                              ₹{emp.salaryStructure?.BONUS?.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
                                 ₹{emp.bonus?.toLocaleString()}
@@ -1493,15 +1483,15 @@ const calculateFinalSalary = (mergedData: any) => {
 
                             </td>
                             <td className="p-2">
-                              ₹{emp.givenGrossSalary?.toLocaleString()}
+                              ₹{emp.salaryStructure?.GROSS.toLocaleString()}
                               <br />
                               <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                ₹{emp.grossSalary?.toLocaleString()}
+                                ₹{emp.grossPayable?.toLocaleString()}
                               </span>
                             </td>
 
-                            <td className="p-2">₹{emp.pf?.toLocaleString()}</td>
-                            <td className="p-2">₹{emp.esi?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.finalPF?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.finalESIC?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.pt?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.lwf?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.otherDeduction?.toLocaleString()}</td>
