@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
+import * as XLSX from "xlsx"
 
 import {
   Popover,
@@ -28,7 +29,16 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Download,
+  Upload,
 } from "lucide-react"
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 import { cn } from "@/lib/utils"
 
@@ -64,7 +74,6 @@ const mockEmployees = [
 // HELPERS
 // ------------------------------------------------------------
 
-// Converts "March 2025" → 2
 const getMonthIndex = (monthString: string): number => {
   const [monthName] = monthString.split(" ")
   const map: Record<string, number> = {
@@ -74,7 +83,6 @@ const getMonthIndex = (monthString: string): number => {
   return map[monthName]
 }
 
-// Returns true for current+future months
 const isMonthEditable = (monthString: string): boolean => {
   const today = new Date()
   const currentMonth = today.getMonth()
@@ -89,7 +97,6 @@ const isMonthEditable = (monthString: string): boolean => {
   return monthIndex >= currentMonth
 }
 
-// Generate months for ANY year
 const getMonthsForYear = (year: number) => {
   const base = [
     "January", "February", "March", "April",
@@ -99,6 +106,107 @@ const getMonthsForYear = (year: number) => {
   return base.map((m) => `${m} ${year}`)
 }
 
+// Generate template data
+const generateTemplate = () => {
+  const currentYear = new Date().getFullYear()
+  const months = getMonthsForYear(currentYear)
+
+  const data = mockEmployees.flatMap((emp) =>
+    months.map((month) => ({
+      "Employee ID": emp.employeeId,
+      "Employee Name": emp.employeeName,
+      Department: emp.department,
+      Month: month,
+      Status: "Release", // or "Hold"
+    }))
+  )
+
+  return data
+}
+
+// Download template
+const downloadTemplate = () => {
+  const data = generateTemplate()
+  const ws = XLSX.utils.json_to_sheet(data)
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Salary Hold Template")
+
+  // Set column widths
+  ws["!cols"] = [
+    { wch: 12 },
+    { wch: 18 },
+    { wch: 12 },
+    { wch: 15 },
+    { wch: 10 },
+  ]
+
+  XLSX.writeFile(wb, "salary_hold_template.xlsx")
+  toast.success("Template downloaded successfully!")
+}
+
+// Parse and apply Excel data
+const parseExcelData = async (
+  file: File,
+  employeeHoldData: Record<string, EmployeeHoldData>
+): Promise<Record<string, EmployeeHoldData> | null> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer)
+        const wb = XLSX.read(data, { type: "array" })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const jsonData = XLSX.utils.sheet_to_json(ws) as Array<{
+          "Employee ID": string
+          Month: string
+          Status: string
+        }>
+
+        if (!jsonData || jsonData.length === 0) {
+          toast.error("Excel file is empty or invalid format.")
+          resolve(null)
+          return
+        }
+
+        const updated = JSON.parse(JSON.stringify(employeeHoldData))
+        let successCount = 0
+
+        jsonData.forEach((row) => {
+          const empId = row["Employee ID"]?.trim()
+          const month = row["Month"]?.trim()
+          const status = row["Status"]?.trim().toLowerCase()
+
+          if (!empId || !month || !status) return
+
+          if (!updated[empId]) {
+            toast.warning(`Employee ID ${empId} not found. Skipping.`)
+            return
+          }
+
+          if (!isMonthEditable(month)) {
+            toast.warning(`${month} is locked and cannot be modified.`)
+            return
+          }
+
+          const isHeld = status === "hold"
+          updated[empId].holdRecords[month] = { month, isHeld }
+          successCount++
+        })
+
+        toast.success(`Successfully updated ${successCount} records from Excel!`)
+        resolve(updated)
+      } catch (error) {
+        toast.error("Error parsing Excel file. Please check the format.")
+        console.error(error)
+        resolve(null)
+      }
+    }
+
+    reader.readAsArrayBuffer(file)
+  })
+}
+
 // ------------------------------------------------------------
 // MAIN PAGE
 // ------------------------------------------------------------
@@ -106,12 +214,8 @@ const getMonthsForYear = (year: number) => {
 export default function SalaryHoldPage() {
   const currentSystemYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentSystemYear)
-
   const [selectedEmployee, setSelectedEmployee] = useState("EMP001")
-
-  // ------------------------------
-  // INIT EMPLOYEE HOLD DATA
-  // ------------------------------
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [employeeHoldData, setEmployeeHoldData] = useState<Record<string, EmployeeHoldData>>(() => {
     const data: Record<string, EmployeeHoldData> = {}
@@ -119,7 +223,6 @@ export default function SalaryHoldPage() {
     mockEmployees.forEach((emp) => {
       const records: Record<string, HoldRecord> = {}
 
-      // initialize only current year; other years generate dynamically later
       getMonthsForYear(currentSystemYear).forEach((m) => {
         records[m] = { month: m, isHeld: false }
       })
@@ -130,10 +233,6 @@ export default function SalaryHoldPage() {
     return data
   })
 
-  // ------------------------------
-  // LOCAL STORAGE LOAD ON MOUNT
-  // ------------------------------
-
   useEffect(() => {
     const stored = localStorage.getItem("employeeHoldData")
     if (stored) {
@@ -141,24 +240,17 @@ export default function SalaryHoldPage() {
     }
   }, [])
 
-  // ------------------------------
-  // LOCAL STORAGE SAVE
-  // ------------------------------
-
   useEffect(() => {
     localStorage.setItem("employeeHoldData", JSON.stringify(employeeHoldData))
   }, [employeeHoldData])
 
-  const months = getMonthsForYear(selectedYear)
-  const currentEmployee = employeeHoldData[selectedEmployee]
-
-  // Auto-create missing months when switching years
   useEffect(() => {
     setEmployeeHoldData((prev) => {
       const updated = { ...prev }
 
       mockEmployees.forEach((emp) => {
         const employee = updated[emp.employeeId]
+        const months = getMonthsForYear(selectedYear)
 
         months.forEach((m) => {
           if (!employee.holdRecords[m]) {
@@ -171,11 +263,9 @@ export default function SalaryHoldPage() {
     })
   }, [selectedYear])
 
+  const months = getMonthsForYear(selectedYear)
+  const currentEmployee = employeeHoldData[selectedEmployee]
   const heldCount = Object.values(currentEmployee.holdRecords).filter((r) => r.isHeld).length
-
-  // ------------------------------
-  // ACTIONS
-  // ------------------------------
 
   const toggleHold = (month: string) => {
     if (!isMonthEditable(month)) {
@@ -230,17 +320,75 @@ export default function SalaryHoldPage() {
     toast.success("All editable months released.")
   }
 
-  // ------------------------------------------------------------
-  // RENDER
-  // ------------------------------------------------------------
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    const result = await parseExcelData(file, employeeHoldData)
+    if (result) {
+      setEmployeeHoldData(result)
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
 
   return (
     <MainLayout>
-
       <div className="space-y-6 p-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold">Salary Hold / Unhold</h1>
+            <p className="text-muted-foreground">Manage monthly salary hold settings</p>
+          </div>
 
-        <h1 className="text-3xl font-bold">Salary Hold / Unhold</h1>
-        <p className="text-muted-foreground">Manage monthly salary hold settings</p>
+          <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Upload Excel
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Upload Excel file to update multiple employees</p>
+                  <p className="text-xs text-muted-foreground mt-1">Format: Employee ID, Month, Status</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={downloadTemplate}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Template
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Download Excel template with all employees</p>
+                  <p className="text-xs text-muted-foreground mt-1">Fill in Status column and upload back</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
 
         {/* EMPLOYEE DROPDOWN */}
         <Card>
@@ -320,7 +468,6 @@ export default function SalaryHoldPage() {
             </div>
 
             <div className="flex items-center gap-4">
-
               {/* YEAR ARROWS */}
               <div className="flex items-center gap-2 border rounded px-3 py-1">
                 <ChevronLeft
@@ -328,7 +475,6 @@ export default function SalaryHoldPage() {
                   onClick={() => setSelectedYear((y) => y - 1)}
                 />
 
-                {/* YEAR DROPDOWN */}
                 <select
                   className="border rounded px-2 py-1 bg-white text-sm"
                   value={selectedYear}
@@ -357,10 +503,8 @@ export default function SalaryHoldPage() {
 
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-
               {months.map((month) => {
-               const record = currentEmployee.holdRecords[month] ?? { month, isHeld: false }
-
+                const record = currentEmployee.holdRecords[month] ?? { month, isHeld: false }
                 const editable = isMonthEditable(month)
 
                 const monthIndex = getMonthIndex(month)
@@ -402,11 +546,9 @@ export default function SalaryHoldPage() {
                   </Button>
                 )
               })}
-
             </div>
           </CardContent>
         </Card>
-
       </div>
     </MainLayout>
   )
