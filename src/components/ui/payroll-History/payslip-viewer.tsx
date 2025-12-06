@@ -11,13 +11,13 @@ import { PDFDownloadLink } from "@react-pdf/renderer"
 import { PayslipDocument } from "./PayslipDocument"
 
 interface PayslipViewerProps {
-  employeeId: string
+ 
   record: any
-  month: string
+
   onClose: () => void
 }
 
-export function PayslipViewer({ employeeId, month, onClose, record }: PayslipViewerProps) {
+export function PayslipViewer({ onClose, record }: PayslipViewerProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -25,7 +25,7 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
       maximumFractionDigits: 0,
     }).format(amount)
   }
-
+const sal = record.calculatedSalary || {};
   // Salary values from localStorage record
   const {
     earnedBasic = 0,
@@ -62,17 +62,39 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
   }
 
   const employee = {
-    name: record.name,
-    designation: record.designation,
+    name: record.EMPNAME,
+    designation: record.DESIGNATIONNAME,
     department: record.department,
-    site: record.site,
+    site: record.SITENAME,
     pan: record.pan,
     uan: record.uan,
     esic: record.esic,
-    joiningDate: record.joiningDate
+    joiningDate: record.joiningDate,
+     code: record.EMPCODE,
   }
+ const earnings = {
+    basic: sal.basic,
+    da: sal.da,
+    hra: sal.hra,
+    conveyance: sal.conveyance,
+    other: sal.otherAllowance,
+    cca: sal.cca,
+    ot: record.normalOTAmount + record.splOTAmount,
+    gross: record.grossPayable,
+  };
 
-  const period = month
+   const deductions = {
+    pf: record.finalPF,
+    esi: record.finalESIC,
+    pt: record.pt,
+    lwf: record.lwf || 0,
+    wf: record.wf || 0,
+   total: (record.finalPF || 0) + (record.finalESIC || 0) + (record.pt || 0) + (record.lwf || 0) + (record.wf || 0),
+  };
+
+console.log(deductions.total)
+const period = '2025-Novemeber'
+ const month = 'novemeber'
 
   const handleDownload = () => console.log("Downloading payslip PDF")
   const handleEmail = () => console.log("Emailing payslip")
@@ -104,12 +126,12 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
 
           <div className="flex items-center space-x-2 flex-1 justify-end">
             <Button variant="outline" size="sm">
-              <PDFDownloadLink
-                document={<PayslipDocument employeeId={employeeId} month={month} record={record} />}
-                fileName={`Payslip-${record?.name ?? employeeId}-${month}.pdf`}
-              >
+              {/* <PDFDownloadLink
+                document={<PayslipDocument employeeId={employee.code} month={month} record={record} />}
+                fileName={`Payslip-${record?.name ?? employee.code}-${month}.pdf`}
+              > */}
                 <div className="flex items-center"><Download className="mr-2 h-4 w-4" /></div>
-              </PDFDownloadLink>
+              {/* </PDFDownloadLink> */}
             </Button>
             <Button variant="outline" size="sm" onClick={handleEmail}>
               <Mail className="mr-2 h-4 w-4" /> 
@@ -139,7 +161,7 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Employee Code:</span>
-                  <span className="text-foreground">{employeeId}</span>
+                  <span className="text-foreground">{employee.code}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Designation:</span>
@@ -309,14 +331,17 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 <CardTitle className="text-sm text-green-800">Earnings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between"><span>Basic</span><span>{formatCurrency(earnedBasic)}</span></div>
-                <div className="flex justify-between"><span>DA</span><span>{formatCurrency(da)}</span></div>
-                <div className="flex justify-between"><span>HRA</span><span>{formatCurrency(hra)}</span></div>
-                <div className="flex justify-between"><span>CCA</span><span>{formatCurrency(cca)}</span></div>
-                <div className="flex justify-between"><span>Overtime</span><span>{formatCurrency(overtimePay)}</span></div>
+                {Object.entries(earnings).map(([key, value]) => (
+      key !== "gross" && (
+        <div key={key} className="flex justify-between capitalize">
+          <span>{key}</span>
+          <span>{formatCurrency(Number(value) || 0)}</span>
+        </div>
+      )
+    ))}
                 <div className="flex justify-between border-t border-green-300 pt-2 font-bold">
                   <span>Gross Salary</span>
-                  <span>{formatCurrency(grossSalary)}</span>
+                  <span>{formatCurrency(earnings.gross)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -327,17 +352,20 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 <CardTitle className="text-sm text-red-800">Deductions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between"><span>PF</span><span>{formatCurrency(pf)}</span></div>
-                <div className="flex justify-between"><span>ESI</span><span>{formatCurrency(esic)}</span></div>
-                <div className="flex justify-between"><span>TDS</span><span>{formatCurrency(tds)}</span></div>
-                <div className="flex justify-between"><span>PT</span><span>{formatCurrency(pt)}</span></div>
-                <div className="flex justify-between"><span>LWF</span><span>{formatCurrency(lwf)}</span></div>
-                {/* <div className="flex justify-between"><span>LOP DEDUCTION</span><span>{formatCurrency(lopDeduction)}</span></div> */}
-                <div className="flex justify-between"><span>Bonvolent fund</span><span>{formatCurrency(wf)}</span></div>
+                {Object.entries(deductions).map(([key, value]) => (
+      key !== "total" && (
+        <div key={key} className="flex justify-between">
+          <span className="capitalize">
+            {key.replace(/([A-Z])/g, " $1")}
+          </span>
+          <span>{formatCurrency(Number(value) || 0)}</span>
+        </div>
+      )
+    ))}
 
                 <div className="flex justify-between border-t border-red-300 pt-2 font-bold">
                   <span>Total Deductions</span>
-                  <span>{formatCurrency(totalDeductions)}</span>
+                  <span>{formatCurrency(deductions.total)}</span>
                 </div>
               </CardContent>
             </Card>
@@ -348,8 +376,8 @@ export function PayslipViewer({ employeeId, month, onClose, record }: PayslipVie
                 <CardTitle className="text-sm text-blue-800">Net Pay</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between"><span>Gross Salary</span><span>{formatCurrency(grossSalary)}</span></div>
-                <div className="flex justify-between"><span>Total Deductions</span><span>-{formatCurrency(totalDeductions)}</span></div>
+                <div className="flex justify-between"><span>Gross Salary</span><span>{formatCurrency(earnings.gross)}</span></div>
+                <div className="flex justify-between"><span>Total Deductions</span><span>-{formatCurrency(deductions.total)}</span></div>
                 <div className="border-t border-blue-300 pt-2 font-bold flex justify-between">
                   <span>Net Pay</span>
                   <span>{formatCurrency(netSalary)}</span>

@@ -37,6 +37,7 @@ const sites = [
 
 
 
+
 // Now payrollHistory with detailed employee info for payslip
 // const payrollHistory = [
 //   {
@@ -125,10 +126,10 @@ export default function PayrollHistoryPage() {
   useEffect(() => {
     // Only run on client
     if (typeof window !== "undefined") {
-      const storedData = localStorage.getItem("reviewData");
-      if (storedData) {
-        setPayrollHistory(JSON.parse(storedData));
-      }
+    const storedData = localStorage.getItem("finalSalaryData");
+    if (storedData) {
+      setPayrollHistory(JSON.parse(storedData));
+    }
     }
   }, []);
   const [selectedClient, setSelectedClient] = useState<string>("all");
@@ -153,7 +154,7 @@ export default function PayrollHistoryPage() {
   //   return clientMatch && siteMatch && monthMatch && searchMatch;
   // });
   const filteredHistory = payrollHistory.filter((record) =>
-    record.name.toLowerCase().includes(searchTerm.toLowerCase())
+    record.EMPNAME.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
 
@@ -302,7 +303,7 @@ export default function PayrollHistoryPage() {
                     <TableHead>Client</TableHead>
                     <TableHead>Site</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Days</TableHead>
                     <TableHead >Action</TableHead>
 
                   </TableRow>
@@ -317,15 +318,15 @@ export default function PayrollHistoryPage() {
                   ) : (
                     filteredHistory.map((record, idx) => (
                       <TableRow key={idx}>
-                        <TableCell>{record.name}</TableCell>
-                        <TableCell>{record.designation || "-"}</TableCell>
-                        <TableCell>{record.zone || "-"}</TableCell>
-                        <TableCell>{record.state || "-"}</TableCell>
+                        <TableCell>{record.EMPNAME}</TableCell>
+                        <TableCell>{record.DESIGNATIONNAME   || "-"}</TableCell>
+                        <TableCell>{record.CLIENTNAME  || "-"}</TableCell>
+                        <TableCell>{record.SITENAME  || "-"}</TableCell>
                         <TableCell className="text-right">
                           ₹{record.netSalary?.toLocaleString() || 0}
                         </TableCell>
                         <TableCell>
-                          {record.totalDays ? `${record.daysPresent}/${record.totalDays}` : "-"}
+                           {record.payableDays ? `${record.payableDays}/30` : "-"}
                         </TableCell>
                         <TableCell className="text-center">
                           <Eye
@@ -377,10 +378,8 @@ export default function PayrollHistoryPage() {
       </div>
       {selectedRecord && (
         <PayslipViewer
-          employeeId={selectedRecord.id}
-          record={selectedRecord}
-          month={selectedMonth}
-          onClose={() => setSelectedRecord(null)}
+         record={selectedRecord}
+  onClose={() => setSelectedRecord(null)}
         />
       )}
     </MainLayout>

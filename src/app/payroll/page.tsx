@@ -8,9 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Stepper } from "@/components/ui/stepper"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Upload, Lock, Copy, AlertTriangle, CheckCircle, Calendar } from "lucide-react"
-import { VariableUpload } from "@/components/ui/payroll/variable-upload"
 import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
-import { CloneSiteModal } from "@/components/ui/payroll/clone-site-modal"
 import { toast } from "sonner"
 import { SitesDropdown } from "@/components/ui/sites-dropdown"
 import * as XLSX from 'xlsx';
@@ -126,6 +124,7 @@ export default function PayrollPage() {
     }))
     setPayrollSteps(updatedSteps)
   }, [currentStep])
+
 
   const getAvailableSites = () => {
     // If a branch is selected, show sites under that branch.
@@ -527,12 +526,12 @@ export default function PayrollPage() {
       console.log("Attendance JSON:", attendanceJson);
       setAttendanceData(attendanceJson);
 
-      // ⭐ Step 1: Merge Salary Structure + Attendance
+      //  Step 1: Merge Salary Structure + Attendance
       const merged = mergeSalaryWithAttendance(attendanceJson, salaryStructure);
       setMergedData(merged);
       console.log("Merged:", merged);
 
-      // ⭐ Step 2: Calculate Final Salary
+      //  Step 2: Calculate Final Salary
       const finalData = calculateFinalSalary(merged);
       setFinalSalary(finalData);
       console.log("Final Salary:", finalData);
@@ -709,6 +708,12 @@ export default function PayrollPage() {
   };
 
 
+useEffect(() => {
+  if (finalSalary.length > 0) {
+    localStorage.setItem("finalSalaryData", JSON.stringify(finalSalary));
+    console.log("🟢 Final Salary stored in Local Storage!");
+  }
+}, [finalSalary]);
 
 
   const renderStepContent = () => {
