@@ -30,6 +30,15 @@ const statutoryReports = [
     status: "generated",
     dueDate: "2024-01-21",
   },
+   {
+    id: "pf-cons",
+    title: "PF RECONCILATION",
+    description: "PF Reconcilation report monthly",
+    format: "Excel",
+    lastGenerated: "2024-01-15",
+    status: "generated",
+    dueDate: "2024-01-21",
+  },
   {
     id: "form16",
     title: "Form 16",
@@ -522,7 +531,83 @@ export default function StatutoryPage() {
                       Select Client, Site, and Month to generate the ESIC XML file.
                     </p>
                   </div>
-                ) : (
+                ) :
+                  report.id === "pf-cons" ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 gap-3">
+                      <Select value={esicClient} onValueChange={setEsicClient}>
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue placeholder="Select Client" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="client-a">Client A</SelectItem>
+                          <SelectItem value="client-b">Client B</SelectItem>
+                          <SelectItem value="client-c">Client C</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Select value={esicSite} onValueChange={setEsicSite}>
+                        <SelectTrigger className="w-full bg-background">
+                          <SelectValue placeholder="Select Site" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="site-a">Site A - Corporate</SelectItem>
+                          <SelectItem value="site-b">Site B - Manufacturing</SelectItem>
+                          <SelectItem value="site-c">Site C - Warehouse</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !esicMonth && "text-muted-foreground",
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {esicMonth ? format(esicMonth, "MMMM yyyy") : <span>Select month</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <div className="p-3">
+                            <MonthPicker
+                              selected={esicMonth}
+                              onSelect={(date) => {
+                                if (date) setEsicMonth(date)
+                              }}
+                            />
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        onClick={handleGenerateEsicXml}
+                        className="flex-1"
+                        disabled={!esicClient || !esicSite || !esicMonth}
+                        title={
+                          !esicClient || !esicSite || !esicMonth ? "Select Client, Site & Month" : "Generate ESIC XML"
+                        }
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Generate Report
+                      </Button>
+                      {report.status === "generated" && (
+                        <Button size="sm" variant="outline" onClick={() => handleDownloadReport(report.id)}>
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Select Client, Site, and Month to generate.
+                    </p>
+                  </div>
+                ) :  
+                (
                   <div className="flex space-x-2">
                     <Button size="sm" onClick={() => handleGenerateReport(report.id)} className="flex-1">
                       <FileText className="mr-2 h-4 w-4" />
