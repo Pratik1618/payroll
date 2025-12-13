@@ -1,9 +1,12 @@
 "use client"
 
-
+import { MainLayout } from "@/components/ui/layout/main-layout" 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MainLayout } from "@/components/ui/layout/main-layout"
-import { Users, Clock, Calculator, FileText } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Users, Clock, Calculator, FileText, Download } from "lucide-react"
+import { useState } from "react"
+import { toast } from "sonner"
 
 const stats = [
   {
@@ -37,6 +40,43 @@ const stats = [
 ]
 
 export default function DashboardPage() {
+  const [wageRegisterPeriod, setWageRegisterPeriod] = useState<string>("")
+  const [wageRegisterMonth, setWageRegisterMonth] = useState<string>("")
+  const [wageRegisterYear, setWageRegisterYear] = useState<string>("")
+
+  const handleWageRegisterDownload = () => {
+    if (!wageRegisterPeriod) {
+      toast.error("Please select a period")
+      return
+    }
+
+    if (wageRegisterPeriod === "monthly" && (!wageRegisterMonth || !wageRegisterYear)) {
+      toast.error("Please select month and year for monthly report")
+      return
+    }
+
+    if (wageRegisterPeriod === "yearly" && !wageRegisterYear) {
+      toast.error("Please select year for yearly report")
+      return
+    }
+
+    const csvContent = `Employee ID,Employee Name,Basic,HRA,DA,CCA,Total Earnings,PF,ESIC,PT,Total Deductions,Net Pay\n1001,John Doe,25000,10000,5000,2000,42000,3000,315,200,3515,38485\n1002,Jane Smith,30000,12000,6000,2400,50400,3600,378,200,4178,46222`
+
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const filename =
+      wageRegisterPeriod === "monthly"
+        ? `Wage_Register_${wageRegisterMonth}_${wageRegisterYear}.csv`
+        : `Wage_Register_${wageRegisterYear}.csv`
+    a.href = url
+    a.download = filename
+    a.click()
+    window.URL.revokeObjectURL(url)
+
+    toast.success(`Wage Register downloaded successfully`)
+  }
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -108,6 +148,86 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-foreground">
+              <Download className="h-5 w-5" />
+              Download Wage Register
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-3 items-end flex-wrap">
+              <div className="flex-1 min-w-[150px]">
+                <label className="text-sm font-medium text-foreground mb-2 block">Select Period</label>
+                <Select value={wageRegisterPeriod} onValueChange={setWageRegisterPeriod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {wageRegisterPeriod === "monthly" && (
+                <div className="flex-1 min-w-[150px]">
+                  <label className="text-sm font-medium text-foreground mb-2 block">Month</label>
+                  <Select value={wageRegisterMonth} onValueChange={setWageRegisterMonth}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="January">January</SelectItem>
+                      <SelectItem value="February">February</SelectItem>
+                      <SelectItem value="March">March</SelectItem>
+                      <SelectItem value="April">April</SelectItem>
+                      <SelectItem value="May">May</SelectItem>
+                      <SelectItem value="June">June</SelectItem>
+                      <SelectItem value="July">July</SelectItem>
+                      <SelectItem value="August">August</SelectItem>
+                      <SelectItem value="September">September</SelectItem>
+                      <SelectItem value="October">October</SelectItem>
+                      <SelectItem value="November">November</SelectItem>
+                      <SelectItem value="December">December</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {wageRegisterPeriod && (
+                <div className="flex-1 min-w-[150px]">
+                  <label className="text-sm font-medium text-foreground mb-2 block">Year</label>
+                  <Select value={wageRegisterYear} onValueChange={setWageRegisterYear}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2025">2025</SelectItem>
+                      <SelectItem value="2024">2024</SelectItem>
+                      <SelectItem value="2023">2023</SelectItem>
+                      <SelectItem value="2022">2022</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Button
+                onClick={handleWageRegisterDownload}
+                disabled={
+                  !wageRegisterPeriod ||
+                  (wageRegisterPeriod === "monthly" && (!wageRegisterMonth || !wageRegisterYear)) ||
+                  (wageRegisterPeriod === "yearly" && !wageRegisterYear)
+                }
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   )

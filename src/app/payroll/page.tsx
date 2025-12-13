@@ -12,6 +12,7 @@ import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
 import { toast } from "sonner"
 import { SitesDropdown } from "@/components/ui/sites-dropdown"
 import * as XLSX from 'xlsx';
+import { ptBR } from "date-fns/locale"
 
 const initialPayrollSteps = [
   {
@@ -689,7 +690,7 @@ export default function PayrollPage() {
             pt = currentMonth === 2 ? 300 : 200;
           }
         }
-
+const deductions = finalPF+finalESIC+pt
         // Net Salary
         const netSalary =
           grossPayable + normalOTAmount + splOTAmount - finalPF - finalESIC - pt;
@@ -702,7 +703,8 @@ export default function PayrollPage() {
           finalESIC,
           grossPayable,
           pt,
-          netSalary
+          netSalary,
+          deductions
         };
       });
   };
@@ -1528,7 +1530,7 @@ useEffect(() => {
                             <td className="p-2">₹{emp.backgroundVerification?.toLocaleString()}</td>
                             <td className="p-2">₹{emp.uniformDeduction?.toLocaleString()}</td>
 
-                            <td className="p-2">₹{emp.totalDeductions?.toLocaleString()}</td>
+                            <td className="p-2">₹{emp.deductions?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.advanceRemaining?.toLocaleString()}</td>
                             <td className="p-2 font-medium">₹{emp.inHandSalary?.toLocaleString()}</td>

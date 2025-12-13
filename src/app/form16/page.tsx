@@ -427,97 +427,138 @@ yearly.gross =
                 <CardTitle>Preview — Form 16 Part B (Estimate)</CardTitle>
               </CardHeader>
 
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-2">Employee</div>
-                    <div className="font-medium">{previewData.empName}</div>
-                    <div className="text-xs text-muted-foreground">{previewData.designation} • {previewData.site}</div>
-                    <div className="mt-3 text-sm">
-                      <div>Employee Code: <strong>{previewData.empCode}</strong></div>
-                      <div>PAN: <strong>{previewData.pan}</strong></div>
-                    </div>
-                  </div>
+              <CardContent className="space-y-6 text-sm">
 
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-2">Period</div>
-                    <div className="font-medium">{periodLabel}</div>
-                    <div className="mt-3 text-sm text-muted-foreground">Generated on {format(new Date(), "dd MMM yyyy, HH:mm")}</div>
-                  </div>
-                </div>
+  {/* Employee Header */}
+  <div className="grid md:grid-cols-2 gap-4">
+    <div>
+      <div className="font-medium">{previewData.empName}</div>
+      <div className="text-xs text-muted-foreground">
+        {previewData.designation} • {previewData.site}
+      </div>
+      <div className="mt-2">
+        Emp Code: <strong>{previewData.empCode}</strong><br />
+        PAN: <strong>{previewData.pan}</strong>
+      </div>
+    </div>
 
-                <Separator className="my-4" />
+    <div className="text-right">
+      <div className="font-medium">{periodLabel}</div>
+      <div className="text-xs text-muted-foreground">
+        Generated on {format(new Date(), "dd MMM yyyy")}
+      </div>
+      <Badge className="mt-2">Form 16 – Part B</Badge>
+    </div>
+  </div>
 
-                <div className="grid gap-2 md:grid-cols-2">
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Salary (Annual)</div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between"><span>Basic</span><span>₹{previewData.basic.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>HRA</span><span>₹{previewData.hra.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Conveyance</span><span>₹{previewData.conveyance.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Special Allowance</span><span>₹{previewData.special.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Other Allowances</span><span>₹{previewData.other.toLocaleString()}</span></div>
-                      <div className="border-t pt-2 flex justify-between font-semibold"><span>Gross Total</span><span>₹{previewData.gross.toLocaleString()}</span></div>
-                    </div>
-                  </div>
+  <Separator />
 
-                  <div>
-                    <div className="text-xs text-muted-foreground mb-1">Deductions (Annual)</div>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between"><span>Employee PF</span><span>₹{previewData.pfAnnual.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>ESIC</span><span>₹{previewData.esicAnnual.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Professional Tax</span><span>₹{previewData.ptAnnual.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>LWF</span><span>₹{previewData.lwfAnnual.toLocaleString()}</span></div>
-                      <div className="border-t pt-2 flex justify-between font-semibold"><span>Total Deductions</span><span>₹{previewData.totalDeductions.toLocaleString()}</span></div>
-                    </div>
-                  </div>
-                </div>
+  {/* A. Gross Salary */}
+  <Section title="A. Gross Salary">
+    <Row label="Basic Salary" value={previewData.basic} />
+    <Row label="House Rent Allowance" value={previewData.hra} />
+    <Row label="Conveyance Allowance" value={previewData.conveyance} />
+    <Row label="Special Allowance" value={previewData.special} />
+    <Row label="Other Allowances" value={previewData.other} />
+    <Row bold label="Gross Salary (A)" value={previewData.gross} />
+  </Section>
 
-                <Separator className="my-4" />
+  {/* B. Exemptions */}
+  <Section title="B. Less: Exemptions">
+    <Row label="Exemptions (HRA / others)" value={0} />
+  </Section>
 
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div>
-                    <div className="text-xs text-muted-foreground">Taxable Income</div>
-                    <div className="text-lg font-medium">₹{previewData.taxableIncome.toLocaleString()}</div>
+  {/* C. Gross Total Income */}
+  <Section title="C. Gross Total Income">
+    <Row bold label="Gross Total Income (C)" value={previewData.gross} />
+  </Section>
 
-                    <div className="mt-3 text-sm">
-                      <div className="font-medium">Old Regime</div>
-                      <div className="flex justify-between"><span>Tax (incl. cess)</span><span>₹{previewData.oldTax.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Monthly (approx)</span><span>₹{Math.round(previewData.oldTax/12).toLocaleString()}</span></div>
-                    </div>
-                  </div>
+  {/* D. Chapter VI-A */}
+  <Section title="D. Deductions under Chapter VI-A">
+    <Row label="Employee Provident Fund" value={previewData.pfAnnual} />
+    <Row label="ESIC" value={previewData.esicAnnual} />
+    <Row label="Professional Tax" value={previewData.ptAnnual} />
+    <Row label="Labour Welfare Fund" value={previewData.lwfAnnual} />
+    <Row bold label="Total Deductions (D)" value={previewData.totalDeductions} />
+  </Section>
 
-                  <div>
-                    <div className="text-xs text-muted-foreground">Comparison</div>
-                    <div className="mt-2 text-sm">
-                      <div className="font-medium">New Regime</div>
-                      <div className="flex justify-between"><span>Tax (incl. cess)</span><span>₹{previewData.newTax.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span>Monthly (approx)</span><span>₹{Math.round(previewData.newTax/12).toLocaleString()}</span></div>
-                    </div>
+  {/* E. Taxable Income */}
+  <Section title="E. Taxable Income">
+    <Row bold label="Taxable Income (E)" value={previewData.taxableIncome} />
+  </Section>
 
-                    <div className="mt-3">
-                      <Badge className="bg-indigo-100 text-indigo-800">
-                        Recommended: {previewData.oldTax <= previewData.newTax ? "Old" : "New"}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
+  {/* F. Tax Computation */}
+  <Section title="F. Tax Computation">
+    <Row label="Tax as per Old Regime" value={previewData.oldTax} />
+    <Row label="Tax as per New Regime" value={previewData.newTax} />
+    <Row
+      bold
+      label="Recommended Regime"
+      valueText={previewData.oldTax <= previewData.newTax ? "OLD REGIME" : "NEW REGIME"}
+    />
+  </Section>
 
-                <div className="mt-6 flex justify-end gap-2">
-                  <PDFDownloadLink
-                    document={<Form16PDF data={previewData} periodLabel={periodLabel} />}
-                    fileName={`Form16_PartB_${previewData.empName.replace(/\s+/g,'_')}_${periodLabel}.pdf`}
-                  >
-                    {({ loading }) => (
-                      <Button>{loading ? "Preparing PDF..." : "Download PDF"}</Button>
-                    )}
-                  </PDFDownloadLink>
-                </div>
-              </CardContent>
+  <Separator />
+
+  {/* Footer */}
+  <div className="text-xs text-muted-foreground">
+    This is a system-generated Form 16 Part B based on final payroll data.
+    No physical or digital signature is required.
+  </div>
+
+  <div className="flex justify-end">
+    <PDFDownloadLink
+      document={<Form16PDF data={previewData} periodLabel={periodLabel} />}
+      fileName={`Form16_PartB_${previewData.empName.replace(/\s+/g, "_")}.pdf`}
+    >
+      {({ loading }) => (
+        <Button>{loading ? "Preparing PDF..." : "Download PDF"}</Button>
+      )}
+    </PDFDownloadLink>
+  </div>
+</CardContent>
+
             </Card>
           )}
         </div>
       </div>
     </MainLayout>
   );
+}
+function Section({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold uppercase text-muted-foreground">
+        {title}
+      </div>
+      <div className="space-y-1">{children}</div>
+    </div>
+  )
+}
+
+function Row({
+  label,
+  value,
+  bold,
+  valueText,
+}: {
+  label: string
+  value?: number
+  valueText?: string
+  bold?: boolean
+}) {
+  return (
+    <div className="flex justify-between">
+      <span className={bold ? "font-medium" : ""}>{label}</span>
+      <span className={bold ? "font-medium" : ""}>
+        {valueText ?? `₹${value?.toLocaleString("en-IN")}`}
+      </span>
+    </div>
+  )
 }
