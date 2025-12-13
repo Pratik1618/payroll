@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock, Percent, Webhook, OctagonPause, BookLock, Upload, DollarSign } from "lucide-react"
+import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock, Percent, Webhook, OctagonPause, BookLock, Upload, DollarSign, StickyNote } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -25,7 +25,7 @@ const navigation = [
   {name:"Salary Hold/Unhold",href:"/salaryhold",icon:OctagonPause},
   {name:"Lock Salary",href:"/lockSalary",icon:BookLock},
   {name:"Tax calculator",href :"/taxCalculator",icon:DollarSign},
-  {name:"form16",href :"/form16",icon:DollarSign}
+  {name:"form16",href :"/form16",icon:StickyNote}
   
 
 
