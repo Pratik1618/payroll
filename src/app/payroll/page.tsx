@@ -12,7 +12,6 @@ import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
 import { toast } from "sonner"
 import { SitesDropdown } from "@/components/ui/sites-dropdown"
 import * as XLSX from 'xlsx';
-import { ptBR } from "date-fns/locale"
 
 const initialPayrollSteps = [
   {
