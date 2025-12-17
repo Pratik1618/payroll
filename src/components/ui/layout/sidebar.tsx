@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock, Percent, Webhook, OctagonPause, BookLock, Upload, DollarSign, StickyNote, UserPenIcon, Users2 } from "lucide-react"
+import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock, Percent, Webhook, OctagonPause, BookLock, Upload, DollarSign, StickyNote, UserPenIcon, Users2, History, Shuffle } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -28,6 +28,9 @@ const navigation = [
   {name:"Form 16",href :"/form16",icon:StickyNote},
  {name:"Employee IT declaration",href:"/it-declaration",icon:UserPenIcon},
  {name:"IT Decarations",href:"/hr-itdeclarations",icon:Users2},
+{name:"Employee History",href:"/empHistory",icon:History},
+{name:"Employee Transfer",href:"/emptransfer",icon:Shuffle}
+
 
 
 

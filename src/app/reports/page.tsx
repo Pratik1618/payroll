@@ -1,14 +1,70 @@
 "use client"
 
 import { useState } from "react"
-import { MainLayout } from "@/components/ui/layout/main-layout" 
+import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { Download, BarChart3, FileText, TrendingDown, GitCompare } from "lucide-react"
+import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet } from "lucide-react"
+
+type ReportType =
+  | "salary-report"
+  | "payroll-mis"
+  | "esic-pending"
+  | "pf-pending"
+  | "attrition-rate"
+  | "salary-comparison"
+
+const reports = [
+  {
+    id: "salary-report",
+    title: "Salary Report",
+    description: "Component breakdown by employee",
+    icon: FileText,
+    iconColor: "text-blue-600",
+  },
+  {
+    id: "payroll-mis",
+    title: "Payroll MIS",
+    description: "Variance analysis report",
+    icon: BarChart3,
+    iconColor: "text-green-600",
+  },
+  {
+    id: "esic-pending",
+    title: "ESIC Pending List",
+    description: "Employees without ESIC number",
+    icon: FileSpreadsheet,
+    iconColor: "text-orange-600",
+  },
+  {
+    id: "pf-pending",
+    title: "PF Pending List",
+    description: "Employees without PF number",
+    icon: FileSpreadsheet,
+    iconColor: "text-purple-600",
+  },
+  {
+    id: "attrition-rate",
+    title: "Attrition Rate",
+    description: "Monthly, quarterly, or yearly analysis",
+    icon: TrendingDown,
+    iconColor: "text-red-600",
+  },
+  {
+    id: "salary-comparison",
+    title: "Salary Comparison (Site-wise)",
+    description: "Compare current vs previous month",
+    icon: GitCompare,
+    iconColor: "text-cyan-600",
+  },
+]
 
 export default function MISReportsPage() {
+  const [selectedReport, setSelectedReport] = useState<ReportType | null>(null)
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -17,20 +73,50 @@ export default function MISReportsPage() {
           <p className="text-muted-foreground">Download comprehensive payroll and compliance reports</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SalaryReportCard />
-          <PayrollMISCard />
-          <ESICPendingCard />
-          <PFPendingCard />
-          <AttritionRateCard />
-          <SalaryComparisonCard />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Available Reports</CardTitle>
+            <CardDescription>Select a report to configure and download</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {reports.map((report) => {
+                const Icon = report.icon
+                return (
+                  <button
+                    key={report.id}
+                    onClick={() => setSelectedReport(report.id as ReportType)}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors text-left"
+                  >
+                    <Icon className={`h-5 w-5 ${report.iconColor}`} />
+                    <div className="flex-1">
+                      <p className="font-medium">{report.title}</p>
+                      <p className="text-sm text-muted-foreground">{report.description}</p>
+                    </div>
+                    <Download className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
+          <DialogContent className="max-w-md">
+            {selectedReport === "salary-report" && <SalaryReportDialog />}
+            {selectedReport === "payroll-mis" && <PayrollMISDialog />}
+            {selectedReport === "esic-pending" && <ESICPendingDialog />}
+            {selectedReport === "pf-pending" && <PFPendingDialog />}
+            {selectedReport === "attrition-rate" && <AttritionRateDialog />}
+            {selectedReport === "salary-comparison" && <SalaryComparisonDialog />}
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   )
 }
 
-function SalaryReportCard() {
+function SalaryReportDialog() {
   const [selectedMonth, setSelectedMonth] = useState<string>("")
   const [selectedYear, setSelectedYear] = useState<string>("")
   const [selectedOffice, setSelectedOffice] = useState<string>("")
@@ -58,70 +144,64 @@ function SalaryReportCard() {
       toast.error("Please select all filters")
       return
     }
-    // Mock download
     toast.success("Salary report downloaded successfully")
   }
 
   const isComplete = selectedMonth && selectedYear && selectedOffice
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Salary Report
-        </CardTitle>
-        <CardDescription>Component breakdown by employee</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={y}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedOffice} onValueChange={setSelectedOffice}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Office" />
-            </SelectTrigger>
-            <SelectContent>
-              {offices.map((o) => (
-                <SelectItem key={o} value={o}>
-                  {o}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <>
+      <DialogHeader>
+        <DialogTitle>Salary Report</DialogTitle>
+        <DialogDescription>Component breakdown by employee</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={y}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedOffice} onValueChange={setSelectedOffice}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Office" />
+          </SelectTrigger>
+          <SelectContent>
+            {offices.map((o) => (
+              <SelectItem key={o} value={o}>
+                {o}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button onClick={handleDownload} disabled={!isComplete} className="w-full gap-2">
           <Download className="h-4 w-4" />
           Download Excel
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   )
 }
 
-function PayrollMISCard() {
+function PayrollMISDialog() {
   const [selectedMonth, setSelectedMonth] = useState<string>("")
   const [selectedYear, setSelectedYear] = useState<string>("")
   const [selectedOffice, setSelectedOffice] = useState<string>("")
@@ -155,63 +235,58 @@ function PayrollMISCard() {
   const isComplete = selectedMonth && selectedYear && selectedOffice
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5" />
-          Payroll MIS
-        </CardTitle>
-        <CardDescription>Variance analysis report</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-3">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={y}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedOffice} onValueChange={setSelectedOffice}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Office" />
-            </SelectTrigger>
-            <SelectContent>
-              {offices.map((o) => (
-                <SelectItem key={o} value={o}>
-                  {o}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <>
+      <DialogHeader>
+        <DialogTitle>Payroll MIS</DialogTitle>
+        <DialogDescription>Variance analysis report</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={y}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedOffice} onValueChange={setSelectedOffice}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Office" />
+          </SelectTrigger>
+          <SelectContent>
+            {offices.map((o) => (
+              <SelectItem key={o} value={o}>
+                {o}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button onClick={handleDownload} disabled={!isComplete} className="w-full gap-2">
           <Download className="h-4 w-4" />
           Download Excel
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   )
 }
 
-function ESICPendingCard() {
+function ESICPendingDialog() {
   const [selectedMonth, setSelectedMonth] = useState<string>("")
   const [selectedYear, setSelectedYear] = useState<string>("")
 
@@ -243,51 +318,46 @@ function ESICPendingCard() {
   const isComplete = selectedMonth && selectedYear
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-orange-600" />
-          ESIC Pending List
-        </CardTitle>
-        <CardDescription>Employees without ESIC number</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={y}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <>
+      <DialogHeader>
+        <DialogTitle>ESIC Pending List</DialogTitle>
+        <DialogDescription>Employees without ESIC number</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={y}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button onClick={handleDownload} disabled={!isComplete} className="w-full gap-2">
           <Download className="h-4 w-4" />
           Download Excel
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   )
 }
 
-function PFPendingCard() {
+function PFPendingDialog() {
   const [selectedMonth, setSelectedMonth] = useState<string>("")
   const [selectedYear, setSelectedYear] = useState<string>("")
 
@@ -319,51 +389,46 @@ function PFPendingCard() {
   const isComplete = selectedMonth && selectedYear
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-blue-600" />
-          PF Pending List
-        </CardTitle>
-        <CardDescription>Employees without PF number</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={y}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <>
+      <DialogHeader>
+        <DialogTitle>PF Pending List</DialogTitle>
+        <DialogDescription>Employees without PF number</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={y}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button onClick={handleDownload} disabled={!isComplete} className="w-full gap-2">
           <Download className="h-4 w-4" />
           Download Excel
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   )
 }
 
-function AttritionRateCard() {
+function AttritionRateDialog() {
   const [period, setPeriod] = useState<string>("")
   const [selectedMonth, setSelectedMonth] = useState<string>("")
   const [selectedYear, setSelectedYear] = useState<string>("")
@@ -426,18 +491,15 @@ function AttritionRateCard() {
       (period === "yearly" && selectedYear))
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingDown className="h-5 w-5 text-red-600" />
-          Attrition Rate
-        </CardTitle>
-        <CardDescription>Monthly, quarterly, or yearly analysis</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <>
+      <DialogHeader>
+        <DialogTitle>Attrition Rate</DialogTitle>
+        <DialogDescription>Monthly, quarterly, or yearly analysis</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="h-9">
-            <SelectValue placeholder="Select period" />
+          <SelectTrigger>
+            <SelectValue placeholder="Select Period" />
           </SelectTrigger>
           <SelectContent>
             {periods.map((p) => (
@@ -449,10 +511,10 @@ function AttritionRateCard() {
         </Select>
 
         {period === "monthly" && (
-          <div className="grid grid-cols-2 gap-3">
+          <>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Month" />
+              <SelectTrigger>
+                <SelectValue placeholder="Select Month" />
               </SelectTrigger>
               <SelectContent>
                 {months.map((m) => (
@@ -463,8 +525,8 @@ function AttritionRateCard() {
               </SelectContent>
             </Select>
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Year" />
+              <SelectTrigger>
+                <SelectValue placeholder="Select Year" />
               </SelectTrigger>
               <SelectContent>
                 {years.map((y) => (
@@ -474,14 +536,14 @@ function AttritionRateCard() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </>
         )}
 
         {period === "quarterly" && (
-          <div className="grid grid-cols-2 gap-3">
+          <>
             <Select value={selectedQuarter} onValueChange={setSelectedQuarter}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Quarter" />
+              <SelectTrigger>
+                <SelectValue placeholder="Select Quarter" />
               </SelectTrigger>
               <SelectContent>
                 {quarters.map((q) => (
@@ -492,8 +554,8 @@ function AttritionRateCard() {
               </SelectContent>
             </Select>
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="Year" />
+              <SelectTrigger>
+                <SelectValue placeholder="Select Year" />
               </SelectTrigger>
               <SelectContent>
                 {years.map((y) => (
@@ -503,13 +565,13 @@ function AttritionRateCard() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </>
         )}
 
         {period === "yearly" && (
           <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Year" />
+            <SelectTrigger>
+              <SelectValue placeholder="Select Year" />
             </SelectTrigger>
             <SelectContent>
               {years.map((y) => (
@@ -525,12 +587,12 @@ function AttritionRateCard() {
           <Download className="h-4 w-4" />
           Download Excel
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   )
 }
 
-function SalaryComparisonCard() {
+function SalaryComparisonDialog() {
   const [selectedMonth, setSelectedMonth] = useState<string>("")
   const [selectedYear, setSelectedYear] = useState<string>("")
 
@@ -562,46 +624,41 @@ function SalaryComparisonCard() {
   const isComplete = selectedMonth && selectedYear
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <GitCompare className="h-5 w-5 text-purple-600" />
-          Salary Comparison (Site-wise)
-        </CardTitle>
-        <CardDescription>Compare current vs previous month</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Month" />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={selectedYear} onValueChange={setSelectedYear}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="Year" />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={y}>
-                  {y}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+    <>
+      <DialogHeader>
+        <DialogTitle>Salary Comparison (Site-wise)</DialogTitle>
+        <DialogDescription>Compare current vs previous month</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={y}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button onClick={handleDownload} disabled={!isComplete} className="w-full gap-2">
           <Download className="h-4 w-4" />
           Download Excel
         </Button>
-      </CardContent>
-    </Card>
+      </div>
+    </>
   )
 }
