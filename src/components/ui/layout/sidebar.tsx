@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon,Lock, Percent, Webhook, OctagonPause, BookLock, Upload, DollarSign, StickyNote, UserPenIcon, Users2, History, Shuffle } from "lucide-react"
+import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon, Lock, Percent, Webhook, OctagonPause, BookLock, Upload, DollarSign, StickyNote, UserPenIcon, Users2, History, Shuffle } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -11,30 +11,30 @@ const navigation = [
   // { name: "Attendance", href: "/attendance", icon: Clock },
   // { name: "Leave & LOP", href: "/leave", icon: Calendar },
   { name: "Manual Attendance Upload", href: "/manualAttendance", icon: Upload },
-
   { name: "Payroll Processing", href: "/payroll", icon: Calculator },
-  {name: 'Payroll History',href :"/payroll-history",icon:HistoryIcon},
+  { name: 'Payroll History', href: "/payroll-history", icon: HistoryIcon },
+   { name: "Salary Status", href: "/salary-status", icon: Lock },
+  { name: "Lock Salary", href: "/lockSalary", icon: BookLock },
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
   // { name: "Payslip Viewer", href: "/payslip", icon: Receipt },
   // { name: "Bank Disbursement", href: "/bank", icon: CreditCard },
   { name: "F&F Settlement", href: "/fnf", icon: UserX },
-  {name: "Salary Status",href:"/salary-status",icon:Lock},
+ 
   // {name :"Tax Declartions", href:"/taxRegime",icon:Percent},
   { name: "MIS Reports", href: "/reports", icon: BarChart3 },
-  {name:"Cycle Mapping",href:"/mapping",icon:Webhook},
-  {name:"Salary Hold/Unhold",href:"/salaryhold",icon:OctagonPause},
-  {name:"Lock Salary",href:"/lockSalary",icon:BookLock},
-  {name:"Tax calculator",href :"/taxCalculator",icon:DollarSign},
-  {name:"Form 16",href :"/form16",icon:StickyNote},
- {name:"Employee IT declaration",href:"/it-declaration",icon:UserPenIcon},
- {name:"IT Decarations",href:"/hr-itdeclarations",icon:Users2},
-{name:"Employee History",href:"/empHistory",icon:History},
-{name:"Employee Transfer",href:"/emptransfer",icon:Shuffle}
+  { name: "Cycle Mapping", href: "/mapping", icon: Webhook },
+  { name: "Salary Hold/Unhold", href: "/salaryhold", icon: OctagonPause },
+  { name: "Tax calculator", href: "/taxCalculator", icon: DollarSign },
+  { name: "Form 16", href: "/form16", icon: StickyNote },
+  { name: "Employee IT declaration", href: "/it-declaration", icon: UserPenIcon },
+  { name: "IT Decarations", href: "/hr-itdeclarations", icon: Users2 },
+  { name: "Employee History", href: "/empHistory", icon: History },
+  { name: "Employee Transfer", href: "/emptransfer", icon: Shuffle }
 
 
 
 
-  
+
 
 
 ]
