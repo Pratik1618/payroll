@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet } from "lucide-react"
+import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet, Clock } from "lucide-react"
 
 type ReportType =
   | "salary-report"
@@ -16,6 +16,7 @@ type ReportType =
   | "pf-pending"
   | "attrition-rate"
   | "salary-comparison"
+  | "pending-salary"
 
 const reports = [
   {
@@ -59,6 +60,13 @@ const reports = [
     description: "Compare current vs previous month",
     icon: GitCompare,
     iconColor: "text-cyan-600",
+  },
+  {
+    id: "pending-salary",
+    title: "Pending Salary Details",
+    description: "Salaries pending for disbursement",
+    icon: Clock,
+    iconColor: "text-amber-600",
   },
 ]
 
@@ -109,6 +117,7 @@ export default function MISReportsPage() {
             {selectedReport === "pf-pending" && <PFPendingDialog />}
             {selectedReport === "attrition-rate" && <AttritionRateDialog />}
             {selectedReport === "salary-comparison" && <SalaryComparisonDialog />}
+            {selectedReport === "pending-salary" && <PendingSalaryDialog />}
           </DialogContent>
         </Dialog>
       </div>
@@ -650,6 +659,110 @@ function SalaryComparisonDialog() {
             {years.map((y) => (
               <SelectItem key={y} value={y}>
                 {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button onClick={handleDownload} disabled={!isComplete} className="w-full gap-2">
+          <Download className="h-4 w-4" />
+          Download Excel
+        </Button>
+      </div>
+    </>
+  )
+}
+
+function PendingSalaryDialog() {
+  const [selectedMonth, setSelectedMonth] = useState<string>("")
+  const [selectedYear, setSelectedYear] = useState<string>("")
+  const [selectedSite, setSelectedSite] = useState<string>("")
+
+  const months = [
+    { value: "01", label: "January" },
+    { value: "02", label: "February" },
+    { value: "03", label: "March" },
+    { value: "04", label: "April" },
+    { value: "05", label: "May" },
+    { value: "06", label: "June" },
+    { value: "07", label: "July" },
+    { value: "08", label: "August" },
+    { value: "09", label: "September" },
+    { value: "10", label: "October" },
+    { value: "11", label: "November" },
+    { value: "12", label: "December" },
+  ]
+
+  const years = ["2024", "2025", "2026"]
+  const sites = ["All Sites", "Site A", "Site B", "Site C", "Site D"]
+
+  const handleDownload = () => {
+    if (!selectedMonth || !selectedYear || !selectedSite) {
+      toast.error("Please select all filters")
+      return
+    }
+
+    // Generate mock CSV data for pending salaries
+    const csvHeader = "Employee ID,Employee Name,Site,Gross Salary,Deductions,Net Salary,Status,Pending Since\n"
+    const csvData = [
+      "EMP001,John Doe,Site A,45000,5000,40000,Pending,2024-11-15",
+      "EMP002,Jane Smith,Site B,38000,4200,33800,Pending,2024-11-20",
+      "EMP003,Mike Johnson,Site A,52000,6500,45500,Pending,2024-11-18",
+    ].join("\n")
+
+    const blob = new Blob([csvHeader + csvData], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `pending-salary-${selectedMonth}-${selectedYear}-${selectedSite.replace(/\s+/g, "-")}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+
+    toast.success("Pending salary report downloaded successfully")
+  }
+
+  const isComplete = selectedMonth && selectedYear && selectedSite
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Pending Salary Details</DialogTitle>
+        <DialogDescription>Salaries pending for disbursement</DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Month" />
+          </SelectTrigger>
+          <SelectContent>
+            {months.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Year" />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={y}>
+                {y}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedSite} onValueChange={setSelectedSite}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select Site" />
+          </SelectTrigger>
+          <SelectContent>
+            {sites.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
               </SelectItem>
             ))}
           </SelectContent>
