@@ -19,6 +19,7 @@ export function Header() {
 
   const handleRoleChange = (role: "Payroll Team" | "Employee") => {
     setCurrentRole(role)
+    localStorage.setItem('role',role)
     toast.success(`Role switched to ${role}`)
   }
   return (

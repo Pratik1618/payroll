@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet, Clock } from "lucide-react"
+import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet, Clock, Users } from "lucide-react"
 
 type ReportType =
   | "salary-report"
@@ -17,6 +17,7 @@ type ReportType =
   | "attrition-rate"
   | "salary-comparison"
   | "pending-salary"
+  | "employee-dump"
 
 const reports = [
   {
@@ -68,6 +69,13 @@ const reports = [
     icon: Clock,
     iconColor: "text-amber-600",
   },
+   {
+    id: "employee-dump",
+    title: "Employee Dump",
+    description: "All information of employee",
+    icon: Users,
+    iconColor: "text-emerald-600",
+  },
 ]
 
 export default function MISReportsPage() {
@@ -93,7 +101,14 @@ export default function MISReportsPage() {
                 return (
                   <button
                     key={report.id}
-                    onClick={() => setSelectedReport(report.id as ReportType)}
+                   onClick={() => {
+  if (report.id === "employee-dump") {
+    downloadEmployeeDump()
+  } else {
+    setSelectedReport(report.id as ReportType)
+  }
+}}
+
                     className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors text-left"
                   >
                     <Icon className={`h-5 w-5 ${report.iconColor}`} />
@@ -774,4 +789,47 @@ function PendingSalaryDialog() {
       </div>
     </>
   )
+}
+import * as XLSX from "xlsx"
+
+function downloadEmployeeDump() {
+  // 🔹 Mock data – replace with API data later
+  const employees = [
+    {
+      EmpCode: "EMP001",
+      Name: "Ramesh Patil",
+      Aadhaar: "XXXX-XXXX-1234",
+      PAN: "ABCDE1234F",
+      Mobile: "9876543210",
+      Address: "Mumbai, Maharashtra",
+      Site: "Site A",
+      Designation: "Security Guard",
+      GrossSalary: 18000,
+      NetSalary: 15500,
+      DOJ: "2022-06-15",
+      Status: "Active",
+    },
+    {
+      EmpCode: "EMP002",
+      Name: "Suresh Kale",
+      Aadhaar: "XXXX-XXXX-5678",
+      PAN: "PQRSX5678Z",
+      Mobile: "9123456780",
+      Address: "Pune, Maharashtra",
+      Site: "Site B",
+      Designation: "Supervisor",
+      GrossSalary: 22000,
+      NetSalary: 19000,
+      DOJ: "2021-03-10",
+      Status: "Active",
+    },
+  ]
+
+  const worksheet = XLSX.utils.json_to_sheet(employees)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Employees")
+
+  XLSX.writeFile(workbook, "Employee_Dump.xlsx")
+
+  toast.success("Employee dump downloaded successfully")
 }

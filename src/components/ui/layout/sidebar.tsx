@@ -7,7 +7,7 @@ import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, User
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Employee Master", href: "/employee", icon: Users },
+  // { name: "Employee Master", href: "/employee", icon: Users },
   // { name: "Attendance", href: "/attendance", icon: Clock },
   // { name: "Leave & LOP", href: "/leave", icon: Calendar },
   { name: "Manual Attendance Upload", href: "/manualAttendance", icon: Upload },
