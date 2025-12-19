@@ -25,6 +25,8 @@ type SalaryRecord = {
   earnings: SalaryComponent[]
   deductionsList: SalaryComponent[]
   status: "Paid" | "Pending" | "Hold"
+  client: string
+  site: string
 }
 
 type Employee = {
@@ -65,6 +67,8 @@ const mockEmployees: Employee[] = [
           { name: "TDS", amount: 2600 },
         ],
         status: "Paid",
+        client: "ABC Corp",
+        site: "Mumbai",
       },
       {
         id: "s2",
@@ -86,6 +90,8 @@ const mockEmployees: Employee[] = [
           { name: "TDS", amount: 2600 },
         ],
         status: "Paid",
+        client: "ABC Corp",
+        site: "Mumbai",
       },
       {
         id: "s3",
@@ -107,6 +113,8 @@ const mockEmployees: Employee[] = [
           { name: "TDS", amount: 2760 },
         ],
         status: "Paid",
+        client: "XYZ Ltd",
+        site: "Delhi",
       },
     ],
   },
@@ -137,6 +145,8 @@ const mockEmployees: Employee[] = [
           { name: "TDS", amount: 2400 },
         ],
         status: "Paid",
+        client: "DEF Inc",
+        site: "Bangalore",
       },
     ],
   },
@@ -321,6 +331,16 @@ export default function EmployeeHistoryPage() {
                               <p className="font-medium text-primary">₹{salary.netSalary.toLocaleString("en-IN")}</p>
                             </div>
                           </div>
+                          <div className="flex gap-4 text-sm mt-2">
+                            <div>
+                              <p className="text-muted-foreground">Client</p>
+                              <p className="font-medium">{salary.client}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Site</p>
+                              <p className="font-medium">{salary.site}</p>
+                            </div>
+                          </div>
                         </div>
                         <Button variant="outline" size="sm" onClick={() => handleViewDetails(salary)}>
                           <Eye className="h-4 w-4 mr-2" />
@@ -363,6 +383,16 @@ export default function EmployeeHistoryPage() {
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground mb-1">Net Salary</p>
                   <p className="text-2xl font-bold text-primary">₹{selectedSalary.netSalary.toLocaleString("en-IN")}</p>
+                </div>
+              </div>
+              <div className="flex justify-center gap-8 p-4 bg-accent/50 rounded-lg mt-4">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Client</p>
+                  <p className="text-lg font-semibold">{selectedSalary.client}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-1">Site</p>
+                  <p className="text-lg font-semibold">{selectedSalary.site}</p>
                 </div>
               </div>
 

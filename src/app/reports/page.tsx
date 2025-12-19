@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet, Clock, Users } from "lucide-react"
+import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet, Clock, Users, Award, BarChart4, Layers, Network, Diff, BadgeCheck, ShieldCheck, FileWarning, IndianRupee, RefreshCcw, Ban, AlertTriangle, Lock } from "lucide-react"
 
 type ReportType =
   | "salary-report"
@@ -18,6 +18,25 @@ type ReportType =
   | "salary-comparison"
   | "pending-salary"
   | "employee-dump"
+
+  | "age-58-locking"
+  | "age-report"
+  | "blacklisted-employee"
+  | "rejoin-employee"
+  | "gratuity-report"
+  | "monthly-left-employee"
+  | "employee-of-month"
+  | "double-joining-block"
+  | "zone-wise-executive-mapping"
+  | "police-verification"
+  | "bvg-employee-validity"
+  | "minimum-wages-not-updated"
+  | "bvg-positive-negative"
+  | "salary-unpaid"
+  | "region-wise-manpower"
+  | "site-mapping-hierarchy"
+  | "left-45-days-lock"
+  | "under-18-employee"
 
 const reports = [
   {
@@ -69,12 +88,136 @@ const reports = [
     icon: Clock,
     iconColor: "text-amber-600",
   },
-   {
+  {
     id: "employee-dump",
     title: "Employee Dump",
     description: "All information of employee",
     icon: Users,
     iconColor: "text-emerald-600",
+  },
+  {
+    id: "age-58-locking",
+    title: "58 Years Age Locking",
+    description: "Employees auto-locked after 58 years",
+    icon: Lock,
+    iconColor: "text-red-700",
+  },
+  {
+    id: "age-report",
+    title: "Age Report",
+    description: "Employee age-wise listing",
+    icon: Users,
+    iconColor: "text-indigo-600",
+  },
+  {
+    id: "under-18-employee",
+    title: "Under 18 Employees",
+    description: "Compliance check for minors",
+    icon: AlertTriangle,
+    iconColor: "text-red-600",
+  },
+
+  // 🔹 Employee Lifecycle
+  {
+    id: "blacklisted-employee",
+    title: "Blacklisted Employees",
+    description: "Marked blacklisted employees",
+    icon: Ban,
+    iconColor: "text-black",
+  },
+  {
+    id: "rejoin-employee",
+    title: "Re-Joining Employee Report",
+    description: "Employees who joined again",
+    icon: RefreshCcw,
+    iconColor: "text-green-600",
+  },
+  {
+    id: "left-45-days-lock",
+    title: "Left Employee 45 Days Lock",
+    description: "Auto lock after 45 days",
+    icon: Clock,
+    iconColor: "text-orange-600",
+  },
+  {
+    id: "monthly-left-employee",
+    title: "Monthly Left Employees",
+    description: "Region & site-wise exit list",
+    icon: TrendingDown,
+    iconColor: "text-rose-600",
+  },
+
+  // 🔹 Salary / Payroll
+  {
+    id: "salary-unpaid",
+    title: "Salary Unpaid",
+    description: "Employees with unpaid salary",
+    icon: IndianRupee,
+    iconColor: "text-red-600",
+  },
+  {
+    id: "minimum-wages-not-updated",
+    title: "Minimum Wages Not Updated",
+    description: "State & central mismatch",
+    icon: FileWarning,
+    iconColor: "text-yellow-600",
+  },
+
+  // 🔹 Compliance / Verification
+  {
+    id: "police-verification",
+    title: "Police Verification Status",
+    description: "Verification number & validity",
+    icon: ShieldCheck,
+    iconColor: "text-blue-700",
+  },
+  {
+    id: "bvg-employee-validity",
+    title: "BGV Employee Validity",
+    description: "BVG number & validity dates",
+    icon: BadgeCheck,
+    iconColor: "text-emerald-600",
+  },
+  {
+    id: "bvg-positive-negative",
+    title: "BGV Positive / Negative Report",
+    description: "Employee status (+ / -)",
+    icon: Diff,
+    iconColor: "text-cyan-600",
+  },
+
+  // 🔹 Mapping / Hierarchy
+  {
+    id: "zone-wise-executive-mapping",
+    title: "Zone-wise Executive Mapping",
+    description: "OE → RM → AVP → VP",
+    icon: Network,
+    iconColor: "text-indigo-700",
+  },
+  {
+    id: "site-mapping-hierarchy",
+    title: "Site Mapping Hierarchy",
+    description: "Level 1 to Level 4 mapping",
+    icon: Layers,
+    iconColor: "text-purple-600",
+  },
+
+  // 🔹 Analytics
+  {
+    id: "region-wise-manpower",
+    title: "Region-wise Manpower Count",
+    description: "West, North, South, East",
+    icon: BarChart4,
+    iconColor: "text-teal-600",
+  },
+
+  // 🔹 RnR
+  {
+    id: "employee-of-month",
+    title: "Employee of the Month",
+    description: "RNR certificate generation",
+    icon: Award,
+    iconColor: "text-yellow-600",
   },
 ]
 
@@ -95,19 +238,19 @@ export default function MISReportsPage() {
             <CardDescription>Select a report to configure and download</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {reports.map((report) => {
                 const Icon = report.icon
                 return (
                   <button
                     key={report.id}
-                   onClick={() => {
-  if (report.id === "employee-dump") {
-    downloadEmployeeDump()
-  } else {
-    setSelectedReport(report.id as ReportType)
-  }
-}}
+                    onClick={() => {
+                      if (report.id === "employee-dump") {
+                        downloadEmployeeDump()
+                      } else {
+                        setSelectedReport(report.id as ReportType)
+                      }
+                    }}
 
                     className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors text-left"
                   >
