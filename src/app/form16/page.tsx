@@ -88,144 +88,148 @@ const pdfStyles = StyleSheet.create({
 
 // ---------- PDF Document Component ----------
 function Form16PDF({ data, periodLabel }: { data: any; periodLabel: string }) {
-  // data contains computed annual numbers and tax computations
   return (
     <Document>
-      <Page size="A4" style={pdfStyles.page}>
-        <View style={pdfStyles.header}>
-          <Text style={pdfStyles.title}>FORM 16 — PART B (ESTIMATE)</Text>
-          <Text>{periodLabel}</Text>
-        </View>
+      <Page size="A4" style={{ padding: 24, fontSize: 9, lineHeight: 1.4 }}>
 
-        <View style={pdfStyles.section}>
-          <Text style={{ fontSize: 11, fontWeight: "bold" }}>Employee Details</Text>
-          <View style={{ marginTop: 6 }}>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Name</Text>
-              <Text style={pdfStyles.value}>{data.empName}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>PAN</Text>
-              <Text style={pdfStyles.value}>{data.pan || "-"}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Employee Code</Text>
-              <Text style={pdfStyles.value}>{data.empCode || "-"}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Designation</Text>
-              <Text style={pdfStyles.value}>{data.designation || "-"}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Site</Text>
-              <Text style={pdfStyles.value}>{data.site || "-"}</Text>
-            </View>
-          </View>
-        </View>
+        {/* ================= FORM 16 HEADER ================= */}
+        <Text style={{ textAlign: "center", fontWeight: "bold" }}>
+          FORM NO.16
+        </Text>
+        <Text style={{ textAlign: "center" }}>
+          [See rule 31 (1) (a)]
+        </Text>
 
-        <View style={pdfStyles.section}>
-          <Text style={{ fontSize: 11, fontWeight: "bold" }}>Salary (Annual)</Text>
-          <View style={{ marginTop: 6 }}>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Basic</Text>
-              <Text style={pdfStyles.value}>₹{data.basic.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>HRA</Text>
-              <Text style={pdfStyles.value}>₹{data.hra.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Conveyance</Text>
-              <Text style={pdfStyles.value}>₹{data.conveyance.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Special Allowance</Text>
-              <Text style={pdfStyles.value}>₹{data.special.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Other Allowances (incl. medical, bonus)</Text>
-              <Text style={pdfStyles.value}>₹{data.other.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={{ fontWeight: "bold" }}>Gross Total Income</Text>
-              <Text style={{ fontWeight: "bold" }}>₹{data.gross.toLocaleString()}</Text>
-            </View>
-          </View>
-        </View>
+        <Text style={{ textAlign: "center", fontWeight: "bold", marginTop: 6 }}>
+          Part A
+        </Text>
 
-        <View style={pdfStyles.section}>
-          <Text style={{ fontSize: 11, fontWeight: "bold" }}>Deductions (Annual)</Text>
-          <View style={{ marginTop: 6 }}>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Employee PF</Text>
-              <Text style={pdfStyles.value}>₹{data.pfAnnual.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>ESIC</Text>
-              <Text style={pdfStyles.value}>₹{data.esicAnnual.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Professional Tax</Text>
-              <Text style={pdfStyles.value}>₹{data.ptAnnual.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>LWF</Text>
-              <Text style={pdfStyles.value}>₹{data.lwfAnnual.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={{ fontWeight: "bold" }}>Total Deductions</Text>
-              <Text style={{ fontWeight: "bold" }}>₹{data.totalDeductions.toLocaleString()}</Text>
-            </View>
-          </View>
-        </View>
+        <Text style={{ marginTop: 6 }}>
+          Certificate under section 203 of the Income Tax Act, 1961 for tax deducted
+          at source from income chargeable under the head “Salaries”
+        </Text>
 
-        <View style={pdfStyles.section}>
-          <Text style={{ fontSize: 11, fontWeight: "bold" }}>Tax Computation</Text>
-          <View style={{ marginTop: 6 }}>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Gross Total Income</Text>
-              <Text style={pdfStyles.value}>₹{data.gross.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={pdfStyles.label}>Less: Deductions</Text>
-              <Text style={pdfStyles.value}>₹{data.totalDeductions.toLocaleString()}</Text>
-            </View>
-            <View style={pdfStyles.tableRow}>
-              <Text style={{ fontWeight: "bold" }}>Taxable Income</Text>
-              <Text style={{ fontWeight: "bold" }}>₹{data.taxableIncome.toLocaleString()}</Text>
-            </View>
+        {/* ================= STATIC PART A (FILLED + EMPTY TABLES) ================= */}
 
-            <View style={{ marginTop: 6, marginBottom: 4 }}>
-              <Text style={{ fontSize: 10, fontWeight: "bold" }}>Tax under Old Regime</Text>
-              <View style={pdfStyles.tableRow}>
-                <Text style={pdfStyles.label}>Tax Liability (incl. cess)</Text>
-                <Text style={pdfStyles.value}>₹{data.oldTax.toLocaleString()}</Text>
-              </View>
-              <View style={pdfStyles.tableRow}>
-                <Text style={pdfStyles.label}>Monthly TDS (approx)</Text>
-                <Text style={pdfStyles.value}>₹{Math.round(data.oldTax / 12).toLocaleString()}</Text>
-              </View>
-            </View>
+        <Text style={{ marginTop: 8 }}>
+          Name and address of the employer
+        </Text>
+        <Text>I Smart Facitech Private Ltd</Text>
+        <Text>Mumbai – 400037</Text>
 
-            <View style={{ marginTop: 6 }}>
-              <Text style={{ fontSize: 10, fontWeight: "bold" }}>Tax under New Regime</Text>
-              <View style={pdfStyles.tableRow}>
-                <Text style={pdfStyles.label}>Tax Liability (incl. cess)</Text>
-                <Text style={pdfStyles.value}>₹{data.newTax.toLocaleString()}</Text>
-              </View>
-              <View style={pdfStyles.tableRow}>
-                <Text style={pdfStyles.label}>Monthly TDS (approx)</Text>
-                <Text style={pdfStyles.value}>₹{Math.round(data.newTax / 12).toLocaleString()}</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+        <Text style={{ marginTop: 6 }}>
+          Name and Designation of the employee
+        </Text>
+        <Text>{data.empName}</Text>
+        <Text>{data.designation}</Text>
 
-        <View style={pdfStyles.footer}>
-          <Text>Amount in words: {toWords(data.taxableIncome || 0)} rupees only.</Text>
-          <Text style={{ marginTop: 8 }}>For employer use only. This is a system-generated estimate based on payroll data.</Text>
-          <Text style={{ marginTop: 12 }}>Place: ___________________      Signature: ___________________</Text>
-        </View>
+        <Text style={{ marginTop: 6 }}>
+          PAN of the Deductor : AAKCC4528J
+        </Text>
+        <Text>
+          TAN of the Deductor : MUMC28808D
+        </Text>
+        <Text>
+          PAN of the Employee : {data.pan || "-"}
+        </Text>
+
+        <Text style={{ marginTop: 6 }}>
+          Assessment Year : {periodLabel.replace("FY ", "")}
+        </Text>
+
+        <Text style={{ marginTop: 10, fontWeight: "bold" }}>
+          Summary of amount paid / credited and tax deducted at source
+        </Text>
+
+        {["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"].map((q) => (
+          <Text key={q}>{q} : -</Text>
+        ))}
+
+        {/* ================= PART B ================= */}
+
+        <Text style={{ marginTop: 12, fontWeight: "bold" }}>
+          Part B (Annexure)
+        </Text>
+
+        <Text style={{ marginTop: 4 }}>
+          DETAILS OF SALARY PAID AND ANY OTHER INCOME AND TAX DEDUCTED
+        </Text>
+
+        {/* 1. Gross Salary */}
+        <Text style={{ marginTop: 6 }}>
+          1. Gross Salary
+        </Text>
+        <Text>(a) Salary as per section 17(1) : ₹ {data.gross.toLocaleString("en-IN")}</Text>
+        <Text>(b) Value of perquisites u/s 17(2) : -</Text>
+        <Text>(c) Profits in lieu of salary u/s 17(3) : -</Text>
+        <Text>(d) Total : ₹ {data.gross.toLocaleString("en-IN")}</Text>
+
+        {/* 2. Exemptions */}
+        <Text style={{ marginTop: 6 }}>
+          2. Less : Allowance exempt under section 10 : -
+        </Text>
+
+        {/* 3. Balance */}
+        <Text style={{ marginTop: 6 }}>
+          3. Balance (1 - 2) : ₹ {data.gross.toLocaleString("en-IN")}
+        </Text>
+
+        {/* 4. Deductions */}
+        <Text style={{ marginTop: 6 }}>
+          4. Deductions
+        </Text>
+        <Text>(a) Standard Deduction : ₹ 50,000</Text>
+        <Text>(b) Entertainment Allowance : -</Text>
+        <Text>(c) Tax on Employment : ₹ {data.ptAnnual.toLocaleString("en-IN")}</Text>
+
+        <Text>
+          5. Aggregate of 4(a to c) : ₹ {(50000 + data.ptAnnual).toLocaleString("en-IN")}
+        </Text>
+
+        {/* 6. Income under Salary */}
+        <Text style={{ marginTop: 6 }}>
+          6. Income chargeable under the head Salaries :
+          ₹ {data.taxableIncome.toLocaleString("en-IN")}
+        </Text>
+
+        {/* 7 & 8 */}
+        <Text style={{ marginTop: 6 }}>
+          7. Add : Any other income : -
+        </Text>
+        <Text>
+          8. Gross Total Income : ₹ {data.taxableIncome.toLocaleString("en-IN")}
+        </Text>
+
+        {/* 9. Chapter VI-A */}
+        <Text style={{ marginTop: 6 }}>
+          9. Deductions under Chapter VI-A
+        </Text>
+        <Text>Section 80C (PF) : ₹ {data.pfAnnual.toLocaleString("en-IN")}</Text>
+
+        {/* 10 - 20 */}
+        <Text style={{ marginTop: 6 }}>
+          10. Total deductions : ₹ {data.pfAnnual.toLocaleString("en-IN")}
+        </Text>
+        <Text>
+          11. Total Income : ₹ {(data.taxableIncome - data.pfAnnual).toLocaleString("en-IN")}
+        </Text>
+        <Text>12. Tax on total income : ₹ {data.oldTax.toLocaleString("en-IN")}</Text>
+        <Text>13. Rebate u/s 87A : -</Text>
+        <Text>14. Tax payable : ₹ {data.oldTax.toLocaleString("en-IN")}</Text>
+        <Text>15. Education & Health Cess @4% : Included</Text>
+        <Text>16. Tax payable : ₹ {data.oldTax.toLocaleString("en-IN")}</Text>
+        <Text>19. Tax deducted at source u/s 192 : ₹ {data.oldTax.toLocaleString("en-IN")}</Text>
+        <Text>20. Tax payable / refundable : -</Text>
+
+        {/* ================= VERIFICATION ================= */}
+        <Text style={{ marginTop: 12 }}>
+          I hereby certify that the information given above is true and correct.
+        </Text>
+
+        <Text style={{ marginTop: 16 }}>
+          Signature & Seal of the person responsible for deduction of tax
+        </Text>
+
       </Page>
     </Document>
   );
@@ -406,7 +410,14 @@ yearly.gross =
                       <Button>{loading ? "Preparing PDF..." : "Download PDF"}</Button>
                     )}
                   </PDFDownloadLink>
+                  
                 )}
+                <Button
+  variant="outline"
+  onClick={() => downloadForm16Excel(previewData)}
+>
+  Download Form 16 (Excel)
+</Button>
               </div>
             </div>
           </CardContent>
@@ -562,3 +573,44 @@ function Row({
     </div>
   )
 }
+
+
+import ExcelJS from "exceljs";
+
+async function downloadForm16Excel(previewData: any) {
+  const response = await fetch("/templates/Form16_FIXED.xlsx");
+  const buffer = await response.arrayBuffer();
+
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+
+  const sheet = workbook.worksheets[0]
+  const dataSheet = workbook.getWorksheet("DATA");
+  if (!dataSheet) throw new Error("DATA sheet not found");
+
+  // ✅ Fill values (styles remain untouched)
+  sheet.getCell("G8").value = previewData.empName;        // 👈 employee name
+  sheet.getCell("G9").value = previewData.designation;
+  dataSheet.getCell("B2").value = previewData.gross;
+  dataSheet.getCell("B3").value = previewData.ptAnnual;
+  dataSheet.getCell("B4").value = previewData.pfAnnual;
+  dataSheet.getCell("B5").value = 0;
+  dataSheet.getCell("B6").value = previewData.oldTax;
+  dataSheet.getCell("B7").value = previewData.oldTax;
+
+  // 🔽 Export
+  const outBuffer = await workbook.xlsx.writeBuffer();
+
+  const blob = new Blob([outBuffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Form16_${previewData.empName.replace(/\s+/g, "_")}.xlsx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+
