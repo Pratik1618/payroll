@@ -115,7 +115,7 @@ export default function ReportsPage() {
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-3xl font-bold text-slate-900">
-                            Reports & Analytics
+                            Analytics
                         </h1>
                         <p className="text-slate-500 mt-1">
                             Comprehensive payroll and workforce analytics
@@ -349,8 +349,10 @@ export default function ReportsPage() {
                                                 cy="50%"
                                                 outerRadius={100}
                                                 dataKey="payroll"
-                                                label={({ site, payroll }) =>
-                                                    `${site}: ${formatAxisAmount(payroll)}`
+                                                label={({ payload }) =>
+                                                    payload
+                                                        ? `${payload.site}: ${formatAxisAmount(payload.payroll)}`
+                                                        : ""
                                                 }
                                             >
                                                 {siteWiseData.map((entry, index) => (
@@ -358,10 +360,10 @@ export default function ReportsPage() {
                                                 ))}
                                             </Pie>
                                             <Tooltip
-                                              formatter={(value) => [
-    formatTooltipAmount(Number(value)),
-    "Payroll",
-  ]}
+                                                formatter={(value) => [
+                                                    formatTooltipAmount(Number(value)),
+                                                    "Payroll",
+                                                ]}
                                                 contentStyle={{
                                                     backgroundColor: "#ffffff",
                                                     border: "1px solid #e5e7eb",

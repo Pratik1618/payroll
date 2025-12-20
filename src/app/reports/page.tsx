@@ -276,6 +276,8 @@ export default function MISReportsPage() {
             {selectedReport === "attrition-rate" && <AttritionRateDialog />}
             {selectedReport === "salary-comparison" && <SalaryComparisonDialog />}
             {selectedReport === "pending-salary" && <PendingSalaryDialog />}
+            {selectedReport === "employee-of-month" && <EmployeeOfMonthDialog />}
+
           </DialogContent>
         </Dialog>
       </div>
@@ -934,6 +936,7 @@ function PendingSalaryDialog() {
   )
 }
 import * as XLSX from "xlsx"
+import { EmployeeOfMonthDialog } from "@/components/ui/mis/employee-of-month/employee-of-month-dialog"
 
 function downloadEmployeeDump() {
   // 🔹 Mock data – replace with API data later
