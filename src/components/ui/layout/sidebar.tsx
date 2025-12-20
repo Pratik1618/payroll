@@ -30,7 +30,7 @@ const navigation = [
   { name: "IT Decarations", href: "/hr-itdeclarations", icon: Users2 },
   { name: "Employee History", href: "/empHistory", icon: History },
   { name: "Employee Transfer", href: "/emptransfer", icon: Shuffle },
-  {name:"Analaytics",href:"/analytics",icon:ChartPieIcon}
+  {name:"Analytics",href:"/analytics",icon:ChartPieIcon}
 
 
 
