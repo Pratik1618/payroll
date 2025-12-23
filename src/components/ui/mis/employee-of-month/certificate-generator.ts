@@ -26,21 +26,21 @@ export function generateCertificate({
     ctx.fillStyle = "#1f3d2b"
 
     ctx.font = "bold 64px serif"
-    ctx.fillText(employeeName, centerX, 720, canvas.width - 600)
+    ctx.fillText(employeeName, centerX, 467, canvas.width - 600)
 
     ctx.font = "32px serif"
     ctx.fillText(
       `Client: ${clientName}  |  Site: ${siteName}`,
       centerX,
-      930
+      630
     )
 
     ctx.textAlign = "left"
     ctx.font = "26px serif"
     ctx.fillText(
       new Date().toLocaleDateString("en-IN"),
-      420,
-      1180
+      300,
+      900
     )
 
     const link = document.createElement("a")
