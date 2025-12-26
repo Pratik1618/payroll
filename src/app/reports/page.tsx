@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
-import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet, Clock, Users, Award, BarChart4, Layers, Network, Diff, BadgeCheck, ShieldCheck, FileWarning, IndianRupee, RefreshCcw, Ban, AlertTriangle, Lock } from "lucide-react"
+import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet, Clock, Users, Award, BarChart4, Layers, Network, Diff, BadgeCheck, ShieldCheck, FileWarning, IndianRupee, RefreshCcw, Ban, AlertTriangle, Lock, UserPlus, ClockPlus } from "lucide-react"
 
 type ReportType =
   | "salary-report"
@@ -249,7 +249,7 @@ const reports = [
   id: "today-emp-id-generated",
   title: "Employees Created Today",
   description: "Employee IDs generated today",
-  icon: Users,
+  icon: ClockPlus,
   iconColor: "text-indigo-700",
 }
 
@@ -602,8 +602,8 @@ function PFPendingDialog() {
   return (
     <>
       <DialogHeader>
-        <DialogTitle>PF Pending List</DialogTitle>
-        <DialogDescription>Employees without PF number</DialogDescription>
+        <DialogTitle>UAN Pending List</DialogTitle>
+        <DialogDescription>Employees without UAN number</DialogDescription>
       </DialogHeader>
       <div className="space-y-4">
         <Select value={selectedMonth} onValueChange={setSelectedMonth}>
