@@ -40,6 +40,7 @@ type ReportType =
   | "mediclaim-report"
   | "esic-family-report"
   | "last-month-processed-current-not"
+  | "today-emp-id-generated"
 
 
 const reports = [
@@ -243,7 +244,15 @@ const reports = [
   description: "Employees processed last month but missing this month",
   icon: AlertTriangle,
   iconColor: "text-red-700",
+},
+{
+  id: "today-emp-id-generated",
+  title: "Employees Created Today",
+  description: "Employee IDs generated today",
+  icon: Users,
+  iconColor: "text-indigo-700",
 }
+
 ]
 
 
