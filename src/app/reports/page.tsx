@@ -66,8 +66,8 @@ const reports = [
   },
   {
     id: "pf-pending",
-    title: "PF Pending List",
-    description: "Employees without PF number",
+    title: "UAN Pending List",
+    description: "Employees without UAN number",
     icon: FileSpreadsheet,
     iconColor: "text-purple-600",
   },
