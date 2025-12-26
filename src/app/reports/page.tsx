@@ -37,6 +37,10 @@ type ReportType =
   | "site-mapping-hierarchy"
   | "left-45-days-lock"
   | "under-18-employee"
+  | "mediclaim-report"
+  | "esic-family-report"
+  | "last-month-processed-current-not"
+
 
 const reports = [
   {
@@ -205,7 +209,7 @@ const reports = [
   // 🔹 Analytics
   {
     id: "region-wise-manpower",
-    title: "Region-wise Manpower Count",
+    title: "Region-wise(designation/Gender) Manpower Count",
     description: "West, North, South, East",
     icon: BarChart4,
     iconColor: "text-teal-600",
@@ -219,7 +223,29 @@ const reports = [
     icon: Award,
     iconColor: "text-yellow-600",
   },
+  {
+    id: "mediclaim-report",
+    title: "Mediclaim Eligibility Report",
+    description: "Family coverage based on gross salary",
+    icon: ShieldCheck,
+    iconColor: "text-green-700",
+  },
+  {
+    id: "esic-family-report",
+    title: "ESIC Family Coverage",
+    description: "Unlimited children allowed",
+    icon: Users,
+    iconColor: "text-blue-700",
+  },
+  {
+  id: "last-month-processed-current-not",
+  title: "Payroll Gap Report (Previous vs Current Month)",
+  description: "Employees processed last month but missing this month",
+  icon: AlertTriangle,
+  iconColor: "text-red-700",
+}
 ]
+
 
 export default function MISReportsPage() {
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null)
@@ -238,7 +264,7 @@ export default function MISReportsPage() {
             <CardDescription>Select a report to configure and download</CardDescription>
           </CardHeader>
           <CardContent>
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {reports.map((report) => {
                 const Icon = report.icon
                 return (
@@ -247,6 +273,13 @@ export default function MISReportsPage() {
                     onClick={() => {
                       if (report.id === "employee-dump") {
                         downloadEmployeeDump()
+                      }
+                     else if (report.id === "mediclaim-report") {
+                        downloadMediclaimReport()
+                      }
+
+                     else  if (report.id === "esic-family-report") {
+                        downloadESICReport()
                       } else {
                         setSelectedReport(report.id as ReportType)
                       }
@@ -978,4 +1011,203 @@ function downloadEmployeeDump() {
   XLSX.writeFile(workbook, "Employee_Dump.xlsx")
 
   toast.success("Employee dump downloaded successfully")
+}
+
+type Child = {
+  name: string
+  gender: "Male" | "Female"
+  age: number
+}
+
+type Employee = {
+  empCode: string
+  name: string
+  grossSalary: number
+  spouse?: string
+  parents?: {
+    father?: string
+    mother?: string
+  }
+  children: Child[]
+}
+
+const employees: Employee[] = [
+  {
+    empCode: "EMP001",
+    name: "Ramesh Patil",
+    grossSalary: 23000,
+    spouse: "Sunita Patil",
+    parents: {
+      father: "Vasant Patil",
+      mother: "Lata Patil",
+    },
+    children: [
+      { name: "Aarav Patil", gender: "Male", age: 8 },
+      { name: "Anaya Patil", gender: "Female", age: 5 },
+      { name: "Extra Child", gender: "Male", age: 3 }, // ❌ ignored for mediclaim
+    ],
+  },
+  {
+    empCode: "EMP002",
+    name: "Suresh Kale",
+    grossSalary: 18000,
+    spouse: "Meena Kale",
+    parents: {
+      father: "Raghunath Kale",
+      mother: "Shanta Kale",
+    },
+    children: [
+      { name: "Child 1", gender: "Male", age: 10 },
+      { name: "Child 2", gender: "Female", age: 7 },
+      { name: "Child 3", gender: "Female", age: 4 }, // ✅ allowed for ESIC
+    ],
+  },
+]
+
+
+
+
+
+function pushCommonMembers(rows: any[], emp: Employee) {
+  rows.push({
+    EmpCode: emp.empCode,
+    EmpName: emp.name,
+    GrossSalary: emp.grossSalary,
+    DependentType: "Employee",
+    DependentName: emp.name,
+  })
+
+  if (emp.spouse) {
+    rows.push({
+      EmpCode: emp.empCode,
+      EmpName: emp.name,
+      GrossSalary: emp.grossSalary,
+      DependentType: "Spouse",
+      DependentName: emp.spouse,
+    })
+  }
+
+  if (emp.parents?.father) {
+    rows.push({
+      EmpCode: emp.empCode,
+      EmpName: emp.name,
+      GrossSalary: emp.grossSalary,
+      DependentType: "Father",
+      DependentName: emp.parents.father,
+    })
+  }
+
+  if (emp.parents?.mother) {
+    rows.push({
+      EmpCode: emp.empCode,
+      EmpName: emp.name,
+      GrossSalary: emp.grossSalary,
+      DependentType: "Mother",
+      DependentName: emp.parents.mother,
+    })
+  }
+}
+
+function makeChildRow(emp: Employee, child: Child) {
+  return {
+    EmpCode: emp.empCode,
+    EmpName: emp.name,
+    GrossSalary: emp.grossSalary,
+    DependentType: "Child",
+    DependentName: child.name,
+    Gender: child.gender,
+    Age: child.age,
+  }
+}
+
+
+function generateMediclaimRows() {
+  return employees
+    .filter(emp => emp.grossSalary > 21000)
+    .map(emp => {
+      const children = emp.children.slice(0, 2)
+
+      return {
+        EmpCode: emp.empCode,
+        EmpName: emp.name,
+        GrossSalary: emp.grossSalary,
+
+        Spouse: emp.spouse || "",
+        Father: emp.parents?.father || "",
+        Mother: emp.parents?.mother || "",
+
+        Child1Name: children[0]?.name || "",
+        Child1Gender: children[0]?.gender || "",
+        Child1Age: children[0]?.age || "",
+
+        Child2Name: children[1]?.name || "",
+        Child2Gender: children[1]?.gender || "",
+        Child2Age: children[1]?.age || "",
+      }
+    })
+}
+
+
+
+
+function generateESICRows() {
+  return employees
+    .filter(emp => emp.grossSalary <= 21000)
+    .map(emp => {
+      const children = emp.children
+
+      return {
+        EmpCode: emp.empCode,
+        EmpName: emp.name,
+        GrossSalary: emp.grossSalary,
+
+        Spouse: emp.spouse || "",
+        Father: emp.parents?.father || "",
+        Mother: emp.parents?.mother || "",
+
+        Child1Name: children[0]?.name || "",
+        Child1Gender: children[0]?.gender || "",
+        Child1Age: children[0]?.age || "",
+
+        Child2Name: children[1]?.name || "",
+        Child2Gender: children[1]?.gender || "",
+        Child2Age: children[1]?.age || "",
+
+        Child3Name: children[2]?.name || "",
+        Child3Gender: children[2]?.gender || "",
+        Child3Age: children[2]?.age || "",
+
+        Child4Name: children[3]?.name || "",
+        Child4Gender: children[3]?.gender || "",
+        Child4Age: children[3]?.age || "",
+      }
+    })
+}
+
+
+
+
+
+function exportToExcel(data: any[], fileName: string) {
+  const worksheet = XLSX.utils.json_to_sheet(data)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Report")
+  XLSX.writeFile(workbook, fileName)
+}
+
+
+function downloadMediclaimReport() {
+  exportToExcel(
+    generateMediclaimRows(),
+    "Mediclaim_Eligibility_Report.xlsx"
+  )
+  toast.success("Mediclaim report downloaded")
+}
+
+function downloadESICReport() {
+  exportToExcel(
+    generateESICRows(),
+    "ESIC_Family_Coverage_Report.xlsx"
+  )
+  toast.success("ESIC family report downloaded")
 }
