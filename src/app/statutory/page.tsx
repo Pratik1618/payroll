@@ -5,684 +5,392 @@ import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Download, FileText, CalendarIcon, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
-import { format } from "date-fns"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  FileText,
+  Download,
+  Calendar as CalendarIcon,
+  CheckCircle,
+  AlertCircle,
+  Clock,
+  TrendingUp,
+} from "lucide-react"
+import { format, isSameMonth } from "date-fns"
 import { cn } from "@/lib/utils"
+
+/* -------------------------------------------------------------------------- */
+/*                                  DATA                                      */
+/* -------------------------------------------------------------------------- */
 
 const statutoryReports = [
   {
     id: "pf-ecr",
     title: "PF ECR",
-    description: "Provident Fund Electronic Challan cum Return",
     format: "Excel",
-    lastGenerated: "2024-01-15",
     status: "generated",
     dueDate: "2024-01-25",
+    lastGenerated: "2024-01-10",
   },
   {
     id: "esic-xml",
     title: "ESIC XML",
-    description: "Employee State Insurance Corporation XML file",
     format: "XML",
-    lastGenerated: "2024-01-15",
     status: "generated",
     dueDate: "2024-01-21",
-  },
-   {
-    id: "pf-cons",
-    title: "PF RECONCILATION",
-    description: "PF Reconcilation report monthly",
-    format: "Excel",
-    lastGenerated: "2024-01-15",
-    status: "generated",
-    dueDate: "2024-01-21",
-  },
-  {
-    id: "form16",
-    title: "Form 16",
-    description: "Tax Deduction at Source Certificate",
-    format: "PDF",
-    lastGenerated: "2024-01-10",
-    status: "generated",
-    dueDate: "2024-05-31",
-  },
-  {
-    id: "tds-return",
-    title: "TDS Return",
-    description: "Tax Deducted at Source Return",
-    format: "Excel",
-    lastGenerated: null,
-    status: "pending",
-    dueDate: "2024-01-31",
-  },
-  {
-    id: "labour-return",
-    title: "Labour Return",
-    description: "Contract Labour Return",
-    format: "PDF",
     lastGenerated: "2024-01-12",
-    status: "generated",
-    dueDate: "2024-01-20",
   },
+  { id: "form-a", title: "Form A – Contractors Register", format: "PDF", status: "pending", dueDate: "2024-01-31" },
+  { id: "form-b", title: "Form B – Employment Register", format: "PDF", status: "pending", dueDate: "2024-01-31" },
+  { id: "form-c", title: "Form C – Employment Card", format: "PDF", status: "pending", dueDate: "2024-01-31" },
+  { id: "form-d", title: "Form D – Service Certificate", format: "PDF", status: "pending", dueDate: "2024-01-31" },
+  { id: "muster-roll", title: "Muster Roll", format: "Excel", status: "pending", dueDate: "2024-01-31" },
+  { id: "wage-register", title: "Wage & Muster Roll Register", format: "Excel", status: "pending", dueDate: "2024-01-31" },
+  { id: "fine-register", title: "Fine Register", format: "Excel", status: "pending", dueDate: "2024-01-31" },
+  { id: "bonus-register", title: "Bonus Register", format: "Excel", status: "pending", dueDate: "2024-01-31" },
+  { id: "form-f", title: "Form F – Deductions Register", format: "Excel", status: "pending", dueDate: "2024-01-31" },
+  { id: "form-2", title: "Form 2 – Return of Contribution", format: "PDF", status: "pending", dueDate: "2024-01-31" },
+  { id: "form-xx", title: "Form XX – Annual Return", format: "PDF", status: "pending", dueDate: "2024-01-31" },
 ]
 
+/* -------------------------------------------------------------------------- */
+/*                                  PAGE                                      */
+/* -------------------------------------------------------------------------- */
+
 export default function StatutoryPage() {
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
-  const [selectedSite, setSelectedSite] = useState("all")
-  const [pfClient, setPfClient] = useState<string>("")
-  const [pfSite, setPfSite] = useState<string>("")
-  const [pfMonth, setPfMonth] = useState<Date | undefined>(undefined)
-  const [esicClient, setEsicClient] = useState<string>("")
-  const [esicSite, setEsicSite] = useState<string>("")
-  const [esicMonth, setEsicMonth] = useState<Date | undefined>(undefined)
+  const [filters, setFilters] = useState({
+    branch: "",
+    client: "",
+    site: "",
+    fromDate: undefined as Date | undefined,
+    toDate: undefined as Date | undefined,
+  })
+const isFilterValid =
+  Boolean(filters.branch && filters.fromDate && filters.toDate)
 
-  const getStatusBadge = (status: string, dueDate: string) => {
-    const isOverdue = new Date(dueDate) < new Date() && status === "pending"
 
-    if (isOverdue) {
-      return (
-        <Badge variant="secondary" className="bg-red-100 text-red-800">
-          Overdue
-        </Badge>
-      )
-    }
 
-    const statusConfig = {
-      generated: { label: "Generated", className: "bg-green-100 text-green-800" },
-      pending: { label: "Pending", className: "bg-orange-100 text-orange-800" },
-    }
+  /* ------------------------ SUMMARY COUNTS ------------------------ */
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+  const generatedCount = statutoryReports.filter(r => r.status === "generated").length
+  const pendingCount = statutoryReports.filter(r => r.status === "pending").length
+  const overdueCount = statutoryReports.filter(
+    r => r.status === "pending" && new Date(r.dueDate) < new Date()
+  ).length
+  const thisMonthCount = statutoryReports.filter(
+    r => r.lastGenerated && isSameMonth(new Date(r.lastGenerated), new Date())
+  ).length
 
-    return (
-      <Badge variant="secondary" className={config.className}>
-        {config.label}
-      </Badge>
-    )
+  /* ------------------------ ACTIONS ------------------------ */
+
+const handleGenerate = (reportId: string) => {
+  if (!filters.branch || !filters.fromDate || !filters.toDate) return
+
+  const payload: any = {
+    reportId,
+    branch: filters.branch,
+    fromDate: format(filters.fromDate, "yyyy-MM-dd"),
+    toDate: format(filters.toDate, "yyyy-MM-dd"),
   }
 
-  const handleGenerateReport = (reportId: string) => {
-    console.log("Generating report:", reportId)
-    // API call to generate report
+  if (filters.client) payload.client = filters.client
+  if (filters.site) payload.site = filters.site
+
+  console.log("GENERATE:", payload)
+}
+
+
+  const handleDownload = (reportId: string) => {
+    console.log("DOWNLOAD:", reportId)
   }
 
-  const handleGeneratePfEcr = () => {
-    if (!pfClient || !pfSite || !pfMonth) {
-      console.log("[v0] Please select Client, Site, and Month to generate PF ECR.")
-      return
-    }
-    const periodLabel = format(pfMonth, "MMM-yyyy")
-    const filename = `PF-ECR_${pfClient}_${pfSite}_${periodLabel}.csv`.replace(/\s+/g, "-")
-
-    // Stub CSV rows (replace with real data later)
-    const header = [
-      "UAN",
-      "Member Name",
-      "Gross Wages",
-      "EPF Wages",
-      "EPS Wages",
-      "EDLI Wages",
-      "EPF Contribution",
-      "EPS Contribution",
-      "NCP Days",
-      "Refund of Advances",
-      "Month",
-    ]
-    const rows = [
-      ["100200300400", "John Doe", "28000", "15000", "15000", "15000", "1800", "1250", "0", "0",periodLabel],
-      ["200300400500", "Asha Devi", "32000", "15000", "15000", "15000", "1800", "1250", "1", "1",periodLabel],
-      ["300400500600", "Ramesh Kumar", "30000", "15000", "15000", "15000", "1800", "1250", "0", "1",periodLabel],
-    ]
-
-    const csv = [header, ...rows].map((r) => r.join(",")).join("\n")
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleGenerateEsicXml = () => {
-    if (!esicClient || !esicSite || !esicMonth) {
-      console.log("[v0] Please select Client, Site, and Month to generate ESIC XML.")
-      return
-    }
-    const periodLabel = format(esicMonth, "MMM-yyyy")
-    const periodCode = format(esicMonth, "yyyyMM")
-    const filename = `ESIC_${esicClient}_${esicSite}_${periodLabel}.xml`.replace(/\s+/g, "-")
-
-    // Simple XML stub (replace with real rows later)
-    const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<ESIC>
-  <Period>${periodCode}</Period>
-  <EmployerCode>ESI-XXXXXXX</EmployerCode>
-  <Contributions>
-    <IP>
-      <IPNumber>1002003004</IPNumber>
-      <IPName>John Doe</IPName>
-      <Wages>20000</Wages>
-      <Days>26</Days>
-      <EmployeeContribution>260</EmployeeContribution>
-      <EmployerContribution>260</EmployerContribution>
-    </IP>
-    <IP>
-      <IPNumber>2003004005</IPNumber>
-      <IPName>Asha Devi</IPName>
-      <Wages>18000</Wages>
-      <Days>25</Days>
-      <EmployeeContribution>234</EmployeeContribution>
-      <EmployerContribution>234</EmployerContribution>
-    </IP>
-  </Contributions>
-</ESIC>`
-
-    const blob = new Blob([xml], { type: "application/xml;charset=utf-8;" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  }
-
-  const handleDownloadReport = (reportId: string) => {
-    console.log("Downloading report:", reportId)
-    // API call to download report
-  }
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Not generated"
-    return new Date(dateString).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-  }
-
-  // MonthPicker: compact month-only picker with year navigation
-  function MonthPicker({ selected, onSelect }: { selected?: Date; onSelect: (d: Date) => void }) {
-    const [year, setYear] = useState<number>((selected || new Date()).getFullYear())
-    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-
-    const selectMonth = (mIndex: number) => {
-      const d = new Date(year, mIndex, 1)
-      onSelect(d)
-    }
-
-    return (
-      <div className="w-64">
-        <div className="flex items-center justify-between px-2 pb-2">
-          <button
-            type="button"
-            aria-label="Previous year"
-            onClick={() => setYear((y) => y - 1)}
-            className="p-1 rounded hover:bg-muted"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <div className="text-sm font-medium">{year}</div>
-          <button
-            type="button"
-            aria-label="Next year"
-            onClick={() => setYear((y) => y + 1)}
-            className="p-1 rounded hover:bg-muted"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 px-2">
-          {months.map((m, idx) => {
-            const isSelected =
-              selected &&
-              selected.getFullYear() === year &&
-              selected.getMonth() === idx
-
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => selectMonth(idx)}
-                className={cn(
-                  "py-2 rounded-md text-sm w-full flex items-center justify-center",
-                  isSelected
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "hover:bg-muted"
-                )}
-              >
-                {m}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="px-2 pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              setYear(new Date().getFullYear())
-              onSelect(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-            }}
-            className="text-xs text-muted-foreground hover:underline"
-          >
-            Today
-          </button>
-        </div>
-      </div>
-    )
-  }
+  /* -------------------------------------------------------------------------- */
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Statutory Reports</h1>
-            <p className="text-muted-foreground">Generate and manage compliance reports</p>
-          </div>
+      <div className="space-y-8">
+
+        {/* ---------------- HEADER ---------------- */}
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight">Statutory & Labour Reports</h1>
+          <p className="text-muted-foreground">
+            Manage compliance registers and statutory filings
+          </p>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Generated</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {statutoryReports.filter((r) => r.status === "generated").length}
-                  </p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {statutoryReports.filter((r) => r.status === "pending").length}
-                  </p>
-                </div>
-                <AlertCircle className="h-8 w-8 text-orange-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Overdue</p>
-                  <p className="text-2xl font-bold text-foreground">
-                    {statutoryReports.filter((r) => r.status === "pending" && new Date(r.dueDate) < new Date()).length}
-                  </p>
-                </div>
-                <AlertCircle className="h-8 w-8 text-red-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">This Month</p>
-                  <p className="text-2xl font-bold text-foreground">6</p>
-                </div>
-                <FileText className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
+        {/* ---------------- SUMMARY CARDS ---------------- */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <SummaryCard 
+            title="Generated" 
+            count={generatedCount} 
+            icon={CheckCircle}
+            iconColor="text-emerald-600 dark:text-emerald-500"
+          />
+          <SummaryCard 
+            title="Pending" 
+            count={pendingCount} 
+            icon={Clock}
+            iconColor="text-amber-600 dark:text-amber-500"
+          />
+          <SummaryCard 
+            title="Overdue" 
+            count={overdueCount} 
+            icon={AlertCircle}
+            iconColor="text-rose-600 dark:text-rose-500"
+          />
+          <SummaryCard 
+            title="This Month" 
+            count={thisMonthCount} 
+            icon={TrendingUp}
+            iconColor="text-blue-600 dark:text-blue-500"
+          />
         </div>
 
-    
+        {/* ---------------- FILTER BAR ---------------- */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+          </CardHeader>
 
-        {/* Reports Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+
+              <FilterSelect
+                label="Branch"
+                value={filters.branch}
+                onChange={(v) => setFilters(f => ({ ...f, branch: v }))}
+                options={[
+                  { value: "north", label: "North" },
+                  { value: "south", label: "South" },
+                  { value: "west", label: "West" },
+                ]}
+              />
+
+              <FilterSelect
+                label="Client"
+                value={filters.client}
+                onChange={(v) => setFilters(f => ({ ...f, client: v }))}
+                options={[
+                  { value: "client-a", label: "Client A" },
+                  { value: "client-b", label: "Client B" },
+                ]}
+              />
+
+              <FilterSelect
+                label="Site"
+                value={filters.site}
+                onChange={(v) => setFilters(f => ({ ...f, site: v }))}
+                options={[
+                  { value: "site-1", label: "Site 1" },
+                  { value: "site-2", label: "Site 2" },
+                ]}
+              />
+
+              <DatePicker
+                label="From Date"
+                value={filters.fromDate}
+                onChange={(d) => setFilters(f => ({ ...f, fromDate: d }))}
+              />
+
+              <DatePicker
+                label="To Date"
+                value={filters.toDate}
+                onChange={(d) => setFilters(f => ({ ...f, toDate: d }))}
+              />
+
+            </div>
+
+ {(!filters.branch || !filters.fromDate || !filters.toDate) && (
+  <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+    <AlertCircle className="h-4 w-4" />
+    <span>Please select Branch and Date range to generate reports</span>
+  </div>
+)}
+
+          </CardContent>
+        </Card>
+
+        {/* ---------------- REPORTS GRID ---------------- */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {statutoryReports.map((report) => (
-            <Card key={report.id} className="bg-card border-border">
+            <Card key={report.id} className="flex flex-col">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg text-foreground">{report.title}</CardTitle>
-                  {/* {getStatusBadge(report.status, report.dueDate)} */}
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-base font-semibold leading-tight">
+                    {report.title}
+                  </CardTitle>
+                  <Badge variant="secondary" className="shrink-0">
+                    {report.format}
+                  </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">{report.description}</p>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Format:</span>
-                    <span className="text-foreground">{report.format}</span>
-                  </div>
-                  {/* <div className="flex justify-between">
-                    <span className="text-muted-foreground">Last Generated:</span>
-                    <span className="text-foreground">{formatDate(report.lastGenerated)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Due Date:</span>
-                    <span
-                      className={cn(
-                        "font-medium",
-                        new Date(report.dueDate) < new Date() && report.status === "pending"
-                          ? "text-red-600"
-                          : "text-foreground",
-                      )}
-                    >
-                      {formatDate(report.dueDate)}
-                    </span>
-                  </div> */}
+
+              <CardContent className="flex-1 space-y-4">
+                <div className="flex items-center gap-2">
+                  {report.status === "generated" ? (
+                    <Badge variant="outline" className="gap-1 border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-400">
+                      <CheckCircle className="h-3 w-3" />
+                      Generated
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="gap-1">
+                      <Clock className="h-3 w-3" />
+                      Pending
+                    </Badge>
+                  )}
                 </div>
 
-                {report.id === "pf-ecr" ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 gap-3">
-                      <Select value={pfClient} onValueChange={setPfClient}>
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select Client" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="client-a">Client A</SelectItem>
-                          <SelectItem value="client-b">Client B</SelectItem>
-                          <SelectItem value="client-c">Client C</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={pfSite} onValueChange={setPfSite}>
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select Site" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="site-a">Site A - Corporate</SelectItem>
-                          <SelectItem value="site-b">Site B - Manufacturing</SelectItem>
-                          <SelectItem value="site-c">Site C - Warehouse</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                       <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !pfMonth && "text-muted-foreground",
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {pfMonth ? format(pfMonth, "MMMM yyyy") : <span>Select month</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <div className="p-3">
-                            <MonthPicker
-                              selected={pfMonth}
-                              onSelect={(date) => {
-                                if (date) setPfMonth(date)
-                              }}
-                            />
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={handleGeneratePfEcr}
-                        className="flex-1"
-                        disabled={!pfClient || !pfSite || !pfMonth}
-                        title={!pfClient || !pfSite || !pfMonth ? "Select Client, Site & Month" : "Generate PF ECR"}
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        Generate PF ECR
-                      </Button>
-                      {report.status === "generated" && (
-                        <Button size="sm" variant="outline" onClick={() => handleDownloadReport(report.id)}>
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Select Client, Site, and Month to generate the PF ECR file.
-                    </p>
-                  </div>
-                ) : report.id === "esic-xml" ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 gap-3">
-                      <Select value={esicClient} onValueChange={setEsicClient}>
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select Client" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="client-a">Client A</SelectItem>
-                          <SelectItem value="client-b">Client B</SelectItem>
-                          <SelectItem value="client-c">Client C</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={esicSite} onValueChange={setEsicSite}>
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select Site" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="site-a">Site A - Corporate</SelectItem>
-                          <SelectItem value="site-b">Site B - Manufacturing</SelectItem>
-                          <SelectItem value="site-c">Site C - Warehouse</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !esicMonth && "text-muted-foreground",
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {esicMonth ? format(esicMonth, "MMMM yyyy") : <span>Select month</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <div className="p-3">
-                            <MonthPicker
-                              selected={esicMonth}
-                              onSelect={(date) => {
-                                if (date) setEsicMonth(date)
-                              }}
-                            />
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={handleGenerateEsicXml}
-                        className="flex-1"
-                        disabled={!esicClient || !esicSite || !esicMonth}
-                        title={
-                          !esicClient || !esicSite || !esicMonth ? "Select Client, Site & Month" : "Generate ESIC XML"
-                        }
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        Generate ESIC XML
-                      </Button>
-                      {report.status === "generated" && (
-                        <Button size="sm" variant="outline" onClick={() => handleDownloadReport(report.id)}>
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Select Client, Site, and Month to generate the ESIC XML file.
-                    </p>
-                  </div>
-                ) :
-                  report.id === "pf-cons" ? (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 gap-3">
-                      <Select value={esicClient} onValueChange={setEsicClient}>
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select Client" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="client-a">Client A</SelectItem>
-                          <SelectItem value="client-b">Client B</SelectItem>
-                          <SelectItem value="client-c">Client C</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Select value={esicSite} onValueChange={setEsicSite}>
-                        <SelectTrigger className="w-full bg-background">
-                          <SelectValue placeholder="Select Site" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="site-a">Site A - Corporate</SelectItem>
-                          <SelectItem value="site-b">Site B - Manufacturing</SelectItem>
-                          <SelectItem value="site-c">Site C - Warehouse</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !esicMonth && "text-muted-foreground",
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {esicMonth ? format(esicMonth, "MMMM yyyy") : <span>Select month</span>}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <div className="p-3">
-                            <MonthPicker
-                              selected={esicMonth}
-                              onSelect={(date) => {
-                                if (date) setEsicMonth(date)
-                              }}
-                            />
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-
-                    <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        onClick={handleGenerateEsicXml}
-                        className="flex-1"
-                        disabled={!esicClient || !esicSite || !esicMonth}
-                        title={
-                          !esicClient || !esicSite || !esicMonth ? "Select Client, Site & Month" : "Generate ESIC XML"
-                        }
-                      >
-                        <FileText className="mr-2 h-4 w-4" />
-                        Generate Report
-                      </Button>
-                      {report.status === "generated" && (
-                        <Button size="sm" variant="outline" onClick={() => handleDownloadReport(report.id)}>
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Select Client, Site, and Month to generate.
-                    </p>
-                  </div>
-                ) :  
-                (
-                  <div className="flex space-x-2">
-                    <Button size="sm" onClick={() => handleGenerateReport(report.id)} className="flex-1">
-                      <FileText className="mr-2 h-4 w-4" />
-                      Generate
-                    </Button>
-                    {report.status === "generated" && (
-                      <Button size="sm" variant="outline" onClick={() => handleDownloadReport(report.id)}>
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
+                {report.lastGenerated && (
+                  <p className="text-xs text-muted-foreground">
+                    Last generated: {format(new Date(report.lastGenerated), "dd MMM yyyy")}
+                  </p>
                 )}
+
+                <p className="text-xs text-muted-foreground">
+                  Due date: {format(new Date(report.dueDate), "dd MMM yyyy")}
+                </p>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                   disabled={!filters.branch || !filters.fromDate || !filters.toDate}
+
+                    onClick={() => handleGenerate(report.id)}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Generate
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDownload(report.id)}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Compliance Calendar */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground">Compliance Calendar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[
-                { date: "15th", task: "PF ECR & ESIC Return", status: "completed" },
-                { date: "20th", task: "Labour Return Filing", status: "completed" },
-                { date: "25th", task: "PF Challan Payment", status: "pending" },
-                { date: "31st", task: "TDS Return", status: "pending" },
-                { date: "7th", task: "ESIC Challan Payment", status: "upcoming" },
-                { date: "15th", task: "Salary Register Update", status: "upcoming" },
-              ].map((item, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "flex items-center space-x-3 p-3 rounded-lg border",
-                    item.status === "completed"
-                      ? "bg-green-50 border-green-200"
-                      : item.status === "pending"
-                        ? "bg-orange-50 border-orange-200"
-                        : "bg-blue-50 border-blue-200",
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium",
-                      item.status === "completed"
-                        ? "bg-green-500 text-white"
-                        : item.status === "pending"
-                          ? "bg-orange-500 text-white"
-                          : "bg-blue-500 text-white",
-                    )}
-                  >
-                    {item.date}
-                  </div>
-                  <div className="flex-1">
-                    <p
-                      className={cn(
-                        "text-sm font-medium",
-                        item.status === "completed"
-                          ? "text-green-800"
-                          : item.status === "pending"
-                            ? "text-orange-800"
-                            : "text-blue-800",
-                      )}
-                    >
-                      {item.task}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </MainLayout>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               COMPONENTS                                   */
+/* -------------------------------------------------------------------------- */
+
+function SummaryCard({
+  title,
+  count,
+  icon: Icon,
+  iconColor,
+}: {
+  title: string
+  count: number
+  icon: React.ElementType
+  iconColor: string
+}) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-2xl font-bold">{count}</p>
+          </div>
+          <Icon className={cn("h-8 w-8", iconColor)} />
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function FilterSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        {label}
+      </label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map(o => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+function DatePicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value?: Date
+  onChange: (date?: Date) => void
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        {label}
+      </label>
+
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !value && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {value ? format(value, "dd MMM yyyy") : "Pick a date"}
+          </Button>
+        </PopoverTrigger>
+
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={onChange}
+            initialFocus
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
   )
 }
