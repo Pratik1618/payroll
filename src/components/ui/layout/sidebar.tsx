@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon, Lock, Percent, Webhook, OctagonPause, BookLock, Upload, DollarSign, StickyNote, UserPenIcon, Users2, History, Shuffle, ChartPieIcon } from "lucide-react"
+import { Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard, UserX, BarChart3, Home, HistoryIcon, Lock, Percent, Webhook, OctagonPause, BookLock, Upload, DollarSign, StickyNote, UserPenIcon, Users2, History, Shuffle, ChartPieIcon, BadgeCheck } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -11,6 +11,7 @@ const navigation = [
   // { name: "Attendance", href: "/attendance", icon: Clock },
   // { name: "Leave & LOP", href: "/leave", icon: Calendar },
   { name: "Manual Attendance Upload", href: "/manualAttendance", icon: Upload },
+  { name: "Attendance Verification", href: "/attendance-verification", icon: BadgeCheck },
   { name: "Payroll Processing", href: "/payroll", icon: Calculator },
   { name: 'Payroll History', href: "/payroll-history", icon: HistoryIcon },
    { name: "Salary Status", href: "/salary-status", icon: Lock },

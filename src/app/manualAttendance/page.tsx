@@ -9,8 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
-import { Upload } from "lucide-react"
+import { Upload, Send } from "lucide-react"
 
 interface AttendanceRecord {
   employee_id: string
@@ -28,12 +29,42 @@ interface AttendanceRecord {
   [key: string]: string | number
 }
 
+interface SubmissionRecord {
+  id: string
+  client: string
+  site: string
+  month: string
+  records: AttendanceRecord[]
+  status: "pending" | "approved" | "rejected"
+  submittedAt: string
+}
+
 export default function ManualAttendanceUploadPage() {
   const [client, setClient] = useState("")
   const [site, setSite] = useState("")
   const [month, setMonth] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [uploadedData, setUploadedData] = useState<AttendanceRecord[]>([])
+  const [submissions, setSubmissions] = useState<SubmissionRecord[]>([
+    {
+      id: "SUB001",
+      client: "Acme Corp",
+      site: "Site A",
+      month: "November",
+      records: [],
+      status: "pending",
+      submittedAt: "2024-12-20 10:30 AM",
+    },
+    {
+      id: "SUB002",
+      client: "Tech Solutions",
+      site: "Site B",
+      month: "December",
+      records: [],
+      status: "approved",
+      submittedAt: "2024-12-18 2:15 PM",
+    },
+  ])
   const [loading, setLoading] = useState(false)
 
   const clients = ["Acme Corp", "Tech Solutions", "Global Services"]
@@ -67,7 +98,6 @@ export default function ManualAttendanceUploadPage() {
 
     setLoading(true)
     try {
-      // Simulate file parsing - in real implementation, use a library like xlsx
       const mockData: AttendanceRecord[] = [
         {
           employee_id: "EMP001",
@@ -113,13 +143,38 @@ export default function ManualAttendanceUploadPage() {
         },
       ]
       setUploadedData(mockData)
-      toast.success(`Attendance file uploaded for ${client} - ${site} - ${month}`)
+      toast.success(`Attendance file loaded for ${client} - ${site} - ${month}`)
     } catch (error) {
       toast.error("Failed to upload attendance file")
-      console.error("[v0] Upload error:", error)
+      console.error("Upload error:", error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSubmit = () => {
+    if (!uploadedData.length) {
+      toast.error("Please upload attendance data first")
+      return
+    }
+
+    const newSubmission: SubmissionRecord = {
+      id: `SUB${Math.floor(Math.random() * 10000)}`,
+      client,
+      site,
+      month,
+      records: uploadedData,
+      status: "pending",
+      submittedAt: new Date().toLocaleString("en-IN"),
+    }
+
+    setSubmissions([newSubmission, ...submissions])
+    setUploadedData([])
+    setClient("")
+    setSite("")
+    setMonth("")
+    setFile(null)
+    toast.success("Attendance submitted for verification")
   }
 
   return (
@@ -217,7 +272,7 @@ export default function ManualAttendanceUploadPage() {
                 {client} • {site} • {month} • {uploadedData.length} records
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="border rounded-lg overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -252,6 +307,67 @@ export default function ManualAttendanceUploadPage() {
                         <TableCell className="text-center text-sm">{record.ot_hrs}</TableCell>
                         <TableCell className="text-center font-semibold text-primary">
                           {record.total_payable_days}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <Button variant="outline" onClick={() => setUploadedData([])}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSubmit}>
+                  <Send className="mr-2 h-4 w-4" />
+                  Submit for Verification
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Submissions History */}
+        {submissions.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Submission History</CardTitle>
+              <CardDescription>Track your attendance submissions and their verification status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="border rounded-lg overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Submission ID</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Site</TableHead>
+                      <TableHead>Month</TableHead>
+                      <TableHead>Records</TableHead>
+                      <TableHead>Submitted</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {submissions.map((submission) => (
+                      <TableRow key={submission.id}>
+                        <TableCell className="font-medium">{submission.id}</TableCell>
+                        <TableCell>{submission.client}</TableCell>
+                        <TableCell>{submission.site}</TableCell>
+                        <TableCell>{submission.month}</TableCell>
+                        <TableCell>{submission.records.length} employees</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{submission.submittedAt}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              submission.status === "pending"
+                                ? "outline"
+                                : submission.status === "approved"
+                                  ? "default"
+                                  : "destructive"
+                            }
+                          >
+                            {submission.status.charAt(0).toUpperCase() + submission.status.slice(1)}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
