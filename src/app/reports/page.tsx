@@ -279,7 +279,7 @@ const reports = [
   {
     id: "gratuity-valuation",
     title: "Gratuity Valuation",
-    description: "Act-wise gratuity calculation",
+    description: "Employee wise gratuity calculation",
     icon: FileSpreadsheet,
     iconColor: "text-purple-700",
   },
