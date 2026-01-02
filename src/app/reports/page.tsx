@@ -41,7 +41,10 @@ type ReportType =
   | "esic-family-report"
   | "last-month-processed-current-not"
   | "today-emp-id-generated"
-
+  | "payment-date-report"
+  | "site-license-applicability"
+  | "statutory-contribution-single"
+  | "gratuity-valuation"
 
 const reports = [
   {
@@ -239,19 +242,48 @@ const reports = [
     iconColor: "text-blue-700",
   },
   {
-  id: "last-month-processed-current-not",
-  title: "Payroll Gap Report (Previous vs Current Month)",
-  description: "Employees processed last month but missing this month",
-  icon: AlertTriangle,
-  iconColor: "text-red-700",
-},
-{
-  id: "today-emp-id-generated",
-  title: "Employees Created Today",
-  description: "Employee IDs generated today",
-  icon: ClockPlus,
-  iconColor: "text-indigo-700",
-}
+    id: "last-month-processed-current-not",
+    title: "Payroll Gap Report (Previous vs Current Month)",
+    description: "Employees processed last month but missing this month",
+    icon: AlertTriangle,
+    iconColor: "text-red-700",
+  },
+  {
+    id: "today-emp-id-generated",
+    title: "Employees Created Today",
+    description: "Employee IDs generated today",
+    icon: ClockPlus,
+    iconColor: "text-indigo-700",
+  },
+  {
+    id: "payment-date-report",
+    title: "Payment Date Report",
+    description: "Site-wise salary payment tracking",
+    icon: IndianRupee,
+    iconColor: "text-green-700",
+  },
+  {
+    id: "site-license-applicability",
+    title: "Site License Applicability",
+    description: "State/Central license vs manpower",
+    icon: ShieldCheck,
+    iconColor: "text-red-700",
+  },
+  {
+    id: "statutory-contribution-single",
+    title: "PF / ESIC Contribution (Single Employee)",
+    description: "Employee & employer contribution from–to",
+    icon: FileSpreadsheet,
+    iconColor: "text-indigo-700",
+  },
+  {
+    id: "gratuity-valuation",
+    title: "Gratuity Valuation",
+    description: "Act-wise gratuity calculation",
+    icon: FileSpreadsheet,
+    iconColor: "text-purple-700",
+  },
+
 
 ]
 
@@ -283,12 +315,15 @@ export default function MISReportsPage() {
                       if (report.id === "employee-dump") {
                         downloadEmployeeDump()
                       }
-                     else if (report.id === "mediclaim-report") {
+                      else if (report.id === "mediclaim-report") {
                         downloadMediclaimReport()
                       }
 
-                     else  if (report.id === "esic-family-report") {
+                      else if (report.id === "esic-family-report") {
                         downloadESICReport()
+                      }
+                      else if (report.id === "gratuity-valuation") {
+                        downloadGratuityValuation()
                       } else {
                         setSelectedReport(report.id as ReportType)
                       }
@@ -319,6 +354,8 @@ export default function MISReportsPage() {
             {selectedReport === "salary-comparison" && <SalaryComparisonDialog />}
             {selectedReport === "pending-salary" && <PendingSalaryDialog />}
             {selectedReport === "employee-of-month" && <EmployeeOfMonthDialog />}
+            {selectedReport === "statutory-contribution-single" && (<StatutoryContributionDialog />)}
+            {selectedReport === "payment-date-report" && <PaymentDateDialog />}
 
           </DialogContent>
         </Dialog>
@@ -979,6 +1016,10 @@ function PendingSalaryDialog() {
 }
 import * as XLSX from "xlsx"
 import { EmployeeOfMonthDialog } from "@/components/ui/mis/employee-of-month/employee-of-month-dialog"
+import { StatutoryContributionDialog } from "@/components/ui/mis/statutory-contribution/statutory-contribution-dialog"
+import { GratuityValuationDialog } from "@/components/ui/mis/gratuity-valuation/gratuity-valuation-dialog"
+import { downloadGratuityValuation } from "@/components/ui/mis/gratuity-valuation/gratuity-valuation"
+import { PaymentDateDialog } from "@/components/ui/mis/payment-date/payment-date-dialog"
 
 function downloadEmployeeDump() {
   // 🔹 Mock data – replace with API data later

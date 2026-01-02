@@ -275,7 +275,7 @@ export default function AttendanceVerificationPage() {
                     </CardContent>
                 </Card>
             </div>
-
+ 
             {/* Details Dialog */}
             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
                 <DialogContent
