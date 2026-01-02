@@ -283,6 +283,13 @@ const reports = [
     icon: FileSpreadsheet,
     iconColor: "text-purple-700",
   },
+  {
+    id: "Statutory-damage-intrest",
+    title: "Statutory Damage and Interest",
+    description: "PF,ESIC,PT  DAMAGE & INTEREST",
+    icon: FileSpreadsheet,
+    iconColor: "text-purple-700",
+  }
 
 
 ]

@@ -53,6 +53,8 @@ interface SubmissionRecord {
     status: "pending" | "approved" | "rejected";
     submittedAt: string;
     submittedBy: string;
+    approvedBy?: string;
+    approvedAt?: string;
 }
 
 export default function AttendanceVerificationPage() {
@@ -105,6 +107,8 @@ export default function AttendanceVerificationPage() {
             status: "approved",
             submittedAt: "2024-12-18 2:15 PM",
             submittedBy: "Payroll Team",
+            approvedBy: "Admin",
+            approvedAt: "2024-12-19 9:00 AM",
         },
         {
             id: "SUB003",
@@ -129,7 +133,7 @@ export default function AttendanceVerificationPage() {
     const handleApprove = (id: string) => {
         setSubmissions(
             submissions.map((sub) =>
-                sub.id === id ? { ...sub, status: "approved" as const } : sub
+                sub.id === id ? { ...sub, status: "approved" as const, approvedBy: "Admin", approvedAt: new Date().toLocaleString() } : sub
             )
         );
         setShowDetailsDialog(false);
@@ -222,6 +226,8 @@ export default function AttendanceVerificationPage() {
                                         <TableHead>Submitted By</TableHead>
                                         <TableHead>Submitted</TableHead>
                                         <TableHead>Status</TableHead>
+                                        <TableHead>Approved By</TableHead>
+                                        <TableHead>Approved At</TableHead>
                                         <TableHead>Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -256,6 +262,12 @@ export default function AttendanceVerificationPage() {
                                                     {submission.status.charAt(0).toUpperCase() +
                                                         submission.status.slice(1)}
                                                 </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {submission.approvedBy || "-"}
+                                            </TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
+                                                {submission.approvedAt || "-"}
                                             </TableCell>
                                             <TableCell>
                                                 <Button
