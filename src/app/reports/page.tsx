@@ -45,6 +45,7 @@ type ReportType =
   | "site-license-applicability"
   | "statutory-contribution-single"
   | "gratuity-valuation"
+  | "statutory-damage-interest"
 
 const reports = [
   {
@@ -284,7 +285,7 @@ const reports = [
     iconColor: "text-purple-700",
   },
   {
-    id: "Statutory-damage-intrest",
+    id: "statutory-damage-interest",
     title: "Statutory Damage and Interest",
     description: "PF,ESIC,PT  DAMAGE & INTEREST",
     icon: FileSpreadsheet,
@@ -363,7 +364,9 @@ export default function MISReportsPage() {
             {selectedReport === "employee-of-month" && <EmployeeOfMonthDialog />}
             {selectedReport === "statutory-contribution-single" && (<StatutoryContributionDialog />)}
             {selectedReport === "payment-date-report" && <PaymentDateDialog />}
-
+  {selectedReport === "statutory-damage-interest" && (
+    <StatutoryDamageInterestDialog />
+  )}
           </DialogContent>
         </Dialog>
       </div>
@@ -1027,6 +1030,7 @@ import { StatutoryContributionDialog } from "@/components/ui/mis/statutory-contr
 import { GratuityValuationDialog } from "@/components/ui/mis/gratuity-valuation/gratuity-valuation-dialog"
 import { downloadGratuityValuation } from "@/components/ui/mis/gratuity-valuation/gratuity-valuation"
 import { PaymentDateDialog } from "@/components/ui/mis/payment-date/payment-date-dialog"
+import { StatutoryDamageInterestDialog } from "@/components/ui/mis/statutory-damage-interest/statutory-damage-interest-dialog"
 
 function downloadEmployeeDump() {
   // 🔹 Mock data – replace with API data later
