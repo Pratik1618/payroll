@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { Download, BarChart3, FileText, TrendingDown, GitCompare, FileSpreadsheet, Clock, Users, Award, BarChart4, Layers, Network, Diff, BadgeCheck, ShieldCheck, FileWarning, IndianRupee, RefreshCcw, Ban, AlertTriangle, Lock, UserPlus, ClockPlus } from "lucide-react"
-
+import { useRouter } from "next/navigation"
 type ReportType =
   | "salary-report"
   | "payroll-mis"
@@ -298,7 +298,22 @@ const reports = [
 
 export default function MISReportsPage() {
   const [selectedReport, setSelectedReport] = useState<ReportType | null>(null)
+  const router = useRouter()
+const getDialogWidth = (report: ReportType | null) => {
+  switch (report) {
+    case "site-license-applicability":
+      return "max-w-6xl"
 
+    case "gratuity-valuation":
+      return "max-w-5xl"
+
+    case "statutory-contribution-single":
+      return "max-w-4xl"
+
+    default:
+      return "max-w-md"
+  }
+}
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -332,7 +347,12 @@ export default function MISReportsPage() {
                       }
                       else if (report.id === "gratuity-valuation") {
                         downloadGratuityValuation()
-                      } else {
+                      }
+                      else if (report.id === "site-license-applicability") {
+  router.push("/reports/site-license-applicability")
+}
+
+                       else {
                         setSelectedReport(report.id as ReportType)
                       }
                     }}
@@ -351,9 +371,10 @@ export default function MISReportsPage() {
             </div>
           </CardContent>
         </Card>
+        
 
         <Dialog open={!!selectedReport} onOpenChange={() => setSelectedReport(null)}>
-          <DialogContent className="max-w-md">
+          <DialogContent className={getDialogWidth(selectedReport)}>
             {selectedReport === "salary-report" && <SalaryReportDialog />}
             {selectedReport === "payroll-mis" && <PayrollMISDialog />}
             {selectedReport === "esic-pending" && <ESICPendingDialog />}
@@ -367,6 +388,7 @@ export default function MISReportsPage() {
   {selectedReport === "statutory-damage-interest" && (
     <StatutoryDamageInterestDialog />
   )}
+
           </DialogContent>
         </Dialog>
       </div>
@@ -1031,6 +1053,8 @@ import { GratuityValuationDialog } from "@/components/ui/mis/gratuity-valuation/
 import { downloadGratuityValuation } from "@/components/ui/mis/gratuity-valuation/gratuity-valuation"
 import { PaymentDateDialog } from "@/components/ui/mis/payment-date/payment-date-dialog"
 import { StatutoryDamageInterestDialog } from "@/components/ui/mis/statutory-damage-interest/statutory-damage-interest-dialog"
+
+
 
 function downloadEmployeeDump() {
   // 🔹 Mock data – replace with API data later
