@@ -9,7 +9,8 @@ import {
   OctagonPause, BookLock, Upload, DollarSign, StickyNote,
   UserPenIcon, Users2, History, Shuffle, ChartPieIcon,
   BadgeCheck, Radar, AtSign,
-  Diff
+  Diff,
+  Gift
 } from "lucide-react"
 
 const navigation = [
@@ -21,6 +22,7 @@ const navigation = [
   { name: "Salary Status", href: "/salary-status", icon: Lock },
   { name: "Lock Salary", href: "/lockSalary", icon: BookLock },
   { name: "Arreras", href: "/arreras", icon: AtSign },
+    { name: "Bonus Working", href: "/bonus-working", icon: Gift },  
   { name: "Earning/Deduction", href: "/earnDed", icon: Diff },
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
   { name: "PF ESIC reconciliation", href: "/pf-esic-reconciliation", icon: Radar },
