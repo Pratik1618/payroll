@@ -15,6 +15,11 @@ import { EmployeeAutocomplete } from "@/components/ui/payroll/employee-autocompl
 
 interface ScheduledEntry {
   id: string
+  empCode: string
+  empName: string
+  branch: string
+  client: string
+  site: string
   month: string
   type: "Earning" | "Deduction"
   component: string
@@ -97,8 +102,27 @@ export default function EarningDeductionPage() {
       return
     }
 
+    // Prevent duplicate component for same employee & month
+const exists = scheduledEntries.some(
+  e =>
+    e.empCode === employeeCode &&
+    e.month === selectedMonth &&
+    e.component === selectedComponent &&
+    e.type === entryType
+)
+
+if (exists) {
+  toast.error("This component is already scheduled for this employee for this month")
+  return
+}
+
     const newEntry: ScheduledEntry = {
       id: Math.random().toString(),
+      empCode: employeeCode,
+      empName: selectedEmployee?.name || "Unknown",
+      branch: selectedBranch,
+      client: selectedClient,
+      site: selectedSite,
       month: selectedMonth,
       type: entryType,
       component: selectedComponent,
@@ -143,6 +167,10 @@ export default function EarningDeductionPage() {
     }
   })
 
+  const displayedEntries = employeeCode
+    ? scheduledEntries.filter((entry) => entry.empCode === employeeCode)
+    : scheduledEntries
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -150,7 +178,7 @@ export default function EarningDeductionPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Employee Earning & Deduction</h1>
           <p className="text-muted-foreground mt-1">
-            Add or schedule extra earnings or deductions for future payroll month
+            Add or schedule extra earnings or deductions for future payroll months
           </p>
         </div>
 
@@ -353,38 +381,62 @@ export default function EarningDeductionPage() {
           <CardHeader>
             <CardTitle>Scheduled Entries</CardTitle>
             <CardDescription>
-              All future earnings and deductions for {employeeCode || "selected employee"}
+              {employeeCode
+                ? `Entries for ${selectedEmployee?.name || "selected employee"}`
+                : "Global view of all scheduled earnings & deductions"}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {scheduledEntries.length === 0 ? (
+            {displayedEntries.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No scheduled entries yet</p>
+                <p className="text-muted-foreground">
+                  {employeeCode ? "No scheduled entries for this employee" : "No scheduled entries yet"}
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {!employeeCode && (
+                        <>
+                          <TableHead>Branch</TableHead>
+                          <TableHead>Client</TableHead>
+                          <TableHead>Site</TableHead>
+                          <TableHead>Emp ID</TableHead>
+                          <TableHead>Emp Name</TableHead>
+                        </>
+                      )}
                       <TableHead>Month</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Component</TableHead>
                       <TableHead>Amount</TableHead>
-                      <TableHead>Reference</TableHead>
+                      {employeeCode && <TableHead>Reference</TableHead>}
                       <TableHead>Status</TableHead>
                       <TableHead>Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {scheduledEntries.map((entry) => (
+                    {displayedEntries.map((entry) => (
                       <TableRow key={entry.id}>
+                        {!employeeCode && (
+                          <>
+                            <TableCell className="text-sm">{entry.branch || "-"}</TableCell>
+                            <TableCell className="text-sm">{entry.client || "-"}</TableCell>
+                            <TableCell className="text-sm">{entry.site || "-"}</TableCell>
+                            <TableCell className="font-medium">{entry.empCode}</TableCell>
+                            <TableCell className="text-sm">{entry.empName}</TableCell>
+                          </>
+                        )}
                         <TableCell className="font-medium">{entry.month}</TableCell>
                         <TableCell>
                           <Badge variant={entry.type === "Earning" ? "default" : "destructive"}>{entry.type}</Badge>
                         </TableCell>
                         <TableCell>{entry.component}</TableCell>
                         <TableCell>₹{entry.amount.toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{entry.reference || "-"}</TableCell>
+                        {employeeCode && (
+                          <TableCell className="text-muted-foreground text-sm">{entry.reference || "-"}</TableCell>
+                        )}
                         <TableCell>
                           <Badge variant="outline">{entry.status}</Badge>
                         </TableCell>
