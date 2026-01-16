@@ -10,7 +10,8 @@ import {
   UserPenIcon, Users2, History, Shuffle, ChartPieIcon,
   BadgeCheck, Radar, AtSign,
   Diff,
-  Gift
+  Gift,
+  CalendarRange
 } from "lucide-react"
 
 const navigation = [
@@ -23,6 +24,7 @@ const navigation = [
   { name: "Lock Salary", href: "/lockSalary", icon: BookLock },
   { name: "Arreras", href: "/arreras", icon: AtSign },
     { name: "Bonus Working", href: "/bonus-working", icon: Gift },  
+    {name:"Leave Provision",href:"/leave-provision",icon:CalendarRange},
   { name: "Earning/Deduction", href: "/earnDed", icon: Diff },
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
   { name: "PF ESIC reconciliation", href: "/pf-esic-reconciliation", icon: Radar },
