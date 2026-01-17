@@ -118,7 +118,7 @@ const canUpload = Boolean(client && month && statutoryType)
 
         {/* ---------------- HEADER ---------------- */}
         <div>
-          <h1 className="text-3xl font-bold">PF / ESIC Reconciliation</h1>
+          <h1 className="text-3xl font-bold">PF / ESIC Highlight</h1>
           <p className="text-muted-foreground">
             Upload ECR and verify PF benefits for selected employees
           </p>

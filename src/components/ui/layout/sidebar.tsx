@@ -11,7 +11,8 @@ import {
   BadgeCheck, Radar, AtSign,
   Diff,
   Gift,
-  CalendarRange
+  CalendarRange,
+  HandCoins
 } from "lucide-react"
 
 const navigation = [
@@ -26,8 +27,9 @@ const navigation = [
   { name: "Bonus Working", href: "/bonus-working", icon: Gift },  
   {name:"Leave Provision",href:"/leave-provision",icon:CalendarRange},
   { name: "Earning/Deduction", href: "/earnDed", icon: Diff },
+  {name:"Manual Salary Processing",href:"/manual-salary",icon:HandCoins},
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
-  { name: "PF ESIC reconciliation", href: "/pf-esic-reconciliation", icon: Radar },
+  { name: "PF ESIC Highlight", href: "/pf-esic-highlight", icon: Radar },
   { name: "F&F Settlement", href: "/fnf", icon: UserX },
   { name: "MIS Reports", href: "/reports", icon: BarChart3 },
   { name: "Cycle Mapping", href: "/mapping", icon: Webhook },
