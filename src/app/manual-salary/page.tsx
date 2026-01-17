@@ -153,7 +153,7 @@ export default function ManualSalaryProcessing() {
     return (amount / monthDays) * payableDaysNum
   }
 
-  const earningComponents = employee
+  const earningComponents : Record<string,number>=employee
     ? {
         Basic: calculateEarned(employee.salaryStructure.basic),
         DA: calculateEarned(employee.salaryStructure.da),
@@ -163,7 +163,7 @@ export default function ManualSalaryProcessing() {
       }
     : {}
 
-  const deductionComponents = employee
+  const deductionComponents : Record<string,number>=employee
     ? {
         PF: calculateEarned(employee.salaryStructure.pf),
         ESIC: calculateEarned(employee.salaryStructure.esic),
