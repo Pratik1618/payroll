@@ -143,6 +143,7 @@ export default function ManualSalaryProcessing() {
 
   const [manualSalaryLog, setManualSalaryLog] = useState<ManualSalaryEntry[]>([])
   const [selectedEntry, setSelectedEntry] = useState<ManualSalaryEntry | null>(null)
+  const [selectedEntries, setSelectedEntries] = useState<string[]>([])
 
   const employee = employeeMasterData[selectedEmployee]
   const monthDays = getMonthDays(salaryMonth)
@@ -244,6 +245,15 @@ export default function ManualSalaryProcessing() {
     toast.success(`Payment instruction sent to Accounts`, {
       description: `Entry: ${entry.entryId}\nAmount: ₹${entry.netPay.toFixed(2)}`,
     })
+  }
+
+  const handleBulkPayment = () => {
+    const updatedLog = manualSalaryLog.map((e) =>
+      selectedEntries.includes(e.entryId) ? { ...e, paymentStatus: "Sent to Accounts" as const } : e,
+    )
+    setManualSalaryLog(updatedLog)
+    toast.success(`Payment instructions sent to Accounts for ${selectedEntries.length} entries`)
+    setSelectedEntries([])
   }
 
   return (
@@ -509,6 +519,13 @@ export default function ManualSalaryProcessing() {
                 <CardDescription>Audit trail of all processed manual salaries with payment status</CardDescription>
               </CardHeader>
               <CardContent>
+                {selectedEntries.length > 0 && (
+                  <div className="flex justify-end mb-4">
+                    <Button onClick={handleBulkPayment} variant="outline">
+                      Send {selectedEntries.length} Selected to Payment
+                    </Button>
+                  </div>
+                )}
                 {manualSalaryLog.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <p>No manual salary entries yet. Process a salary in the first tab to view it here.</p>
@@ -517,6 +534,24 @@ export default function ManualSalaryProcessing() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted hover:bg-muted">
+                        <TableHead>
+                          <Checkbox
+                            checked={
+                              selectedEntries.length > 0 &&
+                              selectedEntries.length === manualSalaryLog.filter((e) => e.paymentStatus === "Pending").length
+                            }
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedEntries(
+                                  manualSalaryLog.filter((e) => e.paymentStatus === "Pending").map((e) => e.entryId),
+                                )
+                              } else {
+                                setSelectedEntries([])
+                              }
+                            }}
+                          />
+                          Select All
+                        </TableHead>
                         <TableHead>Entry ID</TableHead>
                         <TableHead>Emp Code</TableHead>
                         <TableHead>Name</TableHead>
@@ -531,6 +566,19 @@ export default function ManualSalaryProcessing() {
                     <TableBody>
                       {manualSalaryLog.map((entry) => (
                         <TableRow key={entry.entryId}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedEntries.includes(entry.entryId)}
+                              disabled={entry.paymentStatus !== "Pending"}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedEntries([...selectedEntries, entry.entryId])
+                                } else {
+                                  setSelectedEntries(selectedEntries.filter(id => id !== entry.entryId))
+                                }
+                              }}
+                            />
+                          </TableCell>
                           <TableCell className="font-mono text-xs">{entry.entryId.slice(0, 16)}...</TableCell>
                           <TableCell className="font-medium">{entry.employeeCode}</TableCell>
                           <TableCell>{entry.employeeName}</TableCell>

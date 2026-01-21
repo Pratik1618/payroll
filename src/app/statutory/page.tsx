@@ -118,7 +118,22 @@ const handleGenerate = (reportId: string) => {
   if (filters.site) payload.site = filters.site
 
   console.log("GENERATE:", payload)
+
+  // ---- PF / ESIC local generation ----
+  if (reportId === "pf-ecr") {
+    handleGeneratePfEcr()
+    return
+  }
+
+  if (reportId === "esic-xml") {
+    handleGenerateEsicXml()
+    return
+  }
+
+  // ---- other reports (future backend call) ----
+  // generateOtherReports(payload)
 }
+
 
 
   const handleDownload = (reportId: string) => {
@@ -126,6 +141,91 @@ const handleGenerate = (reportId: string) => {
   }
 
   /* -------------------------------------------------------------------------- */
+const handleGeneratePfEcr = () => {
+  if (!filters.branch || !filters.fromDate) {
+    console.log("Select Branch and From Date")
+    return
+  }
+
+  const periodLabel = format(filters.fromDate, "MMM-yyyy")
+
+  const filename = `PF-ECR_${filters.branch}_${filters.client || "ALL"}_${filters.site || "ALL"}_${periodLabel}`
+    .replace(/\s+/g, "-")
+    .concat(".csv")
+
+  const header = [
+    "UAN",
+    "Member Name",
+    "EPF Wages",
+    "EPS Wages",
+    "EDLI Wages",
+    "EPF Contribution",
+    "EPS Contribution",
+    "NCP Days",
+    "Month",
+  ]
+
+  const rows = [
+    ["100200300400", "John Doe", "15000", "15000", "15000", "1800", "1250", "0", periodLabel],
+    ["200300400500", "Asha Devi", "18000", "15000", "18000", "2160", "1250", "1", periodLabel],
+  ]
+
+  const csv = [header, ...rows].map(r => r.join(",")).join("\n")
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+
+  URL.revokeObjectURL(url)
+}
+
+const handleGenerateEsicXml = () => {
+  if (!filters.branch || !filters.fromDate) {
+    console.log("Select Branch and From Date")
+    return
+  }
+
+  const periodLabel = format(filters.fromDate, "MMM-yyyy")
+  const periodCode = format(filters.fromDate, "yyyyMM")
+
+  const filename = `ESIC_${filters.branch}_${filters.client || "ALL"}_${filters.site || "ALL"}_${periodLabel}`
+    .replace(/\s+/g, "-")
+    .concat(".xml")
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<ESIC>
+  <Period>${periodCode}</Period>
+  <EmployerCode>ESI-XXXXXXX</EmployerCode>
+  <Branch>${filters.branch}</Branch>
+  <Client>${filters.client || "ALL"}</Client>
+  <Site>${filters.site || "ALL"}</Site>
+  <Contributions>
+    <IP>
+      <IPNumber>1002003004</IPNumber>
+      <IPName>John Doe</IPName>
+      <Wages>20000</Wages>
+      <Days>26</Days>
+      <EmployeeContribution>260</EmployeeContribution>
+      <EmployerContribution>260</EmployerContribution>
+    </IP>
+  </Contributions>
+</ESIC>`
+
+  const blob = new Blob([xml], { type: "application/xml;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+
+  URL.revokeObjectURL(url)
+}
+
 
   return (
     <MainLayout>

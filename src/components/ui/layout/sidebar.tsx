@@ -12,11 +12,14 @@ import {
   Diff,
   Gift,
   CalendarRange,
-  HandCoins
+  HandCoins,
+  FileArchiveIcon,
+  CalendarMinus
 } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
+  {name:"Leave Tracking Page",href:"/leave-tracking",icon:CalendarMinus},
   { name: "Manual Attendance Upload", href: "/manualAttendance", icon: Upload },
   { name: "Attendance Verification", href: "/attendance-verification", icon: BadgeCheck },
   { name: "Payroll Processing", href: "/payroll", icon: Calculator },
@@ -29,6 +32,7 @@ const navigation = [
   { name: "Earning/Deduction", href: "/earnDed", icon: Diff },
   {name:"Manual Salary Processing",href:"/manual-salary",icon:HandCoins},
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
+  {name:"Statutory Reconciliation",href:"/statutory-reconciliation",icon:FileArchiveIcon},
   { name: "PF ESIC Highlight", href: "/pf-esic-highlight", icon: Radar },
   { name: "F&F Settlement", href: "/fnf", icon: UserX },
   { name: "MIS Reports", href: "/reports", icon: BarChart3 },
