@@ -1,308 +1,364 @@
 "use client"
 
-import { useState } from "react"
-import { MainLayout } from "@/components/ui/layout/main-layout"
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useState, useEffect } from "react"
+import {
+  Tabs, TabsContent, TabsList, TabsTrigger
+} from "@/components/ui/tabs"
+import {
+  Card, CardContent, CardHeader, CardTitle
+} from "@/components/ui/card"
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Lock, Upload } from "lucide-react"
-import { toast } from "sonner"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, CheckCircle2, Upload, Users } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { MainLayout } from "@/components/ui/layout/main-layout"
 
-/* ---------------- TYPES ---------------- */
+/* ================= MOCK DATA ================= */
 
-type Statutory = "PF" | "ESIC"
+const PF_UPLOAD_DATA = [
+  { clientId: "C1", clientName: "ABC Ltd", month: "Jan-26", employees: 120, pfAmount: 425000 },
+  { clientId: "C2", clientName: "XYZ Pvt Ltd", month: "Jan-26", employees: 86, pfAmount: 210000 },
+]
 
-interface PayrollLiability {
-  employees: number
-  employeeContribution: number
-  employerContribution: number
-  adminCharges?: number
-  total: number
+// Dummy TRRN parse result
+const MOCK_TRRN_FILE = {
+  totalPaid: 425000,
 }
 
-interface ReconRecord {
-  id: string
-  statutory: Statutory
-  month: string
-  site: string
-  employees: number
+/* ================= COMPONENT ================= */
 
-  payrollAmount: number
+export default function PFReconciliationModule() {
+  const [activeTab, setActiveTab] = useState("client")
 
-  challanNo: string
-  trrn: string
-  challanAmount: number
-  challanDate: string
-  dueDate: string
+  /* ---------- CLIENT STATES ---------- */
+  const [selectedClient, setSelectedClient] = useState("")
+  const [selectedMonth, setSelectedMonth] = useState("")
+  const [pfData, setPfData] = useState<any | null>(null)
+  const [trrnUploaded, setTrrnUploaded] = useState(false)
+  const [reconRow, setReconRow] = useState<any | null>(null)
 
-  paidAmount: number
-  paidDate?: string
-  utr?: string
+  /* ---------- EMPLOYEE STATES ---------- */
+  const [ecrUploaded, setEcrUploaded] = useState(false)
+  const [employeeRecon, setEmployeeRecon] = useState<any[]>([])
 
-  status: string
-  locked: boolean
-}
-
-/* ---------------- MOCK PAYROLL DATA ---------------- */
-
-const PAYROLL_LIABILITY: Record<Statutory, PayrollLiability> = {
-  PF: {
-    employees: 120,
-    employeeContribution: 140000,
-    employerContribution: 140000,
-    adminCharges: 5000,
-    total: 285000,
-  },
-  ESIC: {
-    employees: 120,
-    employeeContribution: 75000,
-    employerContribution: 225000,
-    total: 300000,
-  },
-}
-
-/* ---------------- HELPERS ---------------- */
-
-function deriveStatus(
-  payroll: number,
-  challan: number,
-  paid: number,
-  dueDate: string,
-  paidDate?: string,
-) {
-  if (!paidDate) return "Unpaid"
-  if (paid < challan) return "Short Paid"
-  if (paid > challan) return "Excess Paid"
-
-  const delay =
-    new Date(paidDate).getTime() - new Date(dueDate).getTime()
-
-  return delay <= 0 ? "Paid (On Time)" : "Paid (Late)"
-}
-
-/* ---------------- PAGE ---------------- */
-
-export default function PFESICReconciliationPage() {
-  const [statutory, setStatutory] = useState<Statutory>("PF")
-  const [month, setMonth] = useState("")
-  const [site, setSite] = useState("All Sites")
-
-  // Challan
-  const [challanNo, setChallanNo] = useState("")
-  const [trrn, setTrrn] = useState("")
-  const [challanAmount, setChallanAmount] = useState("")
-  const [challanDate, setChallanDate] = useState("")
-  const [dueDate, setDueDate] = useState("")
-
-  // Payment
-  const [paidAmount, setPaidAmount] = useState("")
-  const [paidDate, setPaidDate] = useState("")
-  const [utr, setUtr] = useState("")
-
-  // Upload
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
-
-  const [records, setRecords] = useState<ReconRecord[]>([])
-
-  const liability = PAYROLL_LIABILITY[statutory]
-
-  /* -------- Upload Handler (Frontend Truth) -------- */
-  const handleUpload = (file: File) => {
-    setUploadedFile(file)
-
-    // Simulated extraction (real parsing is backend)
-    setChallanNo("AUTO-CH-" + Date.now())
-    setTrrn("TRRN-" + Math.floor(Math.random() * 1000000))
-    setChallanAmount(String(liability.total))
-    setChallanDate(new Date().toISOString().substring(0, 10))
-
-    toast.success("Challan file uploaded & data extracted")
-  }
-
-  /* -------- Reconcile -------- */
-  const handleReconcile = () => {
-    if (!month || !challanNo || !trrn || !challanAmount || !dueDate) {
-      toast.error("Challan & TRRN details are mandatory")
+  /* ================= CLIENT AUTO FETCH ================= */
+  useEffect(() => {
+    if (!selectedClient || !selectedMonth) {
+      setPfData(null)
+      setReconRow(null)
+      setTrrnUploaded(false)
       return
     }
 
-    const challanAmt = Number(challanAmount)
-    const paidAmt = Number(paidAmount || 0)
-
-    const status = deriveStatus(
-      liability.total,
-      challanAmt,
-      paidAmt,
-      dueDate,
-      paidDate,
+    const data = PF_UPLOAD_DATA.find(
+      (d) => d.clientId === selectedClient && d.month === selectedMonth
     )
 
-    const record: ReconRecord = {
-      id: crypto.randomUUID(),
-      statutory,
-      month,
-      site,
-      employees: liability.employees,
-      payrollAmount: liability.total,
-      challanNo,
-      trrn,
-      challanAmount: challanAmt,
-      challanDate,
-      dueDate,
-      paidAmount: paidAmt,
-      paidDate,
-      utr,
-      status,
-      locked: false,
-    }
+    setPfData(data || null)
+    setReconRow(null)
+    setTrrnUploaded(false)
+  }, [selectedClient, selectedMonth])
 
-    setRecords([...records, record])
-    toast.success("Reconciliation record created")
+  /* ================= CLIENT RECONCILE ================= */
+  const handleReconcile = () => {
+    if (!pfData || !trrnUploaded) return
+
+    const paidAmount = MOCK_TRRN_FILE.totalPaid
+
+    setReconRow({
+      clientName: pfData.clientName,
+      month: pfData.month,
+      employees: pfData.employees,
+      pfAmount: pfData.pfAmount,
+      paidAmount,
+    })
   }
 
-  const lockRecord = (id: string) => {
-    setRecords(records.map(r => r.id === id ? { ...r, locked: true } : r))
-    toast.success("Record locked for audit")
+  /* ================= EMPLOYEE AUTO LOAD (DUMMY) ================= */
+  useEffect(() => {
+    if (ecrUploaded) {
+      setEmployeeRecon([
+        {
+          uan: "100200300400",
+          name: "John Doe",
+          ecrEPF: 1800,
+          ecrEPS: 1250,
+          ncp: 0,
+          status: "MATCHED",
+        },
+        {
+          uan: "200300400500",
+          name: "Asha Devi",
+          ecrEPF: 2160,
+          ecrEPS: 1250,
+          ncp: 1,
+          status: "MATCHED",
+        },
+        {
+          uan: "300400500600",
+          name: "Ravi Kumar",
+          ecrEPF: 1500,
+          ecrEPS: 1000,
+          ncp: 2,
+          status: "MISMATCH",
+        },
+      ])
+    } else {
+      setEmployeeRecon([])
+    }
+  }, [ecrUploaded])
+
+  /* ================= STATUS ENGINE ================= */
+  const getStatus = (pf: number, paid: number) => {
+    if (paid === pf) return "PAID"
+    if (paid > 0 && paid < pf) return "PARTIAL"
+    if (paid === 0) return "NOT PAID"
+    if (paid > pf) return "OVERPAID"
+    return "UNKNOWN"
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "PAID": return "bg-green-100 text-green-800"
+      case "PARTIAL": return "bg-amber-100 text-amber-800"
+      case "NOT PAID": return "bg-red-100 text-red-800"
+      case "OVERPAID": return "bg-purple-100 text-purple-800"
+      case "MATCHED": return "bg-green-100 text-green-800"
+      case "MISMATCH": return "bg-red-100 text-red-800"
+      default: return "bg-slate-100 text-slate-800"
+    }
   }
 
   return (
     <MainLayout>
-      <div className="p-6 space-y-6">
 
-        <div>
-          <h1 className="text-3xl font-bold">PF & ESIC Reconciliation</h1>
-          <p className="text-muted-foreground">
-            Payroll → Challan/TRRN → Payment → Audit Register
+    
+    <div className=" space-y-6">
+
+       <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Statutory Reconciliation</h1>
+          <p className="mt-2 text-muted-foreground">
+          Reconciliation of statutory payments
           </p>
         </div>
 
-        {/* CONTEXT */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Context</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-4 gap-4">
-            <Select value={statutory} onValueChange={(v) => setStatutory(v as Statutory)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PF">PF</SelectItem>
-                <SelectItem value="ESIC">ESIC</SelectItem>
-              </SelectContent>
-            </Select>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid grid-cols-2 w-full">
+          <TabsTrigger value="client">Client-wise</TabsTrigger>
+          <TabsTrigger value="employee">Employee-wise</TabsTrigger>
+        </TabsList>
 
-            <Input type="month" value={month} onChange={e => setMonth(e.target.value)} />
-            <Input value={site} onChange={e => setSite(e.target.value)} />
-          </CardContent>
-        </Card>
+        {/* ================= CLIENT-WISE TAB ================= */}
+        <TabsContent value="client" className="space-y-6">
 
-        {/* PAYROLL SNAPSHOT */}
-        {month && (
           <Card>
-            <CardHeader>
-              <CardTitle>Payroll Liability (Read-Only)</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-4 gap-4">
-              <div>Employees: <b>{liability.employees}</b></div>
-              <div>Employee: ₹{liability.employeeContribution.toLocaleString()}</div>
-              <div>Employer: ₹{liability.employerContribution.toLocaleString()}</div>
-              <div className="font-bold text-primary">
-                Total: ₹{liability.total.toLocaleString()}
-              </div>
+            <CardContent className="p-4 grid grid-cols-4 gap-4">
+              <Select value={selectedClient} onValueChange={setSelectedClient}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="C1">ABC Ltd</SelectItem>
+                  <SelectItem value="C2">XYZ Pvt Ltd</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Jan-26">Jan-26</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                disabled={!pfData}
+                onClick={() => setTrrnUploaded(true)}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                Upload TRRN
+              </Button>
+
+              <Button
+                disabled={!pfData || !trrnUploaded}
+                onClick={handleReconcile}
+              >
+                Reconcile
+              </Button>
             </CardContent>
           </Card>
-        )}
 
-        {/* CHALLAN */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Challan / TRRN</CardTitle>
-            <CardDescription>
-              Upload EPFO / ESIC challan OR enter manually
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-3 gap-4">
-            <Input
-              type="file"
-              onChange={(e) => e.target.files && handleUpload(e.target.files[0])}
-            />
-            {uploadedFile && (
-              <Badge variant="outline">
-                <Upload className="h-3 w-3 mr-1" /> {uploadedFile.name}
-              </Badge>
-            )}
+          {pfData && (
+            <Card className="bg-slate-50">
+              <CardContent className="p-4 grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">PF Amount</p>
+                  <p className="font-semibold">₹{pfData.pfAmount.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Employees</p>
+                  <p className="font-semibold flex items-center gap-1">
+                    <Users className="h-4 w-4" />
+                    {pfData.employees}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">TRRN</p>
+                  <p className="font-semibold">{trrnUploaded ? "Uploaded" : "Not Uploaded"}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-            <Input placeholder="Challan No" value={challanNo} onChange={e => setChallanNo(e.target.value)} />
-            <Input placeholder="TRRN" value={trrn} onChange={e => setTrrn(e.target.value)} />
-            <Input placeholder="Challan Amount" type="number" value={challanAmount} onChange={e => setChallanAmount(e.target.value)} />
-            <Input type="date" value={challanDate} onChange={e => setChallanDate(e.target.value)} />
-            <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-          </CardContent>
-        </Card>
-
-        {/* PAYMENT */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Details</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-3 gap-4">
-            <Input placeholder="Paid Amount" type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} />
-            <Input type="date" value={paidDate} onChange={e => setPaidDate(e.target.value)} />
-            <Input placeholder="UTR / Bank Ref" value={utr} onChange={e => setUtr(e.target.value)} />
-            <Button onClick={handleReconcile} className="col-span-3">
-              Reconcile
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* REGISTER */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Reconciliation Register</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Month</TableHead>
-                  <TableHead>Statutory</TableHead>
-                  <TableHead>Challan</TableHead>
-                  <TableHead>TRRN</TableHead>
-                  <TableHead>Payroll</TableHead>
-                  <TableHead>Challan</TableHead>
-                  <TableHead>Paid</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Lock</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {records.map(r => (
-                  <TableRow key={r.id} className={r.locked ? "bg-muted" : ""}>
-                    <TableCell>{r.month}</TableCell>
-                    <TableCell>{r.statutory}</TableCell>
-                    <TableCell>{r.challanNo}</TableCell>
-                    <TableCell>{r.trrn}</TableCell>
-                    <TableCell>₹{r.payrollAmount.toLocaleString()}</TableCell>
-                    <TableCell>₹{r.challanAmount.toLocaleString()}</TableCell>
-                    <TableCell>₹{r.paidAmount.toLocaleString()}</TableCell>
-                    <TableCell><Badge>{r.status}</Badge></TableCell>
-                    <TableCell>
-                      {!r.locked && (
-                        <Button size="sm" variant="outline" onClick={() => lockRecord(r.id)}>
-                          <Lock className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </TableCell>
+          <Card>
+            <CardHeader>
+              <CardTitle>Client-wise Reconciliation</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Client</TableHead>
+                    <TableHead>Month</TableHead>
+                    <TableHead className="text-right">Employees</TableHead>
+                    <TableHead className="text-right">PF Amount</TableHead>
+                    <TableHead className="text-right">Paid Amount</TableHead>
+                    <TableHead className="text-right">Difference</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                </TableHeader>
 
-      </div>
+                <TableBody>
+                  {!reconRow && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                        Select client, month, upload TRRN and click Reconcile
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {reconRow && (() => {
+                    const diff = reconRow.pfAmount - reconRow.paidAmount
+                    const status = getStatus(reconRow.pfAmount, reconRow.paidAmount)
+
+                    return (
+                      <TableRow>
+                        <TableCell>{reconRow.clientName}</TableCell>
+                        <TableCell>{reconRow.month}</TableCell>
+                        <TableCell className="text-right">{reconRow.employees}</TableCell>
+                        <TableCell className="text-right">₹{reconRow.pfAmount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">₹{reconRow.paidAmount.toLocaleString()}</TableCell>
+                        <TableCell className={`text-right ${diff === 0 ? "text-green-600" : "text-red-600"}`}>
+                          ₹{diff.toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(status)}>{status}</Badge>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })()}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+        </TabsContent>
+
+        {/* ================= EMPLOYEE-WISE TAB ================= */}
+        <TabsContent value="employee" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Employee-wise PF Compliance</CardTitle>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+
+              {/* Filters + Upload */}
+              <div className="grid grid-cols-5 gap-3">
+                <Input placeholder="Search UAN / Name" />
+                <Input placeholder="Month" />
+                <Select>
+                  <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="matched">Matched</SelectItem>
+                    <SelectItem value="mismatch">Mismatch</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button variant="outline" onClick={() => setEcrUploaded(true)}>
+                  <Upload className="h-4 w-4 mr-1" />
+                  Upload ECR
+                </Button>
+
+                <div className="flex items-center">
+                  {ecrUploaded && (
+                    <Badge className="bg-green-100 text-green-800">
+                      ECR Uploaded
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Table */}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>UAN</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="text-right">ECR EPF</TableHead>
+                    <TableHead className="text-right">ECR EPS</TableHead>
+                    <TableHead className="text-right">NCP</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {!ecrUploaded && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                        Upload ECR file to view employee-wise compliance
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {ecrUploaded && employeeRecon.map((e, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{e.uan}</TableCell>
+                      <TableCell>{e.name}</TableCell>
+                      <TableCell className="text-right">{e.ecrEPF}</TableCell>
+                      <TableCell className="text-right">{e.ecrEPS}</TableCell>
+                      <TableCell className="text-right">{e.ncp}</TableCell>
+                      <TableCell>
+                        {e.status === "MATCHED" ? (
+                          <Badge className="bg-green-100 text-green-800">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            MATCHED
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            MISMATCH
+                          </Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+      </Tabs>
+    </div>
     </MainLayout>
   )
 }
