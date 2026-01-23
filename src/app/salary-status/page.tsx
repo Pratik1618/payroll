@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
-import { Calendar as CalendarIcon, RefreshCw, FileDown, X, Eye, ChevronDown, ChevronUp } from "lucide-react"
+import { Calendar as CalendarIcon, RefreshCw, FileDown, X, Eye, ChevronDown, ChevronUp, Lock } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 
@@ -313,6 +313,7 @@ const processedEmployees = sites.reduce((sum, s) => {
     total: filteredClients.length,
     locked: filteredClients.filter((c) => c.overallStatus === "locked").length,
     pending: filteredClients.filter((c) => c.overallStatus === "pending").length,
+    unlocked: filteredClients.filter((c) => c.overallStatus === "unlocked").length,
   }), [filteredClients])
 
   const hasActiveFilters = client !== "all" || status !== "all" || month !== undefined
@@ -372,6 +373,20 @@ const processedEmployees = sites.reduce((sum, s) => {
       ...prev,
       [clientRecord.id]: true,
     }))
+  }
+
+  function handleLock(clientRecord: ClientRecord) {
+    const confirmed = window.confirm(
+      `Locking will prevent further salary modifications for all ${clientRecord.totalSites} sites under ${clientRecord.name}. Are you sure?`
+    )
+    if (!confirmed) return
+
+    // simulate backend success
+    setUnlockedClients((prev) => {
+      const newState = { ...prev }
+      delete newState[clientRecord.id]
+      return newState
+    })
   }
 
   function getStatusLabel(status: SalaryStatus) {
@@ -451,6 +466,7 @@ const processedEmployees = sites.reduce((sum, s) => {
                       <SelectItem value="all">All Statuses</SelectItem>
                       <SelectItem value="locked">Locked</SelectItem>
                       <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="unlocked">Unlocked</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -506,7 +522,7 @@ const processedEmployees = sites.reduce((sum, s) => {
               <CardTitle>Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <div className="text-3xl font-semibold">{counts.locked}</div>
                   <p className="text-sm text-muted-foreground">Clients Locked</p>
@@ -514,6 +530,10 @@ const processedEmployees = sites.reduce((sum, s) => {
                 <div className="space-y-1">
                   <div className="text-3xl font-semibold">{counts.pending}</div>
                   <p className="text-sm text-muted-foreground">Clients Pending</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-3xl font-semibold">{counts.unlocked}</div>
+                  <p className="text-sm text-muted-foreground">Clients Unlocked</p>
                 </div>
               </div>
             </CardContent>
@@ -573,29 +593,38 @@ const processedEmployees = sites.reduce((sum, s) => {
                         </TableCell>
                         <TableCell>{formatDate(c.lastLockedAt)}</TableCell>
                         <TableCell className="text-right">
-                          {c.overallStatus === "locked" && (
-                            <div className="flex justify-end gap-2">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewDetails(c)}
+                              className="h-8 px-2"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            {c.overallStatus === "locked" && (
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                onClick={() => handleViewDetails(c)}
-                                className="h-8 px-2"
+                                onClick={() => handleUnlock(c)}
+                                className="h-8 px-2 text-destructive border-destructive"
                               >
-                                <Eye className="h-4 w-4 mr-1" />
-                                View
+                                Unlock
                               </Button>
-                              {c.overallStatus === "locked" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleUnlock(c)}
-                                  className="h-8 px-2 text-destructive border-destructive"
-                                >
-                                  Unlock
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                            )}
+                            {c.overallStatus === "unlocked" && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleLock(c)}
+                                className="h-8 px-2 text-primary border-primary"
+                              >
+                                <Lock className="h-4 w-4 mr-1" />
+                                Lock
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
