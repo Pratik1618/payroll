@@ -136,7 +136,7 @@ interface ManualSalaryEntry {
 export default function ManualSalaryProcessing() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("")
   const [salaryMonth, setSalaryMonth] = useState<string>("")
-  const [payableDays, setPayableDays] = useState<string>("")
+  
   const [remarks, setRemarks] = useState<string>("")
   const [confirmed, setConfirmed] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
@@ -144,15 +144,27 @@ export default function ManualSalaryProcessing() {
   const [manualSalaryLog, setManualSalaryLog] = useState<ManualSalaryEntry[]>([])
   const [selectedEntry, setSelectedEntry] = useState<ManualSalaryEntry | null>(null)
   const [selectedEntries, setSelectedEntries] = useState<string[]>([])
+const [weeklyOff, setWeeklyOff] = useState<string>("")
+const [plAvailed, setPlAvailed] = useState<string>("")
+const [absentDays, setAbsentDays] = useState<string>("")
 
   const employee = employeeMasterData[selectedEmployee]
   const monthDays = getMonthDays(salaryMonth)
-  const payableDaysNum = Number.parseInt(payableDays) || 0
+const woNum = Number.parseInt(weeklyOff) || 0   // Paid
+const plNum = Number.parseInt(plAvailed) || 0   // Paid
+const absentNum = Number.parseInt(absentDays) || 0 // LOP
 
-  const calculateEarned = (amount: number) => {
-    if (!payableDays || payableDaysNum <= 0 || payableDaysNum > monthDays) return 0
-    return (amount / monthDays) * payableDaysNum
-  }
+const payableDaysNum =
+  monthDays > 0
+    ? Math.max(monthDays - absentNum, 0)
+    : 0
+  
+
+ const calculateEarned = (amount: number) => {
+  if (payableDaysNum <= 0 || payableDaysNum > monthDays) return 0
+  return (amount / monthDays) * payableDaysNum
+}
+
 
   const earningComponents : Record<string,number>=employee
     ? {
@@ -230,10 +242,14 @@ export default function ManualSalaryProcessing() {
 
       setSelectedEmployee("")
       setSalaryMonth("")
-      setPayableDays("")
+    
       setRemarks("")
       setConfirmed(false)
       setIsProcessing(false)
+      setWeeklyOff("")
+setPlAvailed("")
+setAbsentDays("")
+
     }, 1000)
   }
 
@@ -335,39 +351,71 @@ export default function ManualSalaryProcessing() {
                   <CardDescription>Select month and enter payable days</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="month" className="text-base font-medium">
-                        Salary Month <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="month"
-                        type="month"
-                        value={salaryMonth}
-                        onChange={(e) => setSalaryMonth(e.target.value)}
-                        className="bg-background border-border"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-base font-medium">Month Days</Label>
-                      <Input value={monthDays} disabled className="bg-muted border-border" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="days" className="text-base font-medium">
-                        Payable Days <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        id="days"
-                        type="number"
-                        min="0"
-                        max={monthDays}
-                        value={payableDays}
-                        onChange={(e) => setPayableDays(e.target.value)}
-                        placeholder="0"
-                        className="bg-background border-border"
-                      />
-                    </div>
-                  </div>
+              <div className="grid grid-cols-3 gap-4">
+  <div className="space-y-2">
+    <Label htmlFor="month" className="text-base font-medium">
+      Salary Month <span className="text-red-500">*</span>
+    </Label>
+    <Input
+      id="month"
+      type="month"
+      value={salaryMonth}
+      onChange={(e) => setSalaryMonth(e.target.value)}
+      className="bg-background border-border"
+    />
+  </div>
+
+  <div className="space-y-2">
+    <Label className="text-base font-medium">Month Days</Label>
+    <Input value={monthDays} disabled className="bg-muted border-border" />
+  </div>
+</div>
+
+{/* Attendance Inputs */}
+<div className="grid grid-cols-4 gap-4 mt-4">
+  <div className="space-y-2">
+    <Label>Weekly Off (Paid)</Label>
+    <Input
+      type="number"
+      min="0"
+      value={weeklyOff}
+      onChange={(e) => setWeeklyOff(e.target.value)}
+      placeholder="0"
+    />
+  </div>
+
+  <div className="space-y-2">
+    <Label>PL Availed (Paid)</Label>
+    <Input
+      type="number"
+      min="0"
+      value={plAvailed}
+      onChange={(e) => setPlAvailed(e.target.value)}
+      placeholder="0"
+    />
+  </div>
+
+  <div className="space-y-2">
+    <Label className="text-red-600">Absent (LOP)</Label>
+    <Input
+      type="number"
+      min="0"
+      value={absentDays}
+      onChange={(e) => setAbsentDays(e.target.value)}
+      placeholder="0"
+    />
+  </div>
+
+  <div className="space-y-2">
+    <Label className="font-semibold text-green-700">Payable Days</Label>
+    <Input
+      value={payableDaysNum}
+      disabled
+      className="bg-muted font-bold text-center"
+    />
+  </div>
+</div>
+
 
                   {payableDaysNum > monthDays && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-md">
