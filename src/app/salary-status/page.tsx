@@ -38,6 +38,9 @@ type ClientRecord = {
   overallStatus: SalaryStatus
   lastLockedAt?: string
   sites: SiteRecord[]
+  processedEmployees:number
+  totalEmployees:number
+
 }
 
 type EmployeeSalary = {
@@ -185,7 +188,12 @@ const MOCK_EMPLOYEE_SALARIES: Record<string, EmployeeSalary[]> = {
   ],
 }
 
-
+const MOCK_SITE_EMPLOYEES: Record<string, { id: string }[]> = {
+  S001: [{ id: "E001" }, { id: "E002" }, { id: "E003" }, { id: "E006" }], // 4 total, 3 processed
+  S002: [{ id: "E007" }, { id: "E008" }],                          // 2 total, 0 processed
+  S003: [{ id: "E004" }, { id: "E005" }, { id: "E009" }],             // 3 total, 2 processed
+  S004: [{ id: "E010" }],                                       // 1 total, 0 processed
+}
 
 // Utility function for consistent date formatting
 function formatDate(dateISO: string | undefined, options?: Intl.DateTimeFormatOptions): string {
@@ -255,21 +263,33 @@ export default function SalaryStatusPage() {
           .filter((s) => s.lastLockedAt)
           .sort((a, b) => new Date(b.lastLockedAt!).getTime() - new Date(a.lastLockedAt!).getTime())
         [0]?.lastLockedAt
-const processedSites = unlockedClients[clientName]
-  ? 0
-  : lockedSites
+
+        const processedSites = lockedSites   // ✅ preserve processed data
+
+       const totalEmployees = sites.reduce((sum, s) => {
+  return sum + (MOCK_SITE_EMPLOYEES[s.id]?.length || 0)
+}, 0)
+
+const processedEmployees = sites.reduce((sum, s) => {
+  return sum + (MOCK_EMPLOYEE_SALARIES[s.id]?.length || 0)
+}, 0)
+
         return {
           id: clientName,
           name: clientName,
           cycleStart: sites[0]?.cycleStart || "",
           cycleEnd: sites[0]?.cycleEnd || "",
           totalSites,
-          
           lockedSites: processedSites,
+          totalEmployees, // ✅ new
           overallStatus,
           lastLockedAt,
           sites,
+
+          processedEmployees,
+
         }
+
       })
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [unlockedClients])
@@ -335,6 +355,7 @@ const processedSites = unlockedClients[clientName]
     return "bg-muted text-foreground border border-border"
   }
 
+
   function handleViewDetails(clientRecord: ClientRecord) {
     setSelectedClient(clientRecord)
     setIsDialogOpen(true)
@@ -365,6 +386,7 @@ const processedSites = unlockedClients[clientName]
         return status
     }
   }
+
 
   function toggleSiteExpansion(clientId: string) {
     setExpandedSites((prev) => ({
@@ -514,6 +536,8 @@ const processedSites = unlockedClients[clientName]
                     <TableHead>Client</TableHead>
                     <TableHead>Salary Cycle</TableHead>
                     <TableHead>Sites Processed</TableHead>
+                    <TableHead>Employees</TableHead>
+
                     <TableHead>Status</TableHead>
                     <TableHead>Last Locked</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -535,6 +559,13 @@ const processedSites = unlockedClients[clientName]
                           <span className="font-semibold text-primary">{c.lockedSites}</span>
                           <span className="text-muted-foreground">/{c.totalSites}</span>
                         </TableCell>
+                        <TableCell className="font-medium">
+                          <span className="text-primary font-semibold">
+    {c.processedEmployees}
+  </span>
+  <span className="text-muted-foreground"> / {c.totalEmployees}</span>
+                        </TableCell>
+
                         <TableCell>
                           <Badge className={cn("uppercase", getStatusBadgeVariant(c.overallStatus))}>
                             {getStatusLabel(c.overallStatus)}
@@ -582,13 +613,17 @@ const processedSites = unlockedClients[clientName]
               <DialogTitle className="text-2xl">
                 Salary Details - {selectedClient?.name}
               </DialogTitle>
-              <DialogDescription>
-                {selectedClient && (
-                  <>
-                    {formatCycle(selectedClient.cycleStart, selectedClient.cycleEnd)} • {selectedClient.lockedSites} of {selectedClient.totalSites} sites processed
-                  </>
-                )}
-              </DialogDescription>
+            <DialogDescription>
+  {selectedClient && (
+    <>
+      {formatCycle(selectedClient.cycleStart, selectedClient.cycleEnd)} • 
+      {selectedClient.lockedSites}/{selectedClient.totalSites} sites processed • 
+      {selectedClient.processedEmployees}/{selectedClient.totalEmployees} employees processed
+    </>
+  )}
+</DialogDescription>
+
+
             </DialogHeader>
 
             <div className="flex-1 overflow-auto mt-4 -mx-6 px-6">
@@ -611,14 +646,31 @@ const processedSites = unlockedClients[clientName]
                         >
                           <div className="flex items-center gap-4 flex-1">
                             <div className="flex-1 text-left">
-                              <h3 className="font-semibold">{site.site}</h3>
+                              <h3 className="font-semibold flex items-center gap-3">
+                                {site.site}
+                            
+                              </h3>
+
                               <p className="text-sm text-muted-foreground">
                                 {formatCycle(site.cycleStart, site.cycleEnd)}
                               </p>
                             </div>
-                            <Badge className={cn("uppercase", getStatusBadgeVariant(site.status))}>
-                              {getStatusLabel(site.status)}
-                            </Badge>
+                           <div className="flex items-center gap-3">
+  {/* Status badge */}
+  <Badge className={cn("uppercase", getStatusBadgeVariant(site.status))}>
+    {getStatusLabel(site.status)}
+  </Badge>
+
+  {/* Employee count badge */}
+  <Badge variant="outline" className="text-xs">
+    <span className="text-primary font-semibold">
+      {MOCK_EMPLOYEE_SALARIES[site.id]?.length || 0}
+    </span>
+    <span className="text-muted-foreground">
+      {" "} / {MOCK_SITE_EMPLOYEES[site.id]?.length || 0} Employees
+    </span>
+  </Badge>
+</div>
                           </div>
                           {isExpanded ? (
                             <ChevronUp className="h-4 w-4 ml-2 text-muted-foreground" />

@@ -46,6 +46,7 @@ type ReportType =
   | "statutory-contribution-single"
   | "gratuity-valuation"
   | "statutory-damage-interest"
+  | "sitewise-manpower-addition-deletion"
 
 const reports = [
   {
@@ -218,6 +219,13 @@ const reports = [
     description: "West, North, South, East",
     icon: BarChart4,
     iconColor: "text-teal-600",
+  },
+  {
+    id: "sitewise-manpower-addition-deletion",
+    title: "Sitewise Monthly Manpower Addition/Deletion",
+    description: "Monthly employee  additions and deletions by site",
+    icon: UserPlus,
+    iconColor: "text-blue-600",
   },
 
   // 🔹 RnR
