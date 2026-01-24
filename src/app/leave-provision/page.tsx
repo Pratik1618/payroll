@@ -44,7 +44,7 @@ const initialSteps = [
     },
     {
         id: 5,
-        title: "Generate & Export Outputs",
+        title: "Generate Payments",
         description: "Create leave provision register and lock the calculation period",
         completed: false,
         current: false,
@@ -661,22 +661,22 @@ export default function LeaveProvisionPage() {
                     </Card>
                 )}
 
-                {/* Step 5: Generate & Export Outputs */}
+                {/* Step 5: Generate Payments */}
                 {currentStep === 5 && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Step 5: Generate & Export Outputs</CardTitle>
+                            <CardTitle>Step 5: Generate Payments</CardTitle>
                             <CardDescription>Create leave provision register and lock the calculation period</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div className="space-y-3">
                                 <Button className="w-full justify-start bg-transparent" variant="outline">
                                     <Download className="mr-2 h-4 w-4" />
-                                    Download Leave Provision Register (Excel)
+                                    Generate Payment Files
                                 </Button>
                                 <Button className="w-full justify-start bg-transparent" variant="outline">
                                     <Download className="mr-2 h-4 w-4" />
-                                    Download Leave Ledger Entry (CSV)
+                                    Download Payment Summary
                                 </Button>
                                 <Button className="w-full justify-start bg-transparent" variant="outline">
                                     <Lock className="mr-2 h-4 w-4" />
@@ -688,7 +688,7 @@ export default function LeaveProvisionPage() {
                                 <Button variant="outline" onClick={() => setCurrentStep(4)}>
                                     Back
                                 </Button>
-                                <Button onClick={handleSaveToLedger}>Complete & Save</Button>
+                                <Button onClick={handleSaveToLedger}>Save and Generate</Button>
                             </div>
                         </CardContent>
                     </Card>
