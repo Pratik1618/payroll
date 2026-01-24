@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ClientsDropdown } from "@/components/ui/clients-dropdown"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, CheckCircle2, Upload, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -25,21 +26,25 @@ const PF_UPLOAD_DATA = [
 ]
 
 // Dummy TRRN parse result
-const MOCK_TRRN_FILE = {
-  totalPaid: 425000,
+const MOCK_TRRN_CASES = {
+  PAID: { totalPaid: 635000 },      // exact match
+  PARTIAL: { totalPaid: 425000 },   // less than PF
+  OVERPAID: { totalPaid: 700000 },  // more than PF
 }
+
 
 /* ================= COMPONENT ================= */
 
 export default function PFReconciliationModule() {
   const [activeTab, setActiveTab] = useState("client")
+const [mockCase, setMockCase] = useState<"PAID" | "PARTIAL" | "OVERPAID">("PARTIAL")
 
   /* ---------- CLIENT STATES ---------- */
-  const [selectedClient, setSelectedClient] = useState("")
+  const [selectedClients, setSelectedClients] = useState<string[]>([])
   const [selectedMonth, setSelectedMonth] = useState("")
-  const [pfData, setPfData] = useState<any | null>(null)
+  const [pfData, setPfData] = useState<any[]>([])
   const [trrnUploaded, setTrrnUploaded] = useState(false)
-  const [reconRow, setReconRow] = useState<any | null>(null)
+  const [reconRows, setReconRows] = useState<any[]>([])
 
   /* ---------- EMPLOYEE STATES ---------- */
   const [ecrUploaded, setEcrUploaded] = useState(false)
@@ -47,36 +52,46 @@ export default function PFReconciliationModule() {
 
   /* ================= CLIENT AUTO FETCH ================= */
   useEffect(() => {
-    if (!selectedClient || !selectedMonth) {
-      setPfData(null)
-      setReconRow(null)
+    if (selectedClients.length === 0 || !selectedMonth) {
+      setPfData([])
+      setReconRows([])
       setTrrnUploaded(false)
       return
     }
 
-    const data = PF_UPLOAD_DATA.find(
-      (d) => d.clientId === selectedClient && d.month === selectedMonth
+    const data = PF_UPLOAD_DATA.filter(
+      (d) => selectedClients.includes(d.clientId) && d.month === selectedMonth
     )
 
-    setPfData(data || null)
-    setReconRow(null)
+    setPfData(data)
+    setReconRows([])
     setTrrnUploaded(false)
-  }, [selectedClient, selectedMonth])
+  }, [selectedClients, selectedMonth])
 
   /* ================= CLIENT RECONCILE ================= */
-  const handleReconcile = () => {
-    if (!pfData || !trrnUploaded) return
+ const handleReconcile = () => {
+  if (pfData.length === 0 || !trrnUploaded) return
 
-    const paidAmount = MOCK_TRRN_FILE.totalPaid
+  const paidAmount = MOCK_TRRN_CASES[mockCase].totalPaid
 
-    setReconRow({
-      clientName: pfData.clientName,
-      month: pfData.month,
-      employees: pfData.employees,
-      pfAmount: pfData.pfAmount,
-      paidAmount,
-    })
-  }
+  const totalPF = pfData.reduce((sum, c) => sum + c.pfAmount, 0)
+  const totalEmployees = pfData.reduce((sum, c) => sum + c.employees, 0)
+  const clientNames = pfData.map(c => c.clientName).join(", ")
+
+  const newReconRows = [
+    {
+      clientName: clientNames,
+      month: selectedMonth,
+      employees: totalEmployees,
+      pfAmount: totalPF,
+      paidAmount: paidAmount,
+    }
+  ]
+
+  setReconRows(newReconRows)
+}
+
+
 
   /* ================= EMPLOYEE AUTO LOAD (DUMMY) ================= */
   useEffect(() => {
@@ -133,10 +148,16 @@ export default function PFReconciliationModule() {
     }
   }
 
-  return (
-   
+  const clientOptions = PF_UPLOAD_DATA.map(client => ({
+    id: client.clientId,
+    name: client.clientName,
+    employees: client.employees
+  }))
 
-    
+  return (
+
+
+
     <div className=" space-y-6">
 
 
@@ -151,15 +172,13 @@ export default function PFReconciliationModule() {
 
           <Card>
             <CardContent className="p-4 grid grid-cols-4 gap-4">
-              <Select value={selectedClient} onValueChange={setSelectedClient}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Client" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="C1">ABC Ltd</SelectItem>
-                  <SelectItem value="C2">XYZ Pvt Ltd</SelectItem>
-                </SelectContent>
-              </Select>
+              <ClientsDropdown
+                clients={clientOptions}
+                selectedClients={selectedClients}
+                setSelectedClients={setSelectedClients}
+                placeholder="Select Clients"
+                className="w-48"
+              />
 
               <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                 <SelectTrigger>
@@ -172,7 +191,7 @@ export default function PFReconciliationModule() {
 
               <Button
                 variant="outline"
-                disabled={!pfData}
+                disabled={pfData.length === 0}
                 onClick={() => setTrrnUploaded(true)}
               >
                 <Upload className="h-4 w-4 mr-1" />
@@ -180,7 +199,7 @@ export default function PFReconciliationModule() {
               </Button>
 
               <Button
-                disabled={!pfData || !trrnUploaded}
+                disabled={pfData.length === 0 || !trrnUploaded}
                 onClick={handleReconcile}
               >
                 Reconcile
@@ -188,23 +207,47 @@ export default function PFReconciliationModule() {
             </CardContent>
           </Card>
 
-          {pfData && (
+          {pfData.length > 0 && (
             <Card className="bg-slate-50">
-              <CardContent className="p-4 grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">PF Amount</p>
-                  <p className="font-semibold">₹{pfData.pfAmount.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Employees</p>
-                  <p className="font-semibold flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    {pfData.employees}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">TRRN</p>
-                  <p className="font-semibold">{trrnUploaded ? "Uploaded" : "Not Uploaded"}</p>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                  {pfData.map((client, index) => (
+                    <div key={client.clientId} className="space-y-2">
+                      <h4 className="font-medium">{client.clientName}</h4>
+                      <div className="space-y-1">
+                        <div>
+                          <p className="text-muted-foreground">PF Amount</p>
+                          <p className="font-semibold">₹{client.pfAmount.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Employees</p>
+                          <p className="font-semibold flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {client.employees}
+                          </p>
+                        </div>
+                       
+                      </div>
+                    </div>
+                  ))}
+                  {/* ===== Unified TRRN Card (COMMON) ===== */}
+{pfData.length > 0 && (
+  <Card className="border-dashed bg-white">
+    <CardContent className="p-4 flex items-center justify-between">
+      <div>
+        <p className="text-sm text-muted-foreground">Unified TRRN (Single Challan for all clients)</p>
+        <p className="font-semibold">
+          {trrnUploaded ? "TRRN Uploaded" : "TRRN Not Uploaded"}
+        </p>
+      </div>
+
+      <Badge className={trrnUploaded ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}>
+        {trrnUploaded ? "UPLOADED" : "PENDING"}
+      </Badge>
+    </CardContent>
+  </Card>
+)}
+
                 </div>
               </CardContent>
             </Card>
@@ -229,25 +272,32 @@ export default function PFReconciliationModule() {
                 </TableHeader>
 
                 <TableBody>
-                  {!reconRow && (
+                  {reconRows.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
-                        Select client, month, upload TRRN and click Reconcile
+                        Select clients, month, upload TRRN and click Reconcile
                       </TableCell>
                     </TableRow>
                   )}
 
-                  {reconRow && (() => {
-                    const diff = reconRow.pfAmount - reconRow.paidAmount
-                    const status = getStatus(reconRow.pfAmount, reconRow.paidAmount)
+                  {reconRows.map((row, index) => {
+                    const diff = row.pfAmount - row.paidAmount
+                    const status = getStatus(row.pfAmount, row.paidAmount)
 
                     return (
-                      <TableRow>
-                        <TableCell>{reconRow.clientName}</TableCell>
-                        <TableCell>{reconRow.month}</TableCell>
-                        <TableCell className="text-right">{reconRow.employees}</TableCell>
-                        <TableCell className="text-right">₹{reconRow.pfAmount.toLocaleString()}</TableCell>
-                        <TableCell className="text-right">₹{reconRow.paidAmount.toLocaleString()}</TableCell>
+                      <TableRow key={index}>
+                        <TableCell>
+                          <span title={row.clientName}>
+                            {row.clientName.length > 30
+                              ? row.clientName.slice(0, 30) + "..."
+                              : row.clientName}
+                          </span>
+                        </TableCell>
+
+                        <TableCell>{row.month}</TableCell>
+                        <TableCell className="text-right">{row.employees}</TableCell>
+                        <TableCell className="text-right">₹{row.pfAmount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">₹{row.paidAmount.toLocaleString()}</TableCell>
                         <TableCell className={`text-right ${diff === 0 ? "text-green-600" : "text-red-600"}`}>
                           ₹{diff.toLocaleString()}
                         </TableCell>
@@ -256,7 +306,7 @@ export default function PFReconciliationModule() {
                         </TableCell>
                       </TableRow>
                     )
-                  })()}
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -353,6 +403,6 @@ export default function PFReconciliationModule() {
 
       </Tabs>
     </div>
-   
+
   )
 }
