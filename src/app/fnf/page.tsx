@@ -19,7 +19,7 @@ interface Employee {
     lastWorkingDay: string;
     netSalary: number;
     reasonForLeaving: string;
-    status: "pending" | "under-review" | "approved" | "done";
+    status: "pending" | "approved" | "done";
     clientSite: string;
     basicSalary: number;
     allowances: number;
@@ -80,7 +80,7 @@ const dummyFNF: Employee[] = [
         lastWorkingDay: "2025-09-28",
         netSalary: 45000,
         reasonForLeaving: "Terminated",
-        status: "under-review",
+        status: "pending",
         clientSite: "Site B",
         basicSalary: 38000,
         allowances: 12000,
@@ -204,7 +204,7 @@ export default function Fnfpage() {
         return lastWorkingDate >= lastMonth;
     });
 
-    const pendingCount = employees.filter(emp => emp.status === "pending" || emp.status === "under-review").length;
+    const pendingCount = employees.filter(emp => emp.status === "pending").length;
     const doneCount = employees.filter(emp => emp.status === "done").length;
     const totalLeft = employees.length;
 
@@ -221,7 +221,6 @@ export default function Fnfpage() {
         switch (status) {
             case "done": return "bg-green-50 text-green-700 border-green-200";
             case "approved": return "bg-blue-50 text-blue-700 border-blue-200";
-            case "under-review": return "bg-yellow-50 text-yellow-700 border-yellow-200";
             default: return "bg-gray-50 text-gray-700 border-gray-200";
         }
     };
@@ -230,7 +229,6 @@ export default function Fnfpage() {
         switch (status) {
             case "done": return "Done";
             case "approved": return "Approved";
-            case "under-review": return "Under Review";
             default: return "Pending";
         }
     };
@@ -303,6 +301,11 @@ export default function Fnfpage() {
             alert("No employees with status 'approved'.");
             return;
         }
+
+        // Change status to done for approved employees
+        setEmployees(employees.map(emp =>
+            emp.status === "approved" ? { ...emp, status: "done" } : emp
+        ));
 
         const header = "TYPE,DEBIT BANK A/C NO,DEBIT AMT,CUR,BENEFICIARY A/C NO,IFSC CODE,NARRATION/NAME (NOT MORE THAN 20)";
         const rows = approved.map(emp => {
@@ -424,7 +427,7 @@ export default function Fnfpage() {
                               <div className="flex justify-end">
                     <Button onClick={handleGeneratePayments} variant="default">
                         <Download className="mr-2 h-4 w-4" />
-                        Generate Payments (Approved)
+                        Generate Payments & Mark as Done
                     </Button>
                 </div>
                         </div>

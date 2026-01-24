@@ -13,7 +13,7 @@ interface Employee {
   lastWorkingDay: string;
   netSalary: number;
   reasonForLeaving: string;
-  status: "pending" | "under-review" | "approved" | "done";
+  status: "pending" | "approved" | "done";
   clientSite: string;
   basicSalary: number;
   allowances: number;
@@ -61,8 +61,6 @@ export function FnfProcessingModal({
         return "bg-green-50 text-green-700 border-green-200";
       case "approved":
         return "bg-blue-50 text-blue-700 border-blue-200";
-      case "under-review":
-        return "bg-yellow-50 text-yellow-700 border-yellow-200";
       default:
         return "bg-gray-50 text-gray-700 border-gray-200";
     }
@@ -74,8 +72,6 @@ export function FnfProcessingModal({
         return "Done";
       case "approved":
         return "Approved";
-      case "under-review":
-        return "Under Review";
       default:
         return "Pending";
     }
@@ -123,21 +119,21 @@ export function FnfProcessingModal({
                 >
                   {getStatusLabel(employee.status)}
                 </span>
-                <select
-                  className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
-                  value={employee.status}
-                  onChange={(e) =>
-                    onUpdateStatus(
-                      employee.empId,
-                      e.target.value as Employee["status"]
-                    )
-                  }
-                >
-                  <option value="pending">Pending</option>
-                  <option value="under-review">Under Review</option>
-                  <option value="approved">Approved</option>
-                  <option value="done">Done</option>
-                </select>
+                {employee.status !== "done" && (
+                  <select
+                    className="flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    value={employee.status}
+                    onChange={(e) =>
+                      onUpdateStatus(
+                        employee.empId,
+                        e.target.value as Employee["status"]
+                      )
+                    }
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                  </select>
+                )}
               </div>
             </CardContent>
           </Card>
