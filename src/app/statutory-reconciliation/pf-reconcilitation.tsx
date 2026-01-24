@@ -37,7 +37,7 @@ const MOCK_TRRN_CASES = {
 
 export default function PFReconciliationModule() {
   const [activeTab, setActiveTab] = useState("client")
-const [mockCase, setMockCase] = useState<"PAID" | "PARTIAL" | "OVERPAID">("PARTIAL")
+  const [mockCase, setMockCase] = useState<"PAID" | "PARTIAL" | "OVERPAID">("PARTIAL")
 
   /* ---------- CLIENT STATES ---------- */
   const [selectedClients, setSelectedClients] = useState<string[]>([])
@@ -69,27 +69,27 @@ const [mockCase, setMockCase] = useState<"PAID" | "PARTIAL" | "OVERPAID">("PARTI
   }, [selectedClients, selectedMonth])
 
   /* ================= CLIENT RECONCILE ================= */
- const handleReconcile = () => {
-  if (pfData.length === 0 || !trrnUploaded) return
+  const handleReconcile = () => {
+    if (pfData.length === 0 || !trrnUploaded) return
 
-  const paidAmount = MOCK_TRRN_CASES[mockCase].totalPaid
+    const paidAmount = MOCK_TRRN_CASES[mockCase].totalPaid
 
-  const totalPF = pfData.reduce((sum, c) => sum + c.pfAmount, 0)
-  const totalEmployees = pfData.reduce((sum, c) => sum + c.employees, 0)
-  const clientNames = pfData.map(c => c.clientName).join(", ")
+    const totalPF = pfData.reduce((sum, c) => sum + c.pfAmount, 0)
+    const totalEmployees = pfData.reduce((sum, c) => sum + c.employees, 0)
+    const clientNames = pfData.map(c => c.clientName).join(", ")
 
-  const newReconRows = [
-    {
-      clientName: clientNames,
-      month: selectedMonth,
-      employees: totalEmployees,
-      pfAmount: totalPF,
-      paidAmount: paidAmount,
-    }
-  ]
+    const newReconRows = [
+      {
+        clientName: clientNames,
+        month: selectedMonth,
+        employees: totalEmployees,
+        pfAmount: totalPF,
+        paidAmount: paidAmount,
+      }
+    ]
 
-  setReconRows(newReconRows)
-}
+    setReconRows(newReconRows)
+  }
 
 
 
@@ -226,27 +226,27 @@ const [mockCase, setMockCase] = useState<"PAID" | "PARTIAL" | "OVERPAID">("PARTI
                             {client.employees}
                           </p>
                         </div>
-                       
+
                       </div>
                     </div>
                   ))}
                   {/* ===== Unified TRRN Card (COMMON) ===== */}
-{pfData.length > 0 && (
-  <Card className="border-dashed bg-white">
-    <CardContent className="p-4 flex items-center justify-between">
-      <div>
-        <p className="text-sm text-muted-foreground">Unified TRRN (Single Challan for all clients)</p>
-        <p className="font-semibold">
-          {trrnUploaded ? "TRRN Uploaded" : "TRRN Not Uploaded"}
-        </p>
-      </div>
+                  {pfData.length > 0 && (
+                    <Card className="border-dashed bg-white">
+                      <CardContent className="p-4 flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-muted-foreground">Unified TRRN (Single Challan for all clients)</p>
+                          <p className="font-semibold">
+                            {trrnUploaded ? "TRRN Uploaded" : "TRRN Not Uploaded"}
+                          </p>
+                        </div>
 
-      <Badge className={trrnUploaded ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}>
-        {trrnUploaded ? "UPLOADED" : "PENDING"}
-      </Badge>
-    </CardContent>
-  </Card>
-)}
+                        <Badge className={trrnUploaded ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}>
+                          {trrnUploaded ? "UPLOADED" : "PENDING"}
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  )}
 
                 </div>
               </CardContent>
