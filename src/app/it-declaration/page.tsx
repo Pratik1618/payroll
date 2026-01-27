@@ -28,6 +28,8 @@ export default function EmployeeITDeclarationPage() {
   const [prevIncome, setPrevIncome] = useState(0)
   const [prevTds, setPrevTds] = useState(0)
 
+  const [attachments, setAttachments] = useState<File[]>([])
+
   const [accepted, setAccepted] = useState(false)
 
   const isLocked = status !== "draft"
@@ -116,6 +118,52 @@ export default function EmployeeITDeclarationPage() {
             <InputField label="Other Income" value={otherIncome} setValue={setOtherIncome} disabled={isLocked} />
             <InputField label="Previous Employer Income" value={prevIncome} setValue={setPrevIncome} disabled={isLocked} />
             <InputField label="Previous Employer TDS" value={prevTds} setValue={setPrevTds} disabled={isLocked} />
+          </CardContent>
+        </Card>
+
+        {/* Attachments */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Attachments</CardTitle>
+            <CardDescription>
+              Upload supporting documents for your IT declaration
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="file-upload" className="text-sm">Select Files</Label>
+              <Input
+                id="file-upload"
+                type="file"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || [])
+                  setAttachments(prev => [...prev, ...files])
+                }}
+                disabled={isLocked}
+                className="cursor-pointer"
+              />
+            </div>
+            {attachments.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm">Selected Files:</Label>
+                <div className="space-y-1">
+                  {attachments.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-2 bg-muted rounded">
+                      <span className="text-sm">{file.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setAttachments(prev => prev.filter((_, i) => i !== index))}
+                        disabled={isLocked}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

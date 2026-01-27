@@ -57,6 +57,14 @@ const MOCK_DECLARATIONS = [
     otherIncome: 12000,
     prevEmployerIncome: 300000,
     prevEmployerTds: 25000,
+
+    proofs: [
+      { name: "Rent Agreement.pdf", type: "HRA", size: "2.5 MB" },
+      { name: "Investment Proof - PPF.pdf", type: "80C", size: "1.2 MB" },
+      { name: "Medical Insurance Receipt.pdf", type: "80D", size: "850 KB" },
+      { name: "NPS Statement.pdf", type: "80CCD(1B)", size: "1.8 MB" },
+      { name: "Previous Employer Form 16.pdf", type: "Other Income", size: "3.1 MB" },
+    ],
   },
 ]
 
@@ -180,6 +188,39 @@ export default function HrItDeclarationPage() {
 
       {/* HR Action */}
       <div className="border-t pt-4 space-y-3">
+        {/* Proofs Section */}
+        <Section title="Supporting Documents">
+          {selected.proofs && selected.proofs.length > 0 ? (
+            <div className="space-y-2">
+              {selected.proofs.map((proof: any, index: number) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <FileCheck className="h-4 w-4 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">{proof.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {proof.type} • {proof.size}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      // TODO: Implement actual file viewing/download
+                      alert(`Viewing ${proof.name}`)
+                    }}
+                  >
+                    View
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No documents uploaded</p>
+          )}
+        </Section>
+
         <div>
           <Label className="text-sm">
             Remarks <span className="text-muted-foreground">(mandatory for rejection)</span>
