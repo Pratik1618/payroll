@@ -14,7 +14,9 @@ import {
   CalendarRange,
   HandCoins,
   FileArchiveIcon,
-  CalendarMinus
+  CalendarMinus,
+  BanknoteArrowUp,
+  BanknoteArrowDown
 } from "lucide-react"
 
 const navigation = [
@@ -44,6 +46,8 @@ const navigation = [
   { name: "IT Declarations", href: "/hr-itdeclarations", icon: Users2 },
   { name: "Employee History", href: "/empHistory", icon: History },
   { name: "Employee Transfer", href: "/emptransfer", icon: Shuffle },
+  {name:"Cash Reliever",href:"/cash-reliever-maker",icon:BanknoteArrowUp},
+  {name:"Cash Reliever Verfication",href:"/cash-reliever-checker",icon:BanknoteArrowDown},
   { name: "Analytics", href: "/analytics", icon: ChartPieIcon },
 ]
 
