@@ -16,7 +16,8 @@ import {
   FileArchiveIcon,
   CalendarMinus,
   BanknoteArrowUp,
-  BanknoteArrowDown
+  BanknoteArrowDown,
+  Repeat
 } from "lucide-react"
 
 const navigation = [
@@ -45,6 +46,7 @@ const navigation = [
   { name: "Employee IT declaration", href: "/it-declaration", icon: UserPenIcon },
   { name: "IT Declarations", href: "/hr-itdeclarations", icon: Users2 },
   { name: "Employee History", href: "/empHistory", icon: History },
+  {name:"Transfer Employees",href:"/transfer-employees",icon:Repeat},
   { name: "Employee Transfer", href: "/emptransfer", icon: Shuffle },
   {name:"Cash Reliever",href:"/cash-reliever-maker",icon:BanknoteArrowUp},
   {name:"Cash Reliever Verfication",href:"/cash-reliever-checker",icon:BanknoteArrowDown},
