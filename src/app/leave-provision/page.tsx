@@ -8,9 +8,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Stepper } from "@/components/ui/stepper"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
-import { AlertTriangle, ChevronDown, Lock, Download } from "lucide-react"
+import { AlertTriangle, ChevronDown, Lock } from "lucide-react"
 import { generateMonthOptions, formatMonthLabel } from "@/utils/month-utility"
 
 const initialSteps = [
@@ -39,13 +41,6 @@ const initialSteps = [
         id: 4,
         title: "Review & Lock",
         description: "Final approval before saving to ledger",
-        completed: false,
-        current: false,
-    },
-    {
-        id: 5,
-        title: "Generate Payments",
-        description: "Create leave provision register and lock the calculation period",
         completed: false,
         current: false,
     },
@@ -105,11 +100,23 @@ const mockEmployees = [
         fixedGross: 16000,
         lwwPolicy: false,
         paidLeaveEligible: true,
-        salaryStatus: "active",
+        salaryStatus: "inactive",
     },
 ]
 
 const monthOptions = generateMonthOptions(2024, 2026)
+type EmployeeStatusFilter = "active" | "inactive" | "both"
+type LeaveTrackerItem = {
+    id: string
+    periodFrom: string
+    periodTo: string
+    client: string
+    site: string
+    employees: number
+    totalLeaveToPay: number
+    locked: boolean
+    paymentsGenerated: boolean
+}
 
 export default function LeaveProvisionPage() {
     const [currentStep, setCurrentStep] = useState(1)
@@ -121,17 +128,24 @@ export default function LeaveProvisionPage() {
     const [selectedSite, setSelectedSite] = useState("site-a")
     const [fromMonth, setFromMonth] = useState("2025-01")
     const [toMonth, setToMonth] = useState("2025-03")
+    const [employeeStatusFilter, setEmployeeStatusFilter] = useState<EmployeeStatusFilter>("active")
+
+    const getFilteredEmployees = (site = selectedSite, status = employeeStatusFilter) => {
+        return mockEmployees
+            .filter((emp) => {
+                const statusMatch = status === "both" || emp.salaryStatus === status
+                return !emp.lwwPolicy && emp.paidLeaveEligible && statusMatch && emp.site === site
+            })
+            .map((emp) => ({ ...emp, selected: true }))
+    }
 
     // Step 2: Employee Selection
-    const [employeeList, setEmployeeList] = useState(
-        mockEmployees
-            .filter((emp) => !emp.lwwPolicy && emp.paidLeaveEligible && emp.salaryStatus === "active")
-            .map((emp) => ({ ...emp, selected: true })),
-    )
+    const [employeeList, setEmployeeList] = useState(getFilteredEmployees)
 
     // Step 3: Leave Provision Calculation
     const [provisions, setProvisions] = useState<any[]>([])
     const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null)
+    const [leaveTracker, setLeaveTracker] = useState<LeaveTrackerItem[]>([])
 
     const updateStep = (stepId: number, completed: boolean) => {
         setSteps(steps.map((step) => (step.id === stepId ? { ...step, completed } : step)))
@@ -148,6 +162,7 @@ export default function LeaveProvisionPage() {
             return
         }
 
+        setEmployeeList(getFilteredEmployees())
         updateStep(1, true)
         setCurrentStep(2)
     }
@@ -229,45 +244,6 @@ export default function LeaveProvisionPage() {
         setCurrentStep(4)
     }
 
-    const handleSaveToLedger = () => {
-        const ledgerEntries = provisions.map((prov) => ({
-            month: prov.month,
-            branch: selectedBranch,
-            client: selectedClient,
-            site: selectedSite,
-            employeeId: prov.employeeId,
-            employeeCode: prov.employeeCode,
-            employeeName: prov.employeeName,
-            fixedGross: prov.fixedGross,
-            earnedGross: prov.earnedGross,
-            presentDays: prov.presentDays,
-            plAvailed: prov.plAvailed,
-            leaveAmount: prov.leaveAmount,
-            leavePaidInSalary: prov.leavePaidInSalary,
-            leaveToPay: prov.leaveToPay,
-            createdAt: new Date().toISOString(),
-        }))
-
-        toast.success("Leave Provision Saved", {
-            description: `${new Set(provisions.map((p) => p.employeeId)).size} employees, ${new Set(provisions.map((p) => p.month)).size} months saved to ledger`,
-        })
-
-        // Reset to Step 1
-        setSelectedBranch("branch-1")
-        setSelectedClient("client-1")
-        setSelectedSite("site-a")
-        setFromMonth("2025-01")
-        setToMonth("2025-03")
-        setEmployeeList(
-            mockEmployees
-                .filter((emp) => !emp.lwwPolicy && emp.paidLeaveEligible && emp.salaryStatus === "active")
-                .map((emp) => ({ ...emp, selected: true })),
-        )
-        setProvisions([])
-        setSteps(initialSteps)
-        setCurrentStep(1)
-    }
-
     const filteredSites = mockSites.filter((site) => site.clientId === selectedClient)
 
     const employeeAggregates = provisions.reduce(
@@ -297,6 +273,18 @@ export default function LeaveProvisionPage() {
         (sum: number, agg: any) => sum + agg.totalLeaveToPay,
         0,
     )
+    const handleToggleLeaveLock = (id: string) => {
+        setLeaveTracker((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, locked: !item.locked } : item)),
+        )
+    }
+
+    const handleGenerateLeavePayment = (id: string) => {
+        setLeaveTracker((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, paymentsGenerated: true } : item)),
+        )
+        toast.success("Payment Generated", { description: "Tracker updated successfully" })
+    }
 
     return (
         <MainLayout>
@@ -310,6 +298,13 @@ export default function LeaveProvisionPage() {
                     </div>
                 </div>
 
+                <Tabs defaultValue="process" className="space-y-6">
+                    <TabsList className="grid w-full max-w-sm grid-cols-2">
+                        <TabsTrigger value="process">Process</TabsTrigger>
+                        <TabsTrigger value="tracker">Tracker</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="process" className="space-y-6">
                 {/* Stepper */}
                 <Card>
                     <CardContent className="pt-6">
@@ -410,6 +405,34 @@ export default function LeaveProvisionPage() {
                                 </div>
                             </div>
 
+                            <div className="space-y-3">
+                                <label className="text-sm font-medium">Employee Status</label>
+                                <RadioGroup
+                                    value={employeeStatusFilter}
+                                    onValueChange={(value) => setEmployeeStatusFilter(value as EmployeeStatusFilter)}
+                                    className="flex flex-wrap gap-6"
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="active" id="leave-status-active" />
+                                        <label htmlFor="leave-status-active" className="text-sm">
+                                            Active
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="inactive" id="leave-status-inactive" />
+                                        <label htmlFor="leave-status-inactive" className="text-sm">
+                                            Inactive
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="both" id="leave-status-both" />
+                                        <label htmlFor="leave-status-both" className="text-sm">
+                                            Both
+                                        </label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
+
                             <div className="flex justify-end gap-3">
                                 <Button onClick={handleContextNext}>Next Step</Button>
                             </div>
@@ -427,29 +450,52 @@ export default function LeaveProvisionPage() {
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="space-y-3">
-                                {employeeList.map((emp) => (
-                                    <div
-                                        key={emp.id}
-                                        className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent transition"
-                                    >
-                                        <Checkbox
-                                            checked={emp.selected}
-                                            onCheckedChange={(checked) => {
-                                                const isChecked = checked === true
-                                                setEmployeeList(employeeList.map((e) => (e.id === emp.id ? { ...e, selected: isChecked } : e)))
-                                            }}
-                                        />
-                                        <div className="flex-1">
-                                            <p className="font-medium">{emp.name}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {emp.code} • Fixed Gross: ₹{emp.fixedGross.toLocaleString("en-IN")}
-                                            </p>
-                                        </div>
-                                        <Badge variant="outline">Non-LWW</Badge>
-                                    </div>
-                                ))}
-                            </div>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-12">
+                                            <Checkbox
+                                                checked={employeeList.length > 0 && employeeList.every((emp) => emp.selected)}
+                                                onCheckedChange={(checked) => {
+                                                    const isChecked = checked === true
+                                                    setEmployeeList(employeeList.map((emp) => ({ ...emp, selected: isChecked })))
+                                                }}
+                                            />
+                                        </TableHead>
+                                        <TableHead>Emp Code</TableHead>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Site</TableHead>
+                                        <TableHead className="text-right">Fixed Gross</TableHead>
+                                        <TableHead>Status</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {employeeList.map((emp) => (
+                                        <TableRow key={emp.id}>
+                                            <TableCell>
+                                                <Checkbox
+                                                    checked={emp.selected}
+                                                    onCheckedChange={(checked) => {
+                                                        const isChecked = checked === true
+                                                        setEmployeeList(
+                                                            employeeList.map((e) => (e.id === emp.id ? { ...e, selected: isChecked } : e)),
+                                                        )
+                                                    }}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="font-medium">{emp.code}</TableCell>
+                                            <TableCell>{emp.name}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{emp.site}</TableCell>
+                                            <TableCell className="text-right">₹{emp.fixedGross.toLocaleString("en-IN")}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={emp.salaryStatus === "active" ? "secondary" : "destructive"}>
+                                                    {emp.salaryStatus}
+                                                </Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
 
                             <div className="flex justify-end gap-3">
                                 <Button variant="outline" onClick={() => setCurrentStep(1)}>
@@ -649,8 +695,48 @@ export default function LeaveProvisionPage() {
                                 </Button>
                                 <Button
                                     onClick={() => {
+                                        const trackerId = `${selectedSite}-${fromMonth}-${toMonth}`
+                                        const currentClientName = mockClients.find((c) => c.id === selectedClient)?.name ?? selectedClient
+                                        const currentSiteName = mockSites.find((s) => s.id === selectedSite)?.name ?? selectedSite
+                                        const employeeCount = Object.keys(employeeAggregates).length
+                                        setLeaveTracker((prev) => {
+                                            const existing = prev.find((item) => item.id === trackerId)
+                                            if (existing) {
+                                                return prev.map((item) =>
+                                                    item.id === trackerId
+                                                        ? {
+                                                              ...item,
+                                                              client: currentClientName,
+                                                              site: currentSiteName,
+                                                              employees: employeeCount,
+                                                              totalLeaveToPay: totalLeaveToPayGrand,
+                                                              locked: true,
+                                                              paymentsGenerated: false,
+                                                          }
+                                                        : item,
+                                                )
+                                            }
+                                            return [
+                                                ...prev,
+                                                {
+                                                    id: trackerId,
+                                                    periodFrom: fromMonth,
+                                                    periodTo: toMonth,
+                                                    client: currentClientName,
+                                                    site: currentSiteName,
+                                                    employees: employeeCount,
+                                                    totalLeaveToPay: totalLeaveToPayGrand,
+                                                    locked: true,
+                                                    paymentsGenerated: false,
+                                                },
+                                            ]
+                                        })
+                                        toast.success("Provision Locked", {
+                                            description: "Period locked. Generate payments from Tracker tab.",
+                                        })
                                         updateStep(4, true)
-                                        setCurrentStep(5)
+                                        setSteps(initialSteps)
+                                        setCurrentStep(1)
                                     }}
                                 >
                                     <Lock className="h-4 w-4 mr-2" />
@@ -661,38 +747,84 @@ export default function LeaveProvisionPage() {
                     </Card>
                 )}
 
-                {/* Step 5: Generate Payments */}
-                {currentStep === 5 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Step 5: Generate Payments</CardTitle>
-                            <CardDescription>Create leave provision register and lock the calculation period</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="space-y-3">
-                                <Button className="w-full justify-start bg-transparent" variant="outline">
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Generate Payment Files
-                                </Button>
-                                <Button className="w-full justify-start bg-transparent" variant="outline">
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Download Payment Summary
-                                </Button>
-                                <Button className="w-full justify-start bg-transparent" variant="outline">
-                                    <Lock className="mr-2 h-4 w-4" />
-                                    Lock Leave Provision Period (Prevent Future Edits)
-                                </Button>
-                            </div>
+                    </TabsContent>
 
-                            <div className="flex justify-end gap-3">
-                                <Button variant="outline" onClick={() => setCurrentStep(4)}>
-                                    Back
-                                </Button>
-                                <Button onClick={handleSaveToLedger}>Save and Generate</Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
+                    <TabsContent value="tracker" className="space-y-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Leave Provision Tracker</CardTitle>
+                                <CardDescription>Track period lock/unlock status and generate payments</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Period</TableHead>
+                                            <TableHead>Client</TableHead>
+                                            <TableHead>Site</TableHead>
+                                            <TableHead className="text-right">Employees</TableHead>
+                                            <TableHead className="text-right">Leave To Pay</TableHead>
+                                            <TableHead>Lock Status</TableHead>
+                                            <TableHead>Payment</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {leaveTracker.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                                                    No tracker records yet. Complete the process tab to create entries.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            leaveTracker.map((item) => (
+                                                <TableRow key={item.id}>
+                                                    <TableCell>
+                                                        {formatMonthLabel(item.periodFrom)} to {formatMonthLabel(item.periodTo)}
+                                                    </TableCell>
+                                                    <TableCell>{item.client}</TableCell>
+                                                    <TableCell>{item.site}</TableCell>
+                                                    <TableCell className="text-right">{item.employees}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        ₹{item.totalLeaveToPay.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={item.locked ? "destructive" : "secondary"}>
+                                                            {item.locked ? "Locked" : "Unlocked"}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge variant={item.paymentsGenerated ? "default" : "outline"}>
+                                                            {item.paymentsGenerated ? "Generated" : "Pending"}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleToggleLeaveLock(item.id)}
+                                                            >
+                                                                {item.locked ? "Unlock" : "Lock"}
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={() => handleGenerateLeavePayment(item.id)}
+                                                                disabled={!item.locked || item.paymentsGenerated}
+                                                            >
+                                                                Generate Payment
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             </div>
         </MainLayout>
     )

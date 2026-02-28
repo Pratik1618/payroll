@@ -8,9 +8,11 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Stepper } from "@/components/ui/stepper"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-import { AlertTriangle, Download, Lock } from "lucide-react"
+import { AlertTriangle, Lock } from "lucide-react"
 import { generateMonthOptions, formatMonthLabel } from "@/utils/month-utility"
 import { toast } from "sonner"
 
@@ -43,13 +45,6 @@ const initialSteps = [
     completed: false,
     current: false,
   },
-  {
-    id: 5,
-    title: "Push to Payroll",
-    description: "Create earning entries in system",
-    completed: false,
-    current: false,
-  },
 ]
 
 const mockClients = [
@@ -66,12 +61,24 @@ const mockEmployees = [
   { id: "emp-1", name: "John Doe", site: "site-a", monthlyBonus: false, salaryStatus: "active" },
   { id: "emp-2", name: "Jane Smith", site: "site-a", monthlyBonus: false, salaryStatus: "active" },
   { id: "emp-3", name: "Mike Johnson", site: "site-b", monthlyBonus: true, salaryStatus: "active" },
-  { id: "emp-4", name: "Sarah Wilson", site: "site-b", monthlyBonus: false, salaryStatus: "active" },
+  { id: "emp-4", name: "Sarah Wilson", site: "site-b", monthlyBonus: false, salaryStatus: "inactive" },
   { id: "emp-5", name: "David Brown", site: "site-a", monthlyBonus: false, salaryStatus: "active" },
 ]
 
 const BONUS_CEILING = 21000
 const monthOptions = generateMonthOptions(2023, 2026)
+type EmployeeStatusFilter = "active" | "inactive" | "both"
+type BonusTrackerItem = {
+  id: string
+  client: string
+  site: string
+  financialYear: string
+  payoutMonth: string
+  employees: number
+  totalBonus: number
+  locked: boolean
+  paymentsGenerated: boolean
+}
 
 export default function BonusWorkingPage() {
   const [currentStep, setCurrentStep] = useState(1)
@@ -84,17 +91,24 @@ export default function BonusWorkingPage() {
   const [financialYear, setFinancialYear] = useState("2025-26")
   const [bonusPercentage, setBonusPercentage] = useState("8.33")
   const [payoutMonth, setPayoutMonth] = useState("2026-03")
+  const [employeeStatusFilter, setEmployeeStatusFilter] = useState<EmployeeStatusFilter>("active")
+
+  const getFilteredEmployees = (site = selectedSite, status = employeeStatusFilter) => {
+    return mockEmployees
+      .filter((emp) => {
+        const statusMatch = status === "both" || emp.salaryStatus === status
+        return !emp.monthlyBonus && statusMatch && emp.site === site
+      })
+      .map((emp) => ({ ...emp, selected: true }))
+  }
 
   // Step 2: Employee Selection
-  const [employeeList, setEmployeeList] = useState(
-    mockEmployees
-      .filter((emp) => !emp.monthlyBonus && emp.salaryStatus === "active")
-      .map((emp) => ({ ...emp, selected: true })),
-  )
+  const [employeeList, setEmployeeList] = useState(getFilteredEmployees)
 
   // Step 3: Bonus Calculation
   const [bonusCalculation, setBonusCalculation] = useState<any[]>([])
   const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null)
+  const [bonusTracker, setBonusTracker] = useState<BonusTrackerItem[]>([])
 
   const handleContextNext = () => {
     if (!selectedClient || !selectedSite || !financialYear || !bonusPercentage || !payoutMonth) {
@@ -106,6 +120,7 @@ export default function BonusWorkingPage() {
       return
     }
 
+    setEmployeeList(getFilteredEmployees())
     updateStep(1, true)
     setCurrentStep(2)
   }
@@ -181,34 +196,49 @@ export default function BonusWorkingPage() {
   }
 
   const handleReviewConfirm = () => {
-    toast.success( "Bonus Confirmed",{
- 
-      description: "Proceeding to payroll integration",
+    const trackerId = `${financialYear}-${payoutMonth}`
+    const selectedCount = employeeList.filter((emp) => emp.selected).length
+    const currentClient = mockClients.find((client) => client.id === selectedClient)?.name ?? selectedClient
+    const currentSite = mockSites.find((site) => site.id === selectedSite)?.name ?? selectedSite
+    setBonusTracker((prev) => {
+      const existing = prev.find((item) => item.id === trackerId)
+      if (existing) {
+        return prev.map((item) =>
+          item.id === trackerId
+            ? {
+                ...item,
+                client: currentClient,
+                site: currentSite,
+                employees: selectedCount,
+                totalBonus,
+                locked: true,
+                paymentsGenerated: false,
+              }
+            : item,
+        )
+      }
+      return [
+        ...prev,
+        {
+          id: trackerId,
+          client: currentClient,
+          site: currentSite,
+          financialYear,
+          payoutMonth,
+          employees: selectedCount,
+          totalBonus,
+          locked: true,
+          paymentsGenerated: false,
+        },
+      ]
+    })
+
+    toast.success("Bonus Locked", {
+      description: "Bonus period is locked. Generate payments from Tracker tab.",
     })
     updateStep(4, true)
-    setCurrentStep(5)
-  }
-
-  const handlePushToPayroll = () => {
-    toast.success(  "Success",{
-      description: `${employeeList.filter((emp) => emp.selected).length} bonus entries created and pushed to Earning & Deduction`,
-    })
-
-    // Reset to Step 1 after successful completion
-    setCurrentStep(1)
     setSteps(initialSteps)
-    setSelectedClient("client-1")
-    setSelectedSite("site-a")
-    setFinancialYear("2025-26")
-    setBonusPercentage("8.33")
-    setPayoutMonth("2026-03")
-    setEmployeeList(
-      mockEmployees
-        .filter((emp) => !emp.monthlyBonus && emp.salaryStatus === "active")
-        .map((emp) => ({ ...emp, selected: true })),
-    )
-    setBonusCalculation([])
-    setExpandedEmployee(null)
+    setCurrentStep(1)
   }
 
   const updateStep = (stepIndex: number, completed: boolean) => {
@@ -220,6 +250,18 @@ export default function BonusWorkingPage() {
   }
 
   const totalBonus = bonusCalculation.reduce((sum, emp) => sum + emp.totalBonus, 0)
+  const handleToggleBonusLock = (id: string) => {
+    setBonusTracker((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, locked: !item.locked } : item)),
+    )
+  }
+
+  const handleGenerateBonusPayment = (id: string) => {
+    setBonusTracker((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, paymentsGenerated: true } : item)),
+    )
+    toast.success("Payment Generated", { description: "Tracker updated successfully" })
+  }
 
   return (
     <MainLayout>
@@ -232,12 +274,19 @@ export default function BonusWorkingPage() {
           </div>
         </div>
 
-        {/* Stepper */}
-        <Card>
-          <CardContent className="pt-6">
-            <Stepper steps={steps} currentStep={currentStep} />
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="process" className="space-y-6">
+          <TabsList className="grid w-full max-w-sm grid-cols-2">
+            <TabsTrigger value="process">Process</TabsTrigger>
+            <TabsTrigger value="tracker">Tracker</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="process" className="space-y-6">
+            {/* Stepper */}
+            <Card>
+              <CardContent className="pt-6">
+                <Stepper steps={steps} currentStep={currentStep} />
+              </CardContent>
+            </Card>
 
         {/* Step 1: Bonus Context */}
         {currentStep === 1 && (
@@ -329,6 +378,34 @@ export default function BonusWorkingPage() {
                 </div>
               </div>
 
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Employee Status</label>
+                <RadioGroup
+                  value={employeeStatusFilter}
+                  onValueChange={(value) => setEmployeeStatusFilter(value as EmployeeStatusFilter)}
+                  className="flex flex-wrap gap-6"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="active" id="status-active" />
+                    <label htmlFor="status-active" className="text-sm">
+                      Active
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="inactive" id="status-inactive" />
+                    <label htmlFor="status-inactive" className="text-sm">
+                      Inactive
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="both" id="status-both" />
+                    <label htmlFor="status-both" className="text-sm">
+                      Both
+                    </label>
+                  </div>
+                </RadioGroup>
+              </div>
+
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-900">
                   <strong>Note:</strong> Bonus is calculated for 12 months (Apr-Mar) of the financial year and paid in
@@ -350,7 +427,7 @@ export default function BonusWorkingPage() {
             <CardHeader>
               <CardTitle>Select Eligible Employees</CardTitle>
               <CardDescription>
-                {employeeList.length} employees eligible (excludes monthly bonus recipients and inactive staff)
+                {employeeList.length} employees eligible (excludes monthly bonus recipients)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -368,6 +445,7 @@ export default function BonusWorkingPage() {
                     <TableHead>Employee ID</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead>Site</TableHead>
+                    <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -386,6 +464,11 @@ export default function BonusWorkingPage() {
                       <TableCell className="font-medium">{emp.id}</TableCell>
                       <TableCell>{emp.name}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{emp.site}</TableCell>
+                      <TableCell>
+                        <Badge variant={emp.salaryStatus === "active" ? "secondary" : "destructive"}>
+                          {emp.salaryStatus}
+                        </Badge>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -563,55 +646,78 @@ export default function BonusWorkingPage() {
           </Card>
         )}
 
-        {/* Step 5: Push to Payroll */}
-        {currentStep === 5 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Push to Payroll</CardTitle>
-              <CardDescription>Create earning entries in Earning & Deduction module</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-sm text-green-900 font-medium">Ready to Create Entries</p>
-                <p className="text-sm text-green-800 mt-2">
-                  {bonusCalculation.length} earning entries of "Statutory Bonus" for {formatMonthLabel(payoutMonth)}{" "}
-                  will be created.
-                </p>
-              </div>
+          </TabsContent>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee ID</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="text-right">Bonus Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bonusCalculation.map((emp) => (
-                    <TableRow key={emp.empId}>
-                      <TableCell className="font-medium">{emp.empId}</TableCell>
-                      <TableCell>{emp.empName}</TableCell>
-                      <TableCell className="text-right font-semibold">
-                        ₹{emp.totalBonus.toLocaleString("en-IN")}
-                      </TableCell>
+          <TabsContent value="tracker" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Bonus Tracker</CardTitle>
+                <CardDescription>Track period lock/unlock status and generate payments</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Financial Year</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Site</TableHead>
+                      <TableHead>Payout Month</TableHead>
+                      <TableHead className="text-right">Employees</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Lock Status</TableHead>
+                      <TableHead>Payment</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setCurrentStep(4)}>
-                  Back
-                </Button>
-                <Button onClick={handlePushToPayroll} className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Create Entries
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  </TableHeader>
+                  <TableBody>
+                    {bonusTracker.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center text-muted-foreground">
+                          No tracker records yet. Complete the process tab to create entries.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      bonusTracker.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.financialYear}</TableCell>
+                          <TableCell>{item.client}</TableCell>
+                          <TableCell>{item.site}</TableCell>
+                          <TableCell>{formatMonthLabel(item.payoutMonth)}</TableCell>
+                          <TableCell className="text-right">{item.employees}</TableCell>
+                          <TableCell className="text-right">₹{item.totalBonus.toLocaleString("en-IN")}</TableCell>
+                          <TableCell>
+                            <Badge variant={item.locked ? "destructive" : "secondary"}>
+                              {item.locked ? "Locked" : "Unlocked"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={item.paymentsGenerated ? "default" : "outline"}>
+                              {item.paymentsGenerated ? "Generated" : "Pending"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" size="sm" onClick={() => handleToggleBonusLock(item.id)}>
+                                {item.locked ? "Unlock" : "Lock"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => handleGenerateBonusPayment(item.id)}
+                                disabled={!item.locked || item.paymentsGenerated}
+                              >
+                                Generate Payment
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   )
