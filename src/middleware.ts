@@ -1,0 +1,29 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get('token')?.value
+  const { pathname } = request.nextUrl
+
+  // ✅ Allow static files & public assets
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/favicon.ico') ||
+    pathname.includes('.') // allows files like .css, .js, .png
+  ) {
+    return NextResponse.next()
+  }
+
+  const isLoginPage = pathname === '/login'
+
+  if (!token && !isLoginPage) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+
+  if (token && isLoginPage) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  return NextResponse.next()
+}
