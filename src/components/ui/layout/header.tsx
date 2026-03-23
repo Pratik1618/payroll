@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Search, User,UserCog, Users } from "lucide-react"
+import { Bell, Search, User, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -12,16 +12,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 export function Header() {
-   const [currentRole, setCurrentRole] = useState<"Payroll Team" | "Employee">("Payroll Team")
+   const [currentRole] = useState<"Payroll Team" | "Employee">(() => {
+     if (typeof window !== 'undefined') {
+       return (localStorage.getItem('role') as "Payroll Team" | "Employee") || "Payroll Team"
+     }
+     return "Payroll Team"
+   })
+   const router = useRouter()
 
-  const handleRoleChange = (role: "Payroll Team" | "Employee") => {
-    setCurrentRole(role)
-    localStorage.setItem('role',role)
-    toast.success(`Role switched to ${role}`)
-  }
+  const handleLogout = async () => {
+  await fetch('/api/logout', { method: 'POST' })
+    toast.success("Logged out successfully")
+  router.replace('/login')
+}
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
       <div className="flex items-center space-x-4">
@@ -42,21 +49,11 @@ export function Header() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
+            <DropdownMenuLabel>{currentRole}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => handleRoleChange("Payroll Team")}
-              className={currentRole === "Payroll Team" ? "bg-accent" : ""}
-            >
-              <UserCog className="mr-2 h-4 w-4" />
-              Payroll Team
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleRoleChange("Employee")}
-              className={currentRole === "Employee" ? "bg-accent" : ""}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Employee
+            <DropdownMenuItem onClick={handleLogout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
