@@ -27,7 +27,7 @@ import {
   Clock,
   TrendingUp,
 } from "lucide-react"
-import { format, isSameMonth } from "date-fns"
+import { endOfMonth, format, isSameMonth, startOfMonth } from "date-fns"
 import { cn } from "@/lib/utils"
 
 /* -------------------------------------------------------------------------- */
@@ -83,11 +83,10 @@ export default function StatutoryPage() {
     branch: "",
     client: "",
     site: "",
-    fromDate: undefined as Date | undefined,
-    toDate: undefined as Date | undefined,
+    reportingMonth: undefined as Date | undefined,
   })
 const isFilterValid =
-  Boolean(filters.branch && filters.fromDate && filters.toDate)
+  Boolean(filters.branch && filters.reportingMonth)
 
 
 
@@ -105,13 +104,16 @@ const isFilterValid =
   /* ------------------------ ACTIONS ------------------------ */
 
 const handleGenerate = (reportId: string) => {
-  if (!filters.branch || !filters.fromDate || !filters.toDate) return
+  if (!filters.branch || !filters.reportingMonth) return
+
+  const fromDate = startOfMonth(filters.reportingMonth)
+  const toDate = endOfMonth(filters.reportingMonth)
 
   const payload: any = {
     reportId,
     branch: filters.branch,
-    fromDate: format(filters.fromDate, "yyyy-MM-dd"),
-    toDate: format(filters.toDate, "yyyy-MM-dd"),
+    fromDate: format(fromDate, "yyyy-MM-dd"),
+    toDate: format(toDate, "yyyy-MM-dd"),
   }
 
   if (filters.client) payload.client = filters.client
@@ -122,6 +124,9 @@ const handleGenerate = (reportId: string) => {
   // ---- PF / ESIC local generation ----
   if (reportId === "pf-ecr") {
     handleGeneratePfEcr()
+    setTimeout(() => {
+    handleGeneratePfSummary()
+  }, 500)
     return
   }
 
@@ -142,33 +147,75 @@ const handleGenerate = (reportId: string) => {
 
   /* -------------------------------------------------------------------------- */
 const handleGeneratePfEcr = () => {
-  if (!filters.branch || !filters.fromDate) {
-    console.log("Select Branch and From Date")
+  if (!filters.branch || !filters.reportingMonth) {
+    console.log("Select Branch and Reporting Month")
     return
   }
 
-  const periodLabel = format(filters.fromDate, "MMM-yyyy")
+  const periodLabel = format(filters.reportingMonth, "MMM-yyyy")
 
   const filename = `PF-ECR_${filters.branch}_${filters.client || "ALL"}_${filters.site || "ALL"}_${periodLabel}`
     .replace(/\s+/g, "-")
     .concat(".csv")
 
+  // ✅ UPDATED HEADER (FULL FORMAT)
   const header = [
     "UAN",
     "Member Name",
+    "Gross Wages",
     "EPF Wages",
     "EPS Wages",
     "EDLI Wages",
-    "EPF Contribution",
-    "EPS Contribution",
-    "NCP Days",
-    "Month",
+    "EPF Contribution Remitted",
+    "EPS Contribution Remitted",
+    "EPF EPS Diff Remitted",
+    "NCP DAYS",
+    "Refund of Advance"
   ]
 
-  const rows = [
-    ["100200300400", "John Doe", "15000", "15000", "15000", "1800", "1250", "0", periodLabel],
-    ["200300400500", "Asha Devi", "18000", "15000", "18000", "2160", "1250", "1", periodLabel],
+  // 👉 Replace with DB data later
+  const employees = [
+    {
+      uan: "100200300400",
+      name: "John Doe",
+      gross: 20000,
+      epfWage: 14000,
+      ncpDays: 0,
+      refund: 0
+    },
+    {
+      uan: "200300400500",
+      name: "Asha Devi",
+      gross: 18000,
+      epfWage: 15000,
+      ncpDays: 1,
+      refund: 0
+    }
   ]
+
+  const rows = employees.map(emp => {
+    const epsWage = Math.min(emp.epfWage, 15000)
+    const edliWage = Math.min(emp.epfWage, 15000)
+
+    // ✅ Contributions
+    const epfContribution = Math.round(emp.epfWage * 0.12) // 12%
+    const epsContribution = Math.round(epsWage * 0.0833)   // 8.33%
+    const epfEpsDiff = epfContribution - epsContribution   // diff
+
+    return [
+      emp.uan,
+      emp.name,
+      emp.gross,
+      emp.epfWage,
+      epsWage,
+      edliWage,
+      epfContribution,
+      epsContribution,
+      epfEpsDiff,
+      emp.ncpDays,
+      emp.refund
+    ]
+  })
 
   const csv = [header, ...rows].map(r => r.join(",")).join("\n")
 
@@ -183,14 +230,65 @@ const handleGeneratePfEcr = () => {
   URL.revokeObjectURL(url)
 }
 
-const handleGenerateEsicXml = () => {
-  if (!filters.branch || !filters.fromDate) {
-    console.log("Select Branch and From Date")
+const handleGeneratePfSummary = () => {
+  if (!filters.branch || !filters.reportingMonth) {
+    console.log("Select Branch and Reporting Month")
     return
   }
 
-  const periodLabel = format(filters.fromDate, "MMM-yyyy")
-  const periodCode = format(filters.fromDate, "yyyyMM")
+  const periodLabel = format(filters.reportingMonth, "MMM-yyyy")
+
+  const filename = `PF-SUMMARY_${filters.branch}_${periodLabel}.csv`
+
+  const header = [
+    "Total EPF Wages",
+    "Employee Contribution (12%)",
+    "Employer Contribution (13%)",
+    "TOTAL"
+  ]
+
+  // 👉 Replace with your actual DB data
+  const employees = [
+    { epfWage: 14000 },
+    { epfWage: 15000 },
+    { epfWage: 12000 }
+  ]
+
+  // ✅ TOTAL CALCULATION
+  const totalEpfWages = employees.reduce((sum, emp) => sum + emp.epfWage, 0)
+
+  const totalEmployeeContribution = Math.round(totalEpfWages * 0.12)
+  const totalEmployerContribution = Math.round(totalEpfWages * 0.13)
+  const total = (totalEmployeeContribution+totalEmployerContribution)
+
+  const row = [
+    totalEpfWages,
+    totalEmployeeContribution,
+    totalEmployerContribution,
+    total,
+  ]
+
+  const csv = [header, row].map(r => r.join(",")).join("\n")
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  a.click()
+
+  URL.revokeObjectURL(url)
+}
+
+const handleGenerateEsicXml = () => {
+  if (!filters.branch || !filters.reportingMonth) {
+    console.log("Select Branch and Reporting Month")
+    return
+  }
+
+  const periodLabel = format(filters.reportingMonth, "MMM-yyyy")
+  const periodCode = format(filters.reportingMonth, "yyyyMM")
 
   const filename = `ESIC_${filters.branch}_${filters.client || "ALL"}_${filters.site || "ALL"}_${periodLabel}`
     .replace(/\s+/g, "-")
@@ -274,7 +372,7 @@ const handleGenerateEsicXml = () => {
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 
               <FilterSelect
                 label="Branch"
@@ -307,24 +405,18 @@ const handleGenerateEsicXml = () => {
                 ]}
               />
 
-              <DatePicker
-                label="From Date"
-                value={filters.fromDate}
-                onChange={(d) => setFilters(f => ({ ...f, fromDate: d }))}
-              />
-
-              <DatePicker
-                label="To Date"
-                value={filters.toDate}
-                onChange={(d) => setFilters(f => ({ ...f, toDate: d }))}
+              <MonthPicker
+                label="Reporting Month"
+                value={filters.reportingMonth}
+                onChange={(d) => setFilters(f => ({ ...f, reportingMonth: d }))}
               />
 
             </div>
 
- {(!filters.branch || !filters.fromDate || !filters.toDate) && (
+ {(!isFilterValid) && (
   <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
     <AlertCircle className="h-4 w-4" />
-    <span>Please select Branch and Date range to generate reports</span>
+    <span>Please select Branch and reporting month to generate reports</span>
   </div>
 )}
 
@@ -375,7 +467,7 @@ const handleGenerateEsicXml = () => {
                   <Button
                     size="sm"
                     className="flex-1"
-                   disabled={!filters.branch || !filters.fromDate || !filters.toDate}
+                   disabled={!isFilterValid}
 
                     onClick={() => handleGenerate(report.id)}
                   >
@@ -463,7 +555,7 @@ function FilterSelect({
   )
 }
 
-function DatePicker({
+function MonthPicker({
   label,
   value,
   onChange,
@@ -488,7 +580,7 @@ function DatePicker({
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {value ? format(value, "dd MMM yyyy") : "Pick a date"}
+            {value ? format(value, "MMMM yyyy") : "Pick month and year"}
           </Button>
         </PopoverTrigger>
 
@@ -496,7 +588,12 @@ function DatePicker({
           <Calendar
             mode="single"
             selected={value}
-            onSelect={onChange}
+            month={value}
+            onSelect={(date) => onChange(date ? startOfMonth(date) : undefined)}
+            captionLayout="dropdown"
+            startMonth={new Date(2020, 0)}
+            endMonth={new Date(2035, 11)}
+            onMonthChange={(month) => onChange(startOfMonth(month))}
             initialFocus
           />
         </PopoverContent>
