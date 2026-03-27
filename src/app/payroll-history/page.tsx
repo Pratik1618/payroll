@@ -1,13 +1,13 @@
-"use client";
+'use client'
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react'
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select";
+} from '@/components/ui/select'
 import {
   Table,
   TableHeader,
@@ -15,253 +15,230 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { MainLayout } from "@/components/ui/layout/main-layout";
-import { format } from "date-fns";
-import { Input } from "@/components/ui/input";
-import { Eye } from "lucide-react";
-import { PayslipViewer } from "@/components/ui/payroll-History/payslip-viewer";
+} from '@/components/ui/table'
+import { Card, CardContent } from '@/components/ui/card'
+import { MainLayout } from '@/components/ui/layout/main-layout'
+import { Input } from '@/components/ui/input'
+import { Eye, Loader2 } from 'lucide-react'
+import { PayslipViewer } from '@/components/ui/payroll-History/payslip-viewer'
 
 // Dummy data
 const clients = [
-  { id: 1, name: "Client A" },
-  { id: 2, name: "Client B" },
-];
+  { id: 1, name: 'Client A' },
+  { id: 2, name: 'Client B' },
+]
 
 const sites = [
-  { id: 1, clientId: 1, name: "Site X" },
-  { id: 2, clientId: 1, name: "Site Y" },
-  { id: 3, clientId: 2, name: "Site Z" },
-];
+  { id: 1, clientId: 1, name: 'Site X' },
+  { id: 2, clientId: 1, name: 'Site Y' },
+  { id: 3, clientId: 2, name: 'Site Z' },
+]
 
+const designations = ['HK', 'Supervisor', 'Janitor', 'Chambermaid']
 
-
-
-// Now payrollHistory with detailed employee info for payslip
-// const payrollHistory = [
-//   {
-//     id: 1,
-//     employee: {
-//       name: "John Doe",
-//       designation: "HK",
-//       department: "Housekeeping",
-//       site: "Site X",
-//       pan: "ABCDE1234F",
-//       uan: "100200300",
-//       esic: "1234567890",
-//       joiningDate: "2022-01-15"
-//     },
-//     clientId: 1,
-//     siteId: 1,
-//     amount: 50000,
-//     date: "2025-10-01",
-//     salary: {
-//       basic: 20000,
-//       hra: 8000,
-//       da: 5000,
-//       conveyance: 2000,
-//       medical: 1500,
-//       others: 1500,
-//       deductions: 5000,
-
-
-//     },
-//     attendance:{
-//       workingDays:30,
-//       present: 23,
-//       leaves :1,
-//       lop: 0,
-//       wo:4,
-//       ot:0
-
-//     }
-
-//   },
-//   {
-//     id: 2,
-//     employee: {
-//       name: "Jane Smith",
-//       designation: "Supervisor",
-//       department: "Management",
-//       site: "Site Z",
-//       pan: "XYZAB5678C",
-//       uan: "200300400",
-//       esic: "0987654321",
-//       joiningDate: "2020-03-20"
-//     },
-//     clientId: 2,
-//     siteId: 3,
-//     amount: 60000,
-//     date: "2025-10-05",
-//     salary: {
-//       basic: 25000,
-//       hra: 9000,
-//       da: 6000,
-//       conveyance: 2500,
-//       medical: 2000,
-//       others: 1500,
-//       deductions: 6000,
-//       netPay: 60000
-//     }
-//   },
-//   // Add more records with similar structure
-// ];
-
-
-
-// Fixed designations
-const designations = ["HK", "Supervisor", "Janitor", "Chambermaid"];
-
-// Month options (manually define or generate)
 const months = [
-  { label: "September 2025", value: "2025-09" },
-  { label: "October 2025", value: "2025-10" },
-  { label: "November 2025", value: "2025-11" },
-];
+  { label: 'September 2025', value: '2025-09' },
+  { label: 'October 2025', value: '2025-10' },
+  { label: 'November 2025', value: '2025-11' },
+]
 
 export default function PayrollHistoryPage() {
-  const [payrollHistory, setPayrollHistory] = useState<any[]>([]);
+  const [payrollHistory, setPayrollHistory] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    // Only run on client
-    if (typeof window !== "undefined") {
-    const storedData = localStorage.getItem("finalSalaryData");
-    if (storedData) {
-      setPayrollHistory(JSON.parse(storedData));
+  const [selectedClient, setSelectedClient] = useState<string>('all')
+  const [selectedSite, setSelectedSite] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useState<string>('2025-10')
+  const [searchTerm, setSearchTerm] = useState<string>('')
+  const [selectedRecord, setSelectedRecord] = useState<any | null>(null)
+
+  const handleViewPayslip = async (record: any) => {
+  try {
+    setLoading(true)
+
+    const empId =
+      record.EMPID ||
+      record.emp_id ||
+      record.employeeId ||
+      record.EMPCODE // fallback
+
+    const res = await fetch(
+      `/api/payslip?emp_id=${empId}&month=${selectedMonth}`
+    )
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to fetch payslip')
     }
-    }
-  }, []);
-  const [selectedClient, setSelectedClient] = useState<string>("all");
-  const [selectedSite, setSelectedSite] = useState<string>("all");
-  const [selectedMonth, setSelectedMonth] = useState<string>("2025-October");
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+
+    console.log('Payslip Data:', data)
+
+    setSelectedRecord(data.results || data)
+
+  } catch (err: any) {
+    alert(err.message)
+  } finally {
+    setLoading(false)
+  }
+}
+
   const filteredSites =
-    selectedClient !== "all"
+    selectedClient !== 'all'
       ? sites.filter((site) => site.clientId === Number(selectedClient))
-      : sites;
+      : sites
 
+  // 🔥 Fetch API
+const fetchPayroll = async () => {
+  try {
+    setLoading(true)
 
-  // const filteredHistory = payrollHistory.filter((record) => {
-  //   const clientMatch =
-  //     selectedClient !== "all" ? record.clientId === Number(selectedClient) : true;
-  //   const siteMatch =
-  //     selectedSite !== "all" ? record.siteId === Number(selectedSite) : true;
-  //   const monthMatch = record.date.startsWith(selectedMonth);
-  //   const searchMatch = record.employee.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const params = new URLSearchParams()
 
-  //   return clientMatch && siteMatch && monthMatch && searchMatch;
-  // });
+    // ✅ ALWAYS send month
+    params.append('month', selectedMonth)
+
+    // ✅ Send others (even if empty)
+  if (selectedClient !== 'all') {
+  params.append('client_id', selectedClient)
+}
+
+if (selectedSite !== 'all') {
+  params.append('site_id', selectedSite)
+}
+
+    params.append('emp_id', '') // not used yet
+
+    const url = `/api/payroll-history?${params.toString()}`
+
+    console.log('Calling API:', url)
+
+    const res = await fetch(url)
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to fetch payroll')
+    }
+
+    console.log('API response:', data)
+
+    setPayrollHistory(data.results || [])
+
+  } catch (err: any) {
+    console.error(err)
+    alert(err.message)
+  } finally {
+    setLoading(false)
+  }
+}
+
+  // 🚀 Fetch on filter change
+  useEffect(() => {
+    fetchPayroll()
+  }, [selectedMonth, selectedClient, selectedSite])
+
+  // 🔍 Search filter
   const filteredHistory = payrollHistory.filter((record) =>
-    record.EMPNAME.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    record.EMPNAME?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
-
-  // // Count by designation
-  // const designationSummary: Record<string, number> = {};
-  // designations.forEach((des) => {
-  //   designationSummary[des] = filteredHistory.filter((rec) => rec.employee.designation === des).length;
-  // });
-  const designationSummary: Record<string, number> = {};
+  // ✅ FIXED designation logic (UI unchanged)
+  const designationSummary: Record<string, number> = {}
   designations.forEach((des) => {
     designationSummary[des] = filteredHistory.filter(
-      (rec: any) => rec.designation === des
-    ).length;
-  });
-
+      (rec: any) => rec.DESIGNATIONNAME === des
+    ).length
+  })
 
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Payroll History</h1>
-            <p className="text-muted-foreground text-sm">
-              Filter and view processed payroll data by client, site, and month.
-            </p>
-          </div>
+
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Payroll History</h1>
+          <p className="text-muted-foreground text-sm">
+            Filter and view processed payroll data by client, site, and month.
+          </p>
         </div>
 
         {/* Filters */}
         <Card>
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Client Filter */}
+
+              {/* Client */}
               <div>
                 <label className="block text-sm font-medium mb-1">Client</label>
                 <Select
                   value={selectedClient}
                   onValueChange={(value) => {
-                    setSelectedClient(value);
-                    setSelectedSite("all");
+                    setSelectedClient(value)
+                    setSelectedSite('all')
                   }}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger>
                     <SelectValue placeholder="All Clients" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Clients</SelectItem>
-                    {clients.map((client) => (
-                      <SelectItem key={client.id} value={String(client.id)}>
-                        {client.name}
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Site Filter */}
+              {/* Site */}
               <div>
                 <label className="block text-sm font-medium mb-1">Site</label>
                 <Select
                   value={selectedSite}
-                  onValueChange={(value) => setSelectedSite(value)}
-                  disabled={selectedClient === "all"}
+                  onValueChange={setSelectedSite}
+                  disabled={selectedClient === 'all'}
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger>
                     <SelectValue placeholder="All Sites" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Sites</SelectItem>
-                    {filteredSites.map((site) => (
-                      <SelectItem key={site.id} value={String(site.id)}>
-                        {site.name}
+                    {filteredSites.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {/* Month Filter */}
+              {/* Month */}
               <div>
                 <label className="block text-sm font-medium mb-1">Month</label>
-                <Select
-                  value={selectedMonth}
-                  onValueChange={(value) => setSelectedMonth(value)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select Month" />
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {months.map((month) => (
-                      <SelectItem key={month.value} value={month.value}>
-                        {month.label}
+                    {months.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
             </div>
           </CardContent>
         </Card>
 
-        {/* Designation Summary */}
+        {/* ✅ SAME Designation UI */}
         <Card>
           <CardContent className="p-6">
-
-
             <h2 className="text-xl font-semibold mb-4">Designation Summary</h2>
+
             {filteredHistory.length === 0 ? (
               <p className="text-muted-foreground">No data to display.</p>
             ) : (
@@ -282,106 +259,82 @@ export default function PayrollHistoryPage() {
           </CardContent>
         </Card>
 
-        {/* Detailed Table */}
+        {/* Table */}
         <Card>
           <CardContent className="p-0">
-            <div className="flex justify-end mb-4">
+
+            <div className="flex justify-end mb-4 p-4">
               <Input
-                type="text"
                 placeholder="Search employee..."
                 className="w-full max-w-sm"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Designation</TableHead>
-                    <TableHead>Client</TableHead>
-                    <TableHead>Site</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead>Days</TableHead>
-                    <TableHead >Action</TableHead>
 
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredHistory.length === 0 ? (
+            {loading ? (
+              <div className="text-center py-6">
+                <Loader2 className="animate-spin mx-auto" />
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                        No records found.
-                      </TableCell>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Designation</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Site</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Days</TableHead>
+                      <TableHead>Action</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredHistory.map((record, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell>{record.EMPNAME}</TableCell>
-                        <TableCell>{record.DESIGNATIONNAME   || "-"}</TableCell>
-                        <TableCell>{record.CLIENTNAME  || "-"}</TableCell>
-                        <TableCell>{record.SITENAME  || "-"}</TableCell>
-                        <TableCell className="text-right">
-                          ₹{record.netSalary?.toLocaleString() || 0}
-                        </TableCell>
-                        <TableCell>
-                           {record.payableDays ? `${record.payableDays}/30` : "-"}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Eye
-                            className="h-5 w-5 text-muted-foreground hover:text-primary cursor-pointer"
-                            onClick={() => setSelectedRecord(record)}
-                          />
+                  </TableHeader>
+
+                  <TableBody>
+                    {filteredHistory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-6">
+                          No records found.
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-
-                {/* <TableBody>
-                  {filteredHistory.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
-                        No records found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredHistory.map((record) => (
-                      <TableRow key={record.id}>
-                        <TableCell>{record.employee.name}</TableCell>
-                        <TableCell>{record.employee.designation}</TableCell>
-                        <TableCell>
-                          {clients.find((c) => c.id === record.clientId)?.name}
-                        </TableCell>
-                        <TableCell>
-                          {sites.find((s) => s.id === record.siteId)?.name}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          ₹{record.amount.toLocaleString()}
-                        </TableCell>
-                        <TableCell>{record.date}</TableCell>
-                        <TableCell className="text-center">
- <Eye
-    className="h-5 w-5 text-muted-foreground hover:text-primary cursor-pointer"
-    onClick={() => setSelectedRecord(record)}
-  /></TableCell>
-
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody> */}
-              </Table>
-            </div>
+                    ) : (
+                      filteredHistory.map((r, i) => (
+                        <TableRow key={i}>
+                          <TableCell>{r.EMPNAME}</TableCell>
+                          <TableCell>{r.DESIGNATIONNAME || '-'}</TableCell>
+                          <TableCell>{r.CLIENTNAME || '-'}</TableCell>
+                          <TableCell>{r.SITENAME || '-'}</TableCell>
+                          <TableCell className="text-right">
+                            ₹{r.netSalary?.toLocaleString() || 0}
+                          </TableCell>
+                          <TableCell>
+                            {r.payableDays ? `${r.payableDays}/30` : '-'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Eye
+                              className="cursor-pointer"
+                              onClick={() => handleViewPayslip(r)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
+
       </div>
+
       {selectedRecord && (
         <PayslipViewer
-         record={selectedRecord}
-  onClose={() => setSelectedRecord(null)}
+          record={selectedRecord}
+          onClose={() => setSelectedRecord(null)}
         />
       )}
     </MainLayout>
-  );
+  )
 }
