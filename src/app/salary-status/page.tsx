@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
@@ -13,11 +13,13 @@ import { cn } from "@/lib/utils"
 import { Calendar as CalendarIcon, RefreshCw, FileDown, X, Eye, ChevronDown, ChevronUp, Lock } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { MainLayout } from "@/components/ui/layout/main-layout"
+import { withBasePath } from "@/lib/base-path"
 
 type SalaryStatus = "locked" | "pending" | "unlocked"
 
 type SiteRecord = {
   id: string
+  clientId: string
   client: string
   site: string
   cycleStart: string
@@ -63,6 +65,7 @@ type EmployeeSalary = {
 const MOCK_SITES: SiteRecord[] = [
   {
     id: "S001",
+    clientId: "client-1",
     client: "Acme Corp",
     site: "Site A",
     cycleStart: "2025-09-01",
@@ -72,6 +75,7 @@ const MOCK_SITES: SiteRecord[] = [
   },
   {
     id: "S002",
+    clientId: "client-1",
     client: "Acme Corp",
     site: "Site B",
     cycleStart: "2025-09-01",
@@ -83,6 +87,7 @@ const MOCK_SITES: SiteRecord[] = [
   // ❌ Globex Ltd – PARTIALLY processed (PENDING)
   {
     id: "S003",
+    clientId: "client-2",
     client: "Globex Ltd",
     site: "Plant 1",
     cycleStart: "2025-09-01",
@@ -92,6 +97,7 @@ const MOCK_SITES: SiteRecord[] = [
   },
   {
     id: "S004",
+    clientId: "client-2",
     client: "Globex Ltd",
     site: "Warehouse",
     cycleStart: "2025-09-01",
@@ -236,24 +242,176 @@ export default function SalaryStatusPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [expandedSites, setExpandedSites] = useState<Record<string, boolean>>({})
   const [unlockedClients, setUnlockedClients] = useState<Record<string, boolean>>({})
+  const [sites, setSites] = useState<SiteRecord[]>(MOCK_SITES)
+  const [employeeSalariesBySite, setEmployeeSalariesBySite] =
+    useState<Record<string, EmployeeSalary[]>>(MOCK_EMPLOYEE_SALARIES)
+  const [siteEmployeesBySite, setSiteEmployeesBySite] =
+    useState<Record<string, { id: string }[]>>(MOCK_SITE_EMPLOYEES)
+  const [isLoading, setIsLoading] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isActive = true
+
+    const normalizeStatus = (value: unknown): SalaryStatus => {
+      const normalized = String(value ?? "").toLowerCase()
+      if (normalized === "locked" || normalized === "unlocked") {
+        return normalized
+      }
+      return "pending"
+    }
+
+    const toNumber = (value: unknown) => {
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+
+    const normalizeEmployee = (item: any, index: number): EmployeeSalary => ({
+      id: String(item?.id ?? item?.employeeId ?? item?.empId ?? `EMP-${index}`),
+      employeeName: String(item?.employeeName ?? item?.employee_name ?? item?.name ?? "-"),
+      employeeId: String(item?.employeeId ?? item?.employee_code ?? item?.empCode ?? item?.id ?? "-"),
+      basicSalary: toNumber(item?.basicSalary ?? item?.basic_salary ?? item?.basic),
+      hra: toNumber(item?.hra),
+      conveyance: toNumber(item?.conveyance),
+      specialAllowance: toNumber(item?.specialAllowance ?? item?.special_allowance),
+      grossSalary: toNumber(item?.grossSalary ?? item?.gross_salary ?? item?.gross),
+      pf: toNumber(item?.pf),
+      esic: toNumber(item?.esic),
+      tds: toNumber(item?.tds),
+      otherDeductions: toNumber(item?.otherDeductions ?? item?.other_deductions),
+      totalDeductions: toNumber(item?.totalDeductions ?? item?.total_deductions),
+      netPay: toNumber(item?.netPay ?? item?.net_pay ?? item?.netSalary),
+    })
+
+    const loadSalaryStatus = async () => {
+      setIsLoading(true)
+      setApiError(null)
+
+      try {
+        const params = new URLSearchParams()
+        if (client !== "all") {
+          params.set("clientId", client)
+        }
+
+        const url = params.toString()
+          ? withBasePath(`/api/salary-status?${params.toString()}`)
+          : withBasePath("/api/salary-status")
+
+        const res = await fetch(url, { cache: "no-store" })
+        const data = await res.json()
+
+        if (!res.ok) {
+          throw new Error(data?.message || "Failed to fetch salary status")
+        }
+
+        const rawItems = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data?.data)
+              ? data.data
+              : []
+
+        if (rawItems.length === 0) {
+          if (!isActive) return
+          setSites([])
+          setEmployeeSalariesBySite({})
+          setSiteEmployeesBySite({})
+          return
+        }
+
+        const normalizedSites: SiteRecord[] = rawItems.map((item: any, index: number) => ({
+          id: String(item?.siteId ?? item?.site_id ?? item?.id ?? `SITE-${index}`),
+          clientId: String(item?.clientId ?? item?.client_id ?? item?.clientCode ?? item?.client_code ?? item?.clientName ?? item?.client ?? "unknown-client"),
+          client: String(item?.clientName ?? item?.client ?? item?.clientId ?? item?.client_id ?? "Unknown Client"),
+          site: String(item?.siteName ?? item?.site ?? `Site ${index + 1}`),
+          cycleStart: String(item?.cycleStart ?? item?.cycle_start ?? item?.salaryCycleStart ?? item?.monthStart ?? ""),
+          cycleEnd: String(item?.cycleEnd ?? item?.cycle_end ?? item?.salaryCycleEnd ?? item?.monthEnd ?? ""),
+          status: normalizeStatus(item?.status),
+          lastLockedAt: item?.lastLockedAt ?? item?.last_locked_at,
+          unlockedAt: item?.unlockedAt ?? item?.unlocked_at,
+          unlockedBy: item?.unlockedBy ?? item?.unlocked_by,
+        }))
+
+        const normalizedEmployeeSalaries = rawItems.reduce((acc: Record<string, EmployeeSalary[]>, item: any, index: number) => {
+          const siteId = String(item?.siteId ?? item?.site_id ?? item?.id ?? `SITE-${index}`)
+          const employees = Array.isArray(item?.employees)
+            ? item.employees.map(normalizeEmployee)
+            : Array.isArray(item?.salaryDetails)
+              ? item.salaryDetails.map(normalizeEmployee)
+              : []
+
+          acc[siteId] = employees
+          return acc
+        }, {})
+
+        const normalizedSiteEmployees = rawItems.reduce((acc: Record<string, { id: string }[]>, item: any, index: number) => {
+          const siteId = String(item?.siteId ?? item?.site_id ?? item?.id ?? `SITE-${index}`)
+          const totalEmployees = toNumber(item?.totalEmployees ?? item?.total_employees)
+          const employeeIds = Array.isArray(item?.employeeIds)
+            ? item.employeeIds
+            : Array.isArray(item?.employees)
+              ? item.employees.map((employee: any, employeeIndex: number) =>
+                  employee?.id ?? employee?.employeeId ?? employee?.empId ?? `EMP-${employeeIndex}`
+                )
+              : []
+
+          const fallbackIds = employeeIds.length > 0
+            ? employeeIds
+            : Array.from(
+                { length: Math.max(totalEmployees, normalizedEmployeeSalaries[siteId]?.length ?? 0) },
+                (_, employeeIndex) => `${siteId}-${employeeIndex + 1}`
+              )
+
+          acc[siteId] = fallbackIds.map((employeeId: string | number) => ({
+            id: String(employeeId),
+          }))
+          return acc
+        }, {})
+
+        if (!isActive) return
+
+        setSites(normalizedSites)
+        setEmployeeSalariesBySite(normalizedEmployeeSalaries)
+        setSiteEmployeesBySite(normalizedSiteEmployees)
+      } catch (error: any) {
+        if (!isActive) return
+        setApiError(error.message || "Failed to fetch salary status")
+        setSites(MOCK_SITES)
+        setEmployeeSalariesBySite(MOCK_EMPLOYEE_SALARIES)
+        setSiteEmployeesBySite(MOCK_SITE_EMPLOYEES)
+      } finally {
+        if (isActive) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadSalaryStatus()
+
+    return () => {
+      isActive = false
+    }
+  }, [client])
 
   // Group sites by client and compute client-level status
   const clientRecords = useMemo(() => {
     const grouped = new Map<string, SiteRecord[]>()
 
-    MOCK_SITES.forEach((site) => {
-      if (!grouped.has(site.client)) {
-        grouped.set(site.client, [])
+    sites.forEach((site) => {
+      if (!grouped.has(site.clientId)) {
+        grouped.set(site.clientId, [])
       }
-      grouped.get(site.client)!.push(site)
+      grouped.get(site.clientId)!.push(site)
     })
 
     return Array.from(grouped.entries())
-      .map(([clientName, sites]) => {
+      .map(([clientId, sites]) => {
         const lockedSites = sites.filter((s) => s.status === "locked").length
         const totalSites = sites.length
+        const clientName = sites[0]?.client || clientId
         const overallStatus: SalaryStatus =
-          unlockedClients[clientName]
+          unlockedClients[clientId]
             ? "unlocked"
             : lockedSites === totalSites
               ? "locked"
@@ -267,15 +425,15 @@ export default function SalaryStatusPage() {
         const processedSites = lockedSites   // ✅ preserve processed data
 
        const totalEmployees = sites.reduce((sum, s) => {
-  return sum + (MOCK_SITE_EMPLOYEES[s.id]?.length || 0)
+  return sum + (siteEmployeesBySite[s.id]?.length || 0)
 }, 0)
 
 const processedEmployees = sites.reduce((sum, s) => {
-  return sum + (MOCK_EMPLOYEE_SALARIES[s.id]?.length || 0)
+  return sum + (employeeSalariesBySite[s.id]?.length || 0)
 }, 0)
 
         return {
-          id: clientName,
+          id: clientId,
           name: clientName,
           cycleStart: sites[0]?.cycleStart || "",
           cycleEnd: sites[0]?.cycleEnd || "",
@@ -292,14 +450,17 @@ const processedEmployees = sites.reduce((sum, s) => {
 
       })
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [unlockedClients])
+  }, [employeeSalariesBySite, siteEmployeesBySite, sites, unlockedClients])
 
-  const clientList = useMemo(() => clientRecords.map((c) => c.name).sort(), [clientRecords])
+  const clientList = useMemo(
+    () => [...clientRecords].sort((a, b) => a.name.localeCompare(b.name)),
+    [clientRecords]
+  )
 
   // Filter clients based on selected filters
   const filteredClients = useMemo(() => {
     return clientRecords.filter((c) => {
-      const byClient = client === "all" || c.name === client
+      const byClient = client === "all" || c.id === client
       const byStatus = status === "all" || c.overallStatus === status
 
       // Check if selected month falls within the salary cycle
@@ -419,6 +580,11 @@ const processedEmployees = sites.reduce((sum, s) => {
             <p className="text-sm text-muted-foreground">
               Track salary lock status and cycles across all clients.
             </p>
+            {apiError && (
+              <p className="text-sm text-destructive mt-1">
+                {apiError}. Showing fallback data.
+              </p>
+            )}
           </div>
           <Button variant="outline" onClick={handleExportCsv} disabled={filteredClients.length === 0}>
             <FileDown className="mr-2 h-4 w-4" />
@@ -446,8 +612,8 @@ const processedEmployees = sites.reduce((sum, s) => {
                     <SelectContent>
                       <SelectItem value="all">All Clients</SelectItem>
                       {clientList.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -567,7 +733,7 @@ const processedEmployees = sites.reduce((sum, s) => {
                   {filteredClients.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                        No clients match the current filters.
+                        {isLoading ? "Loading salary status..." : "No clients match the current filters."}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -664,7 +830,7 @@ const processedEmployees = sites.reduce((sum, s) => {
                 <div className="space-y-6">
                   {selectedClient.sites.map((site) => {
                     const isExpanded = expandedSites[site.id] ?? false
-                    const employeeSalaries = MOCK_EMPLOYEE_SALARIES[site.id] || []
+                    const employeeSalaries = employeeSalariesBySite[site.id] || []
 
                     return (
                       <div key={site.id} className="border rounded-lg overflow-hidden">
@@ -693,10 +859,10 @@ const processedEmployees = sites.reduce((sum, s) => {
   {/* Employee count badge */}
   <Badge variant="outline" className="text-xs">
     <span className="text-primary font-semibold">
-      {MOCK_EMPLOYEE_SALARIES[site.id]?.length || 0}
+      {employeeSalariesBySite[site.id]?.length || 0}
     </span>
     <span className="text-muted-foreground">
-      {" "} / {MOCK_SITE_EMPLOYEES[site.id]?.length || 0} Employees
+      {" "} / {siteEmployeesBySite[site.id]?.length || 0} Employees
     </span>
   </Badge>
 </div>

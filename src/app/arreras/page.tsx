@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {  toast } from "sonner"
 import { AlertTriangle, Download, Lock } from "lucide-react"
 import { generateMonthOptions, calculateArrearsMonths, getPeriodDisplay, formatMonthLabel } from "@/utils/month-utility"
+import { useClientSites } from "@/hooks/use-shared-master-data"
 
 const initialSteps = [
   {
@@ -80,6 +81,7 @@ export default function ArrearsWorkingPage() {
   const [approvalMonth, setApprovalMonth] = useState("2024-06")
   const [arrearsPeriod, setArrearsPeriod] = useState("")
   const [arrearsMonths, setArrearsMonths] = useState<string[]>([])
+  const { sites: clientSites } = useClientSites(selectedClient, mockSites)
 
   // Step 2: Employee Selection
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
@@ -194,11 +196,6 @@ export default function ArrearsWorkingPage() {
     setSteps(steps.map((step, idx) => (idx === stepIndex - 1 ? { ...step, completed, current: false } : step)))
   }
 
-  const getSitesForClient = () => {
-    if (!selectedClient) return []
-    return mockSites.filter((site) => site.clientId === selectedClient)
-  }
-
   const totalArrears = arrearsCalculation.reduce((sum, emp) => sum + emp.totalArrears, 0)
 
   return (
@@ -230,7 +227,10 @@ export default function ArrearsWorkingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Client *</label>
-                  <Select value={selectedClient} onValueChange={setSelectedClient}>
+                  <Select value={selectedClient} onValueChange={(value) => {
+                    setSelectedClient(value)
+                    setSelectedSite("all-sites")
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
@@ -252,7 +252,7 @@ export default function ArrearsWorkingPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all-sites">All Sites</SelectItem>
-                      {getSitesForClient().map((site) => (
+                      {clientSites.map((site) => (
                         <SelectItem key={site.id} value={site.id}>
                           {site.name}
                         </SelectItem>

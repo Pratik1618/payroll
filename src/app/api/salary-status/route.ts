@@ -10,33 +10,17 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
+    const clientId = searchParams.get('clientId')
 
-    const month = searchParams.get('month')
-    const client_id = searchParams.get('client_id')
-    const site_id = searchParams.get('site_id')
-    const emp_id = searchParams.get('emp_id')
-
-    // 🔥 Build query (ONLY include optional if present)
     const query = new URLSearchParams()
-
-    // ✅ Mandatory
-    if (!month) {
-      return NextResponse.json(
-        { message: 'Month is required' },
-        { status: 400 }
-      )
+    if (clientId) {
+      query.set('clientId', clientId)
     }
 
-    query.append('month', month)
-
-    // ✅ Optional
-    if (client_id) query.append('client_id', client_id)
-    if (site_id) query.append('site_id', site_id)
-    if (emp_id) query.append('emp_id', emp_id)
-
-    const finalUrl = `${getBackendUrl('/api/payroll/history')}?${query.toString()}`
-
-    console.log('Calling Backend:', finalUrl)
+    const backendUrl = getBackendUrl('/api/salary-status')
+    const finalUrl = query.toString()
+      ? `${backendUrl}?${query.toString()}`
+      : backendUrl
 
     const res = await fetch(finalUrl, {
       method: 'GET',
@@ -53,7 +37,7 @@ export async function GET(req: NextRequest) {
     console.error(error)
 
     return NextResponse.json(
-      { message: error.message },
+      { message: error.message || 'Internal Server Error' },
       { status: 500 }
     )
   }

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { X, Save } from "lucide-react"
 import axios from "axios"
+import { withBasePath } from "@/lib/base-path"
 
 interface EmployeeFormProps {
   onClose: () => void
@@ -40,9 +41,9 @@ export function EmployeeForm({ onClose, employee }: EmployeeFormProps) {
     e.preventDefault()
     try {
       if (employee) {
-        await axios.put(`/api/employees/${employee.id}`, formData)
+        await axios.put(withBasePath(`/api/employees/${employee.id}`), formData)
       } else {
-        await axios.post("/api/employees", formData)
+        await axios.post(withBasePath("/api/employees"), formData)
       }
       onClose()
     } catch (error) {

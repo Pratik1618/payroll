@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Edit, Eye, Trash2, Banknote, User, Info, Wallet, CalendarDays } from "lucide-react"
 import axios from "axios"
+import { withBasePath } from "@/lib/base-path"
 import {
   Dialog,
   DialogTrigger,
@@ -221,7 +222,7 @@ export function EmployeeTable({ searchTerm, filterSite }: EmployeeTableProps) {
   const handleDelete = async (employeeId: string) => {
     if (confirm("Are you sure you want to delete this employee?")) {
       try {
-        await axios.delete(`/api/employees/${employeeId}`)
+        await axios.delete(withBasePath(`/api/employees/${employeeId}`))
         setEmployees((prev) => prev.filter((emp) => emp.id !== employeeId))
       } catch (error) {
         console.error("Error deleting employee:", error)

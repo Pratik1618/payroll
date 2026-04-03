@@ -21,6 +21,7 @@ import { MainLayout } from '@/components/ui/layout/main-layout'
 import { Input } from '@/components/ui/input'
 import { Eye, Loader2 } from 'lucide-react'
 import { PayslipViewer } from '@/components/ui/payroll-History/payslip-viewer'
+import { withBasePath } from '@/lib/base-path'
 
 // Dummy data
 const clients = [
@@ -63,7 +64,7 @@ export default function PayrollHistoryPage() {
       record.EMPCODE // fallback
 
     const res = await fetch(
-      `/api/payslip?emp_id=${empId}&month=${selectedMonth}`
+      withBasePath(`/api/payslip?emp_id=${empId}&month=${selectedMonth}`)
     )
 
     const data = await res.json()
@@ -109,7 +110,7 @@ if (selectedSite !== 'all') {
 
     params.append('emp_id', '') // not used yet
 
-    const url = `/api/payroll-history?${params.toString()}`
+    const url = withBasePath(`/api/payroll-history?${params.toString()}`)
 
     console.log('Calling API:', url)
 

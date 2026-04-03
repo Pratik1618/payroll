@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { withBasePath } from '@/lib/base-path'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -35,7 +36,7 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch(withBasePath('/api/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

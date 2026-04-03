@@ -12,6 +12,7 @@
   import { toast } from "sonner"
   import { SitesDropdown } from "@/components/ui/sites-dropdown"
   import * as XLSX from 'xlsx';
+  import { withBasePath } from "@/lib/base-path"
 
   const initialPayrollSteps = [
     {
@@ -103,7 +104,7 @@
     const [overrideReason, setOverrideReason] = useState("")
     const [salaryStructure, setSalaryStructure] = useState([]);
     useEffect(() => {
-      fetch("/salary_structure.json")
+      fetch(withBasePath("/salary_structure.json"))
         .then(res => res.json())
         .then(data => {
           console.log("Salary JSON Loaded:", data);

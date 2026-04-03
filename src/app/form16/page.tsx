@@ -576,9 +576,10 @@ function Row({
 
 
 import ExcelJS from "exceljs";
+import { withBasePath } from "@/lib/base-path";
 
 async function downloadForm16Excel(previewData: any) {
-  const response = await fetch("/templates/Form16_FIXED.xlsx");
+  const response = await fetch(withBasePath("/templates/Form16_FIXED.xlsx"));
   const buffer = await response.arrayBuffer();
 
   const workbook = new ExcelJS.Workbook();

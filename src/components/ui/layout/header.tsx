@@ -14,6 +14,7 @@ import {
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { withBasePath } from "@/lib/base-path"
 
 export function Header() {
    const [currentRole] = useState<"Payroll Team" | "Employee">(() => {
@@ -25,7 +26,7 @@ export function Header() {
    const router = useRouter()
 
   const handleLogout = async () => {
-  await fetch('/api/logout', { method: 'POST' })
+  await fetch(withBasePath('/api/logout'), { method: 'POST' })
     toast.success("Logged out successfully")
   router.replace('/login')
 }

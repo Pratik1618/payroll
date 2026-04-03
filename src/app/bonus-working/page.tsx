@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertTriangle, Lock } from "lucide-react"
 import { generateMonthOptions, formatMonthLabel } from "@/utils/month-utility"
 import { toast } from "sonner"
+import { useClientSites } from "@/hooks/use-shared-master-data"
 
 const initialSteps = [
   {
@@ -92,6 +93,7 @@ export default function BonusWorkingPage() {
   const [bonusPercentage, setBonusPercentage] = useState("8.33")
   const [payoutMonth, setPayoutMonth] = useState("2026-03")
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState<EmployeeStatusFilter>("active")
+  const { sites: clientSites } = useClientSites(selectedClient, mockSites)
 
   const getFilteredEmployees = (site = selectedSite, status = employeeStatusFilter) => {
     return mockEmployees
@@ -199,7 +201,10 @@ export default function BonusWorkingPage() {
     const trackerId = `${financialYear}-${payoutMonth}`
     const selectedCount = employeeList.filter((emp) => emp.selected).length
     const currentClient = mockClients.find((client) => client.id === selectedClient)?.name ?? selectedClient
-    const currentSite = mockSites.find((site) => site.id === selectedSite)?.name ?? selectedSite
+    const currentSite =
+      clientSites.find((site) => site.id === selectedSite)?.name ??
+      mockSites.find((site) => site.id === selectedSite)?.name ??
+      selectedSite
     setBonusTracker((prev) => {
       const existing = prev.find((item) => item.id === trackerId)
       if (existing) {
@@ -243,10 +248,6 @@ export default function BonusWorkingPage() {
 
   const updateStep = (stepIndex: number, completed: boolean) => {
     setSteps(steps.map((step, idx) => (idx === stepIndex - 1 ? { ...step, completed, current: false } : step)))
-  }
-
-  const getSitesForClient = () => {
-    return mockSites.filter((site) => site.clientId === selectedClient)
   }
 
   const totalBonus = bonusCalculation.reduce((sum, emp) => sum + emp.totalBonus, 0)
@@ -299,7 +300,10 @@ export default function BonusWorkingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Client *</label>
-                  <Select value={selectedClient} onValueChange={setSelectedClient}>
+                  <Select value={selectedClient} onValueChange={(value) => {
+                    setSelectedClient(value)
+                    setSelectedSite("")
+                  }}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select client" />
                     </SelectTrigger>
@@ -320,7 +324,7 @@ export default function BonusWorkingPage() {
                       <SelectValue placeholder="Select site" />
                     </SelectTrigger>
                     <SelectContent>
-                      {getSitesForClient().map((site) => (
+                      {clientSites.map((site) => (
                         <SelectItem key={site.id} value={site.id}>
                           {site.name}
                         </SelectItem>

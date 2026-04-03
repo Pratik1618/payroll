@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { withoutBasePath } from "@/lib/base-path"
 import {
   Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard,
   UserX, BarChart3, Home, HistoryIcon, Lock, Percent, Webhook,
@@ -54,7 +55,7 @@ const navigation = [
 ]
 
 export function Sidebar() {
-  const pathname = usePathname()
+  const pathname = withoutBasePath(usePathname())
 
   return (
     <aside className="flex h-screen w-64 flex-col bg-card border-r border-border">

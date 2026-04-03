@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout" 
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -16,14 +16,14 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Lock, Eye, Users, DollarSign, TrendingDown } from "lucide-react"
 import { toast } from "sonner"
+import { withBasePath } from "@/lib/base-path"
+import { useBranches } from "@/hooks/use-shared-master-data"
 
 interface BranchPeriod {
-  id: string
+  branchId: string
   branchName: string
   month: string
   year: string
-  isLocked: boolean
-  lockedAt?: string
 }
 
 interface LockedBranch {
@@ -38,18 +38,24 @@ interface LockedBranch {
 }
 
 export default function LockSalaryPage() {
-  const [selectedPeriod, setSelectedPeriod] = useState("B001-Nov-2025")
+  const monthOptions = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ]
+  const yearOptions = ["2024", "2025", "2026"]
   const [viewModalOpen, setViewModalOpen] = useState(false)
   const [selectedLockedBranch, setSelectedLockedBranch] = useState<LockedBranch | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { branches } = useBranches([
+    { id: "B001", name: "Delhi Branch" },
+    { id: "B002", name: "Mumbai Branch" },
+    { id: "B004", name: "Pune Branch" },
+  ])
+  const [selectedBranchId, setSelectedBranchId] = useState("B001")
+  const [selectedMonth, setSelectedMonth] = useState("November")
+  const [selectedYear, setSelectedYear] = useState("2025")
 
-  const unlockedPeriods: BranchPeriod[] = [
-    { id: "B001-Nov-2025", branchName: "Delhi Branch", month: "November", year: "2025", isLocked: false },
-    { id: "B002-Nov-2025", branchName: "Mumbai Branch", month: "November", year: "2025", isLocked: false },
-    { id: "B004-Nov-2025", branchName: "Pune Branch", month: "November", year: "2025", isLocked: false },
-    { id: "B001-Oct-2025", branchName: "Delhi Branch", month: "October", year: "2025", isLocked: false },
-  ]
-
-  const lockedBranches: LockedBranch[] = [
+  const [lockedBranches, setLockedBranches] = useState<LockedBranch[]>([
     {
       id: "B001-Sep-2025",
       branchName: "Delhi Branch",
@@ -80,16 +86,87 @@ export default function LockSalaryPage() {
       totalDeductions: 1450000,
       totalNetSalary: 9050000,
     },
-  ]
+  ])
 
-  const currentPeriod = unlockedPeriods.find((p) => p.id === selectedPeriod)
+  const currentBranch = branches.find((branch) => branch.id === selectedBranchId)
 
-  const handleLockClick = () => {
-    if (currentPeriod) {
+  const payloadForCurrentPeriod = useMemo(() => {
+    if (!currentBranch) return null
+
+    return {
+      branchId: currentBranch.id,
+      branchName: currentBranch.name,
+      month: selectedMonth,
+      year: selectedYear,
+      salaryMonth: `${selectedMonth} ${selectedYear}`,
+      periodId: `${currentBranch.id}-${selectedMonth}-${selectedYear}`,
+    }
+  }, [currentBranch, selectedMonth, selectedYear])
+
+  const handleLockClick = async () => {
+    if (!currentBranch || !payloadForCurrentPeriod) return
+
+    try {
+      setIsSubmitting(true)
+
+      const res = await fetch(withBasePath("/api/lock-salary"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payloadForCurrentPeriod),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to lock salary")
+      }
+
+      const lockedTimestamp =
+        data?.results?.lockedTimestamp ||
+        data?.results?.lockedAt ||
+        data?.lockedTimestamp ||
+        data?.lockedAt ||
+        new Date().toISOString().replace("T", " ").slice(0, 19)
+
+      setLockedBranches((prev) => [
+        {
+          id: payloadForCurrentPeriod.periodId,
+          branchName: currentBranch.name,
+          salaryMonth: `${selectedMonth} ${selectedYear}`,
+          lockedTimestamp,
+          totalEmployees: Number(
+            data?.results?.totalEmployees ??
+            data?.totalEmployees ??
+            0
+          ),
+          totalGrossSalary: Number(
+            data?.results?.totalGrossSalary ??
+            data?.totalGrossSalary ??
+            0
+          ),
+          totalDeductions: Number(
+            data?.results?.totalDeductions ??
+            data?.totalDeductions ??
+            0
+          ),
+          totalNetSalary: Number(
+            data?.results?.totalNetSalary ??
+            data?.totalNetSalary ??
+            0
+          ),
+        },
+        ...prev,
+      ])
+
       toast.success(
-        `Salary for ${currentPeriod.branchName} - ${currentPeriod.month} ${currentPeriod.year} has been locked`,
+        `Salary for ${currentBranch.name} - ${selectedMonth} ${selectedYear} has been locked`,
       )
-      setSelectedPeriod("")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to lock salary")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -109,30 +186,68 @@ export default function LockSalaryPage() {
         <Card className="shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg">Select Branch & Period to Lock</CardTitle>
-            <CardDescription>Only showing branches/periods that are not yet locked</CardDescription>
+            <CardDescription>Select a branch and salary period to lock</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div>
-                <label className="text-sm font-medium mb-2 block">Branch / Salary Period</label>
-                <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                <label className="text-sm font-medium mb-2 block">Branch</label>
+                <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a branch and period" />
+                    <SelectValue placeholder="Select a branch" />
                   </SelectTrigger>
                   <SelectContent>
-                    {unlockedPeriods.map((period) => (
-                      <SelectItem key={period.id} value={period.id}>
-                        {period.branchName} - {period.month} {period.year}
+                    {branches.map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {selectedPeriod && currentPeriod && (
-                <Button onClick={handleLockClick} className="w-full gap-2 bg-primary hover:bg-primary/90">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Month</label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map((month) => (
+                      <SelectItem key={month} value={month}>
+                        {month}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Year</label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              {currentBranch && (
+                <Button
+                  onClick={handleLockClick}
+                  disabled={isSubmitting}
+                  className="w-full gap-2 bg-primary hover:bg-primary/90"
+                >
                   <Lock className="w-4 h-4" />
-                  Lock Salary for {currentPeriod.branchName}
+                  {isSubmitting ? "Locking Salary..." : `Lock Salary for ${currentBranch.name}`}
                 </Button>
               )}
             </div>

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { withBasePath, withoutBasePath } from '@/lib/base-path'
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value
-  const { pathname } = request.nextUrl
+  const pathname = withoutBasePath(request.nextUrl.pathname)
 
   // Allow public files
   if (
@@ -19,12 +20,12 @@ export function middleware(request: NextRequest) {
 
   // ❌ Not logged in → block protected pages
   if (!token && !isLoginPage) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL(withBasePath('/login'), request.url))
   }
 
   // ✅ Already logged in → block login page
   if (token && isLoginPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL(withBasePath('/dashboard'), request.url))
   }
 
   return NextResponse.next()

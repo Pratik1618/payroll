@@ -18,6 +18,7 @@
     AlertDialogTitle,
     AlertDialogTrigger,
   } from "@/components/ui/alert-dialog"
+  import { useClientSites } from "@/hooks/use-shared-master-data";
 
   interface Employee {
     empId: string;
@@ -110,8 +111,7 @@
     const [selectedClient, setSelectedClient] = useState<string>("");
     const [selectedSite, setSelectedSite] = useState<string>("");
 
-    const getSitesForClient = (clientId: string) =>  
-      mockSites.filter((s) => s.clientId === clientId);
+    const { sites: clientSites } = useClientSites(selectedClient, mockSites);
 
     const filteredEmployees = employees.filter(emp =>
       (emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -220,7 +220,7 @@
                     disabled={!selectedClient}
                   >
                     <option value="">All Sites</option>
-                    {(selectedClient ? getSitesForClient(selectedClient) : mockSites).map(s => (
+                    {(selectedClient ? clientSites : mockSites).map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
