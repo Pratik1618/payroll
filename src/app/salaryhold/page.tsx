@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/tooltip"
 
 import { cn } from "@/lib/utils"
+import { withBasePath } from "@/lib/base-path"
 
 // ------------------------------------------------------------
 // TYPES
@@ -144,69 +145,6 @@ const downloadTemplate = () => {
   toast.success("Template downloaded successfully!")
 }
 
-// Parse and apply Excel data
-const parseExcelData = async (
-  file: File,
-  employeeHoldData: Record<string, EmployeeHoldData>
-): Promise<Record<string, EmployeeHoldData> | null> => {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer)
-        const wb = XLSX.read(data, { type: "array" })
-        const ws = wb.Sheets[wb.SheetNames[0]]
-        const jsonData = XLSX.utils.sheet_to_json(ws) as Array<{
-          "Employee ID": string
-          Month: string
-          Status: string
-        }>
-
-        if (!jsonData || jsonData.length === 0) {
-          toast.error("Excel file is empty or invalid format.")
-          resolve(null)
-          return
-        }
-
-        const updated = JSON.parse(JSON.stringify(employeeHoldData))
-        let successCount = 0
-
-        jsonData.forEach((row) => {
-          const empId = row["Employee ID"]?.trim()
-          const month = row["Month"]?.trim()
-          const status = row["Status"]?.trim().toLowerCase()
-
-          if (!empId || !month || !status) return
-
-          if (!updated[empId]) {
-            toast.warning(`Employee ID ${empId} not found. Skipping.`)
-            return
-          }
-
-          if (!isMonthEditable(month)) {
-            toast.warning(`${month} is locked and cannot be modified.`)
-            return
-          }
-
-          const isHeld = status === "hold"
-          updated[empId].holdRecords[month] = { month, isHeld }
-          successCount++
-        })
-
-        toast.success(`Successfully updated ${successCount} records from Excel!`)
-        resolve(updated)
-      } catch (error) {
-        toast.error("Error parsing Excel file. Please check the format.")
-        console.error(error)
-        resolve(null)
-      }
-    }
-
-    reader.readAsArrayBuffer(file)
-  })
-}
-
 // ------------------------------------------------------------
 // MAIN PAGE
 // ------------------------------------------------------------
@@ -267,7 +205,49 @@ export default function SalaryHoldPage() {
   const currentEmployee = employeeHoldData[selectedEmployee]
   const heldCount = Object.values(currentEmployee.holdRecords).filter((r) => r.isHeld).length
 
-  const toggleHold = (month: string) => {
+  const holdSalary = async (employeeId: string, month: string) => {
+    const res = await fetch(withBasePath("/api/salary-hold/hold"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        employeeId,
+        month,
+        actionBy: "PAYROLL_ADMIN",
+        reason: "Held from salary hold calendar",
+      }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data?.message || "Failed to hold salary")
+    }
+  }
+
+  const unholdSalary = async (employeeId: string, month: string) => {
+    const res = await fetch(withBasePath("/api/salary-hold/unhold"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        employeeId,
+        month,
+        actionBy: "PAYROLL_ADMIN",
+        reason: "Released from salary hold calendar",
+      }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      throw new Error(data?.message || "Failed to unhold salary")
+    }
+  }
+
+  const toggleHold = async (month: string) => {
     if (!isMonthEditable(month)) {
       toast.error("Past months are locked and cannot be edited.")
       return
@@ -275,6 +255,17 @@ export default function SalaryHoldPage() {
 
     const previous = currentEmployee.holdRecords[month].isHeld
     const newState = !previous
+
+    try {
+      if (newState) {
+        await holdSalary(selectedEmployee, month)
+      } else {
+        await unholdSalary(selectedEmployee, month)
+      }
+    } catch (error: any) {
+      toast.error(error.message || (newState ? "Failed to hold salary" : "Failed to unhold salary"))
+      return
+    }
 
     setEmployeeHoldData((prev) => ({
       ...prev,
@@ -324,9 +315,24 @@ export default function SalaryHoldPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    const result = await parseExcelData(file, employeeHoldData)
-    if (result) {
-      setEmployeeHoldData(result)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = await fetch(withBasePath("/api/salary-hold/bulk-upload"), {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to upload salary hold file")
+      }
+
+      toast.success(data?.message || "Salary hold file uploaded successfully!")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to upload salary hold file")
     }
 
     if (fileInputRef.current) {

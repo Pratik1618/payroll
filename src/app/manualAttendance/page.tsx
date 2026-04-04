@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { Upload, Send } from "lucide-react"
+import { withBasePath } from "@/lib/base-path"
 
 interface AttendanceRecord {
   employee_id: string
@@ -67,8 +68,18 @@ export default function ManualAttendanceUploadPage() {
   ])
   const [loading, setLoading] = useState(false)
 
-  const clients = ["Acme Corp", "Tech Solutions", "Global Services"]
-  const sites = client ? ["Site A", "Site B", "Site C"] : []
+  const clients = [
+    { id: "client-1", name: "Acme Corp" },
+    { id: "client-2", name: "Tech Solutions" },
+    { id: "client-3", name: "Global Services" },
+  ]
+  const sites = client
+    ? [
+        { id: "site-a", name: "Site A", clientId: "client-1" },
+        { id: "site-b", name: "Site B", clientId: "client-1" },
+        { id: "site-c", name: "Site C", clientId: "client-2" },
+      ].filter((siteOption) => siteOption.clientId === client)
+    : []
   const months = [
     "January",
     "February",
@@ -90,6 +101,12 @@ export default function ManualAttendanceUploadPage() {
     }
   }
 
+  const getClientName = (clientId: string) =>
+    clients.find((item) => item.id === clientId)?.name ?? clientId
+
+  const getSiteName = (siteId: string) =>
+    sites.find((item) => item.id === siteId)?.name ?? siteId
+
   const handleUpload = async () => {
     if (!client || !site || !month || !file) {
       toast.error("Please select client, site, month and upload a file")
@@ -98,52 +115,33 @@ export default function ManualAttendanceUploadPage() {
 
     setLoading(true)
     try {
-      const mockData: AttendanceRecord[] = [
-        {
-          employee_id: "EMP001",
-          employee_name: "John Doe",
-          present_days: 20,
-          weekly_off: 4,
-          national_holidays: 2,
-          holiday: 1,
-          comp_off: 0,
-          leave: 1,
-          absent: 0,
-          half_day: 1,
-          ot_hrs: 8,
-          total_payable_days: 25,
-        },
-        {
-          employee_id: "EMP002",
-          employee_name: "Jane Smith",
-          present_days: 19,
-          weekly_off: 4,
-          national_holidays: 2,
-          holiday: 1,
-          comp_off: 1,
-          leave: 0,
-          absent: 2,
-          half_day: 0,
-          ot_hrs: 4,
-          total_payable_days: 24,
-        },
-        {
-          employee_id: "EMP003",
-          employee_name: "Mike Johnson",
-          present_days: 21,
-          weekly_off: 4,
-          national_holidays: 2,
-          holiday: 1,
-          comp_off: 0,
-          leave: 0,
-          absent: 0,
-          half_day: 2,
-          ot_hrs: 12,
-          total_payable_days: 26,
-        },
-      ]
-      setUploadedData(mockData)
-      toast.success(`Attendance file loaded for ${client} - ${site} - ${month}`)
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("clientId", client)
+      formData.append("siteId", site)
+      formData.append("month", month)
+
+      const res = await fetch(withBasePath("/api/attendance/upload"), {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to upload attendance file")
+      }
+
+      const records = Array.isArray(data?.results?.data)
+        ? data.results.data
+        : Array.isArray(data?.results)
+          ? data.results
+          : Array.isArray(data?.data)
+            ? data.data
+            : []
+
+      setUploadedData(records)
+      toast.success(`Attendance file loaded for ${getClientName(client)} - ${getSiteName(site)} - ${month}`)
     } catch (error) {
       toast.error("Failed to upload attendance file")
       console.error("Upload error:", error)
@@ -160,8 +158,8 @@ export default function ManualAttendanceUploadPage() {
 
     const newSubmission: SubmissionRecord = {
       id: `SUB${Math.floor(Math.random() * 10000)}`,
-      client,
-      site,
+      client: getClientName(client),
+      site: getSiteName(site),
       month,
       records: uploadedData,
       status: "pending",
@@ -197,14 +195,17 @@ export default function ManualAttendanceUploadPage() {
               {/* Client Select */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Client</label>
-                <Select value={client} onValueChange={setClient}>
+                <Select value={client} onValueChange={(value) => {
+                  setClient(value)
+                  setSite("")
+                }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
                     {clients.map((c) => (
-                      <SelectItem key={c} value={c}>
-                        {c}
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -220,8 +221,8 @@ export default function ManualAttendanceUploadPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {sites.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -269,7 +270,7 @@ export default function ManualAttendanceUploadPage() {
             <CardHeader>
               <CardTitle>Uploaded Attendance Data</CardTitle>
               <CardDescription>
-                {client} • {site} • {month} • {uploadedData.length} records
+                {getClientName(client)} • {getSiteName(site)} • {month} • {uploadedData.length} records
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

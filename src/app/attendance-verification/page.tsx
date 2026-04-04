@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Eye, CheckCircle, XCircle } from "lucide-react";
+import { withBasePath } from "@/lib/base-path";
 
 interface AttendanceRecord {
     employee_id: string;
@@ -122,20 +123,76 @@ export default function AttendanceVerificationPage() {
     const [selectedSubmission, setSelectedSubmission] =
         useState<SubmissionRecord | null>(null);
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    const [loadingDetailsId, setLoadingDetailsId] = useState<string | null>(null);
+    const [approvingId, setApprovingId] = useState<string | null>(null);
 
-    const handleViewDetails = (submission: SubmissionRecord) => {
-        setSelectedSubmission(submission);
-        setShowDetailsDialog(true);
+    const handleViewDetails = async (submission: SubmissionRecord) => {
+        try {
+            setLoadingDetailsId(submission.id);
+
+            const res = await fetch(
+                withBasePath(`/api/attendance/verify/${submission.id}`),
+                { cache: "no-store" }
+            );
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data?.message || "Failed to verify attendance");
+            }
+
+            const results = data?.results ?? data;
+            const records = Array.isArray(results?.records)
+                ? results.records
+                : Array.isArray(results?.data)
+                    ? results.data
+                    : submission.records;
+
+            const nextSubmission: SubmissionRecord = {
+                ...submission,
+                records,
+                client: results?.client ?? submission.client,
+                site: results?.site ?? submission.site,
+                month: results?.month ?? submission.month,
+                submittedBy: results?.submittedBy ?? submission.submittedBy,
+                submittedAt: results?.submittedAt ?? submission.submittedAt,
+                status: results?.status ?? submission.status,
+            };
+
+            setSelectedSubmission(nextSubmission);
+            setShowDetailsDialog(true);
+        } catch (error: any) {
+            toast.error(error.message || "Failed to verify attendance");
+        } finally {
+            setLoadingDetailsId(null);
+        }
     };
 
-    const handleApprove = (id: string) => {
-        setSubmissions(
-            submissions.map((sub) =>
-                sub.id === id ? { ...sub, status: "approved" as const } : sub
-            )
-        );
-        setShowDetailsDialog(false);
-        toast.success("Attendance approved and uploaded to client site");
+    const handleApprove = async (id: string) => {
+        try {
+            setApprovingId(id);
+
+            const res = await fetch(
+                withBasePath(`/api/attendance/approve/${id}`),
+                { method: "POST" }
+            );
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data?.message || "Failed to approve attendance");
+            }
+
+            setSubmissions(
+                submissions.map((sub) =>
+                    sub.id === id ? { ...sub, status: "approved" as const } : sub
+                )
+            );
+            setShowDetailsDialog(false);
+            toast.success("Attendance approved and uploaded to client site");
+        } catch (error: any) {
+            toast.error(error.message || "Failed to approve attendance");
+        } finally {
+            setApprovingId(null);
+        }
     };
 
     const handleReject = (id: string) => {
@@ -264,7 +321,7 @@ export default function AttendanceVerificationPage() {
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleViewDetails(submission)}
-                                                    disabled={submission.status !== "pending"}
+                                                    disabled={submission.status !== "pending" || loadingDetailsId === submission.id}
                                                 >
                                                     <Eye className="h-4 w-4" />
                                                 </Button>
@@ -366,13 +423,17 @@ export default function AttendanceVerificationPage() {
                                     <Button
                                         variant="outline"
                                         onClick={() => handleReject(selectedSubmission.id)}
+                                        disabled={approvingId === selectedSubmission.id}
                                     >
                                         <XCircle className="mr-2 h-4 w-4" />
                                         Reject
                                     </Button>
-                                    <Button onClick={() => handleApprove(selectedSubmission.id)}>
+                                    <Button
+                                        onClick={() => handleApprove(selectedSubmission.id)}
+                                        disabled={approvingId === selectedSubmission.id}
+                                    >
                                         <CheckCircle className="mr-2 h-4 w-4" />
-                                        Approve & Upload
+                                        {approvingId === selectedSubmission.id ? "Approving..." : "Approve & Upload"}
                                     </Button>
                                 </div>
                             )}
