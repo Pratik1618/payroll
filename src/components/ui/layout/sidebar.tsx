@@ -18,11 +18,13 @@ import {
   CalendarMinus,
   BanknoteArrowUp,
   BanknoteArrowDown,
-  Repeat
+  Repeat,
+  BriefcaseBusiness
 } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Back Office", href: "/back-office-salary", icon: BriefcaseBusiness },
   {name:"Leave Tracking Page",href:"/leave-tracking",icon:CalendarMinus},
   { name: "Manual Attendance Upload", href: "/manualAttendance", icon: Upload },
   { name: "Attendance Verification", href: "/attendance-verification", icon: BadgeCheck },
