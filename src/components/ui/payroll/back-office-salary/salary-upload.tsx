@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useRef, useState } from "react"
 import * as XLSX from "xlsx"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Upload, AlertCircle, CheckCircle } from "lucide-react"
+import { AlertCircle, CheckCircle, Upload } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface SalaryRow {
   employeeId: string
@@ -20,6 +20,9 @@ interface SalaryRow {
   esicDeduction: number
   professionalTax: number
   tds: number
+  pfEmployer: number
+  esicEmployer: number
+  gratuity: number
 }
 
 interface SalaryUploadProps {
@@ -30,6 +33,20 @@ interface SalaryUploadProps {
   }
   onUpload: (salary: SalaryRow) => void
 }
+
+const REQUIRED_COLUMNS = [
+  "employeeid",
+  "employeename",
+  "department",
+  "basic",
+  "hra",
+  "specialallowance",
+  "conveyanceallowance",
+  "medicalallowance",
+  "pfemployer",
+  "esicemployer",
+  "gratuity",
+]
 
 export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) {
   const [isLoading, setIsLoading] = useState(false)
@@ -54,7 +71,7 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
         const data = await file.arrayBuffer()
         const workbook = XLSX.read(data, { type: "array" })
         const worksheet = workbook.Sheets[workbook.SheetNames[0]]
-        const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false }) as any[]
+        const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false }) as unknown[]
         rows = rawRows.map((row) => (Array.isArray(row) ? row.map((cell) => String(cell ?? "").trim()) : []))
       } else {
         const text = await file.text()
@@ -69,23 +86,13 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
         return
       }
 
-      const headers = rows[0].map((h) => String(h).trim().toLowerCase().replace(/\s+/g, ""))
-      const requiredColumns = [
-        "employeeid",
-        "employeename",
-        "department",
-        "basic",
-        "hra",
-        "specialallowance",
-        "conveyanceallowance",
-        "medicalallowance",
-      ]
+      const headers = rows[0].map((header) => String(header).trim().toLowerCase().replace(/\s+/g, ""))
+      const missingColumns = REQUIRED_COLUMNS.filter((column) => !headers.includes(column))
 
-      const missingColumns = requiredColumns.filter((col) => !headers.includes(col))
       if (missingColumns.length > 0) {
         setErrors([
           `Missing required columns: ${missingColumns.join(", ")}`,
-          `Expected columns: ${requiredColumns.join(", ")}`,
+          `Expected columns: ${REQUIRED_COLUMNS.join(", ")}`,
         ])
         return
       }
@@ -93,16 +100,16 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
       const salaryRows: SalaryRow[] = []
       const parseErrors: string[] = []
 
-      for (let i = 1; i < rows.length; i++) {
-        const values = rows[i].map((value) => String(value ?? "").trim())
+      for (let index = 1; index < rows.length; index++) {
+        const values = rows[index].map((value) => String(value ?? "").trim())
         const row: Record<string, string> = {}
 
-        headers.forEach((header, index) => {
-          row[header] = values[index] || ""
+        headers.forEach((header, headerIndex) => {
+          row[header] = values[headerIndex] || ""
         })
 
         if (!row.employeeid || !row.employeename) {
-          parseErrors.push(`Row ${i + 1}: Missing employee ID or name`)
+          parseErrors.push(`Row ${index + 1}: Missing employee ID or name`)
           continue
         }
 
@@ -119,10 +126,13 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
           esicDeduction: parseFloat(row.esicdeduction) || 0,
           professionalTax: parseFloat(row.professionaltax) || 0,
           tds: parseFloat(row.tds) || 0,
+          pfEmployer: parseFloat(row.pfemployer) || 0,
+          esicEmployer: parseFloat(row.esicemployer) || 0,
+          gratuity: parseFloat(row.gratuity) || 0,
         }
 
         if (salary.basic <= 0) {
-          parseErrors.push(`Row ${i + 1}: Basic salary must be greater than 0`)
+          parseErrors.push(`Row ${index + 1}: Basic salary must be greater than 0`)
           continue
         }
 
@@ -161,8 +171,8 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
 
       onUpload(salary)
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Failed to parse file"
-      setErrors([errorMessage])
+      const message = error instanceof Error ? error.message : "Failed to parse file"
+      setErrors([message])
       toast.error("Failed to upload file")
     } finally {
       setIsLoading(false)
@@ -171,14 +181,15 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
-      if (!/\.(csv|xlsx|xls)$/i.test(file.name)) {
-        setErrors(["Please upload a CSV or Excel file"])
-        toast.error("Only CSV or Excel files are supported")
-        return
-      }
-      parseExcelFile(file)
+    if (!file) return
+
+    if (!/\.(csv|xlsx|xls)$/i.test(file.name)) {
+      setErrors(["Please upload a CSV or Excel file"])
+      toast.error("Only CSV or Excel files are supported")
+      return
     }
+
+    parseExcelFile(file)
   }
 
   const downloadTemplate = () => {
@@ -195,6 +206,9 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
       "esicDeduction",
       "professionalTax",
       "tds",
+      "pfEmployer",
+      "esicEmployer",
+      "gratuity",
     ]
 
     const sampleData = [
@@ -211,6 +225,9 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
         "1500",
         "200",
         "0",
+        "3000",
+        "1300",
+        "2405",
       ],
       [
         "EMP002",
@@ -225,19 +242,31 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
         "1800",
         "200",
         "500",
+        "3600",
+        "1950",
+        "2886",
       ],
     ]
 
     const csv = [headers, ...sampleData].map((row) => row.join(",")).join("\n")
-
     const blob = new Blob([csv], { type: "text/csv" })
     const url = window.URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = "salary_template.csv"
-    a.click()
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "salary_template.csv"
+    link.click()
     window.URL.revokeObjectURL(url)
   }
+
+  const grossSalary =
+    (uploadedData?.basic || 0) +
+    (uploadedData?.hra || 0) +
+    (uploadedData?.specialAllowance || 0) +
+    (uploadedData?.conveyanceAllowance || 0) +
+    (uploadedData?.medicalAllowance || 0)
+
+  const employerContributions =
+    (uploadedData?.pfEmployer || 0) + (uploadedData?.esicEmployer || 0) + (uploadedData?.gratuity || 0)
 
   return (
     <Card>
@@ -245,18 +274,17 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
         <CardTitle className="text-base">Upload Salary for Employee</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition cursor-pointer"
+        <div
+          className="cursor-pointer rounded-lg border-2 border-dashed border-muted-foreground/25 p-8 text-center transition hover:border-muted-foreground/50"
           onClick={() => fileInputRef.current?.click()}
         >
-          <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+          <Upload className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">
             {selectedEmployee
               ? `Drop Excel or CSV salary file for ${selectedEmployee.name} here or click to browse`
               : "Select an employee to enable salary upload."}
           </p>
-          <p className="text-xs text-muted-foreground">
-            Supports CSV, XLS, and XLSX salary files
-          </p>
+          <p className="text-xs text-muted-foreground">Supports CSV, XLS, and XLSX salary files</p>
           <input
             ref={fileInputRef}
             type="file"
@@ -268,13 +296,7 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
         </div>
 
         <div className="flex gap-2">
-          <Button
-            type="button"
-            onClick={downloadTemplate}
-            variant="outline"
-            size="sm"
-            className="flex-1"
-          >
+          <Button type="button" onClick={downloadTemplate} variant="outline" size="sm" className="flex-1">
             Download Template
           </Button>
           <Button
@@ -289,10 +311,10 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
         </div>
 
         {errors.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded p-3 space-y-1">
-            {errors.map((error, idx) => (
-              <div key={idx} className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 mt-0.5 text-red-600 flex-shrink-0" />
+          <div className="space-y-1 rounded border border-red-200 bg-red-50 p-3">
+            {errors.map((error, index) => (
+              <div key={index} className="flex items-start gap-2">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-600" />
                 <p className="text-xs text-red-700">{error}</p>
               </div>
             ))}
@@ -300,23 +322,16 @@ export function SalaryUpload({ selectedEmployee, onUpload }: SalaryUploadProps) 
         )}
 
         {uploadedData && (
-          <div className="bg-green-50 border border-green-200 rounded p-3 space-y-2">
+          <div className="space-y-2 rounded border border-green-200 bg-green-50 p-3">
             <div className="flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-green-600" />
+              <CheckCircle className="h-4 w-4 text-green-600" />
               <p className="text-sm font-semibold text-green-900">
                 Successfully loaded salary details for {uploadedData.employeeName}
               </p>
             </div>
             <div className="text-xs text-green-800">
-              <p>
-                Gross: ₹{(
-                  uploadedData.basic +
-                  uploadedData.hra +
-                  uploadedData.specialAllowance +
-                  uploadedData.conveyanceAllowance +
-                  uploadedData.medicalAllowance
-                ).toLocaleString()}
-              </p>
+              <p>Gross: Rs. {grossSalary.toLocaleString("en-IN")}</p>
+              <p>Employer Contributions: Rs. {employerContributions.toLocaleString("en-IN")}</p>
               <p>Department: {uploadedData.department}</p>
             </div>
           </div>

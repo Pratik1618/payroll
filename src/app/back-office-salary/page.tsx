@@ -78,6 +78,9 @@ interface UploadedSalaryPayload {
   esicDeduction: number
   professionalTax: number
   tds: number
+  pfEmployer: number
+  esicEmployer: number
+  gratuity: number
 }
 
 const INITIAL_MODULE_STATE: ModuleState = {
