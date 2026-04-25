@@ -14,6 +14,11 @@
   import * as XLSX from 'xlsx';
   import { withBasePath } from "@/lib/base-path"
 
+  interface BranchOption {
+    id: string
+    name: string
+  }
+
   const initialPayrollSteps = [
     {
       id: 1,
@@ -48,7 +53,7 @@
   ]
 
   // added: branches (states) list
-  const mockBranches = [
+  const fallbackBranches: BranchOption[] = [
     { id: "branch-1", name: "Gujarat" },
     { id: "branch-2", name: "Maharashtra" },
     { id: "branch-3", name: "Karnataka" },
@@ -91,6 +96,7 @@
     const [selectedClients, setSelectedClients] = useState<string[]>([]) // when branch selected: multi-client selection
     const [selectedSites, setSelectedSites] = useState<string[]>([])
     const [selectedBranch, setSelectedBranch] = useState<string>("") // new: branch/state selection
+    const [branches, setBranches] = useState<BranchOption[]>(fallbackBranches)
     const [attendanceData, setAttendanceData] = useState<any[]>([])
     const [mergedData, setMergedData] = useState<any[]>([]);
     const [finalSalary, setFinalSalary] = useState<any[]>([])
@@ -112,6 +118,72 @@
         })
         .catch(err => console.error("Error loading JSON:", err));
     }, []);
+
+    useEffect(() => {
+      const normalizeBranches = (payload: any): BranchOption[] => {
+        const rawList = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : Array.isArray(payload?.results?.data)
+              ? payload.results.data
+            : Array.isArray(payload?.branches)
+              ? payload.branches
+              : []
+
+        return rawList
+          .map((item: any, index: number) => {
+            const name = String(item?.name ?? item?.branchName ?? item?.branch_name ?? "").trim()
+            if (!name) return null
+
+            const matchedFallback = fallbackBranches.find(
+              (branch) => branch.name.toLowerCase() === name.toLowerCase()
+            )
+
+            return {
+              id: String(
+                matchedFallback?.id ??
+                item?.id ??
+                item?.branchId ??
+                item?.branch_id ??
+                `branch-${index + 1}`
+              ),
+              name,
+            }
+          })
+          .filter(Boolean) as BranchOption[]
+      }
+
+      const loadBranches = async () => {
+        try {
+          const response = await fetch(withBasePath("/api/branches"), {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+          })
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch branches: ${response.status}`)
+          }
+
+          const data = await response.json()
+          const normalizedBranches = normalizeBranches(data)
+
+          if (normalizedBranches.length > 0) {
+            setBranches(normalizedBranches)
+          } else {
+            setBranches(fallbackBranches)
+            toast.error("Branches API returned no usable branch records")
+          }
+        } catch (error) {
+          console.error("Error loading branches:", error)
+          setBranches(fallbackBranches)
+          toast.error("Unable to load branches from API. Showing fallback branches.")
+        }
+      }
+
+      loadBranches()
+    }, [])
 
     console.log(JSON.stringify(salaryStructure, null, 2))
 
@@ -746,7 +818,7 @@
                     </SelectTrigger>
                     <SelectContent>
 
-                      {mockBranches.map((b) => (
+                      {branches.map((b) => (
                         <SelectItem key={b.id} value={b.id}>
                           {b.name}
                         </SelectItem>

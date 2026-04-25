@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { withoutBasePath } from "@/lib/base-path"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Users, Clock, Calendar, Calculator, FileText, Receipt, CreditCard,
   UserX, BarChart3, Home, HistoryIcon, Lock, Percent, Webhook,
@@ -56,40 +57,68 @@ const navigation = [
   { name: "Analytics", href: "/analytics", icon: ChartPieIcon },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  isCollapsed: boolean
+}
+
+export function Sidebar({ isCollapsed }: SidebarProps) {
   const pathname = withoutBasePath(usePathname())
 
   return (
-    <aside className="flex h-screen w-64 flex-col bg-card border-r border-border">
+    <aside
+      className={cn(
+        "flex h-screen flex-col border-r border-border bg-card transition-[width] duration-200",
+        isCollapsed ? "w-20" : "w-64"
+      )}
+    >
       {/* Header */}
-      <div className="flex h-16 shrink-0 items-center px-6 border-b border-border">
-        <h1 className="text-xl font-semibold text-foreground">
-          Payroll ERP
+      <div
+        className={cn(
+          "flex h-16 shrink-0 items-center border-b border-border",
+          isCollapsed ? "justify-center px-3" : "px-6"
+        )}
+      >
+        <h1 className="overflow-hidden text-xl font-semibold text-foreground">
+          {isCollapsed ? "PE" : "Payroll ERP"}
         </h1>
       </div>
 
       {/* Scrollable Menu */}
-      <nav className="flex-1 overflow-y-auto  no-scrollbar space-y-1 px-3 py-4">
-        {navigation.map((item) => {
-          const isActive = pathname === item.href
+      <TooltipProvider delayDuration={150}>
+        <nav className="flex-1 overflow-y-auto no-scrollbar space-y-1 px-3 py-4">
+          {navigation.map((item) => {
+            const isActive = pathname === item.href
 
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={cn(
-                "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              )}
-            >
-              <item.icon className="mr-3 h-5 w-5 shrink-0" />
-              <span className="truncate">{item.name}</span>
-            </Link>
-          )
-        })}
-      </nav>
+            const link = (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  isCollapsed ? "justify-center" : "",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+              >
+                <item.icon className={cn("h-5 w-5 shrink-0", isCollapsed ? "" : "mr-3")} />
+                {!isCollapsed && <span className="truncate">{item.name}</span>}
+              </Link>
+            )
+
+            if (!isCollapsed) {
+              return link
+            }
+
+            return (
+              <Tooltip key={item.name}>
+                <TooltipTrigger asChild>{link}</TooltipTrigger>
+                <TooltipContent side="right">{item.name}</TooltipContent>
+              </Tooltip>
+            )
+          })}
+        </nav>
+      </TooltipProvider>
     </aside>
   )
 }
