@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,12 @@ import { FormulaBuilder, FormulaComponent } from "./formula-builder"
 interface SalaryFormProps {
   mode: "add" | "edit"
   onSubmit: (salary: SalaryStructure) => void
+}
+
+interface CustomComponent {
+  id: string
+  name: string
+  amount: number
 }
 
 export interface SalaryStructure {
@@ -32,6 +38,8 @@ export interface SalaryStructure {
   specialAllowanceComponents?: FormulaComponent[]
   conveyanceAllowanceComponents?: FormulaComponent[]
   medicalAllowanceComponents?: FormulaComponent[]
+  customEarnings?: CustomComponent[]
+  customDeductions?: CustomComponent[]
   applyESIC: boolean
 }
 
@@ -73,6 +81,8 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
     conveyanceAllowance: 0,
     medicalAllowance: 0,
   })
+  const [customEarnings, setCustomEarnings] = useState<CustomComponent[]>([])
+  const [customDeductions, setCustomDeductions] = useState<CustomComponent[]>([])
 
   const availableComponents = ["Basic", "HRA", "Special Allowance", "Conveyance", "Medical"]
 
@@ -85,6 +95,16 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
       return total + (baseValue * percent) / 100
     }, 0)
   }
+
+  const customEarningsTotal = useMemo(
+    () => customEarnings.reduce((sum, component) => sum + component.amount, 0),
+    [customEarnings],
+  )
+
+  const customDeductionsTotal = useMemo(
+    () => customDeductions.reduce((sum, component) => sum + component.amount, 0),
+    [customDeductions],
+  )
 
   const calculations = useMemo(() => {
     const baseValues = {
@@ -116,7 +136,12 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
         : salary.medicalAllowance
 
     const grossSalary =
-      salary.basic + hraAmount + specialAllowanceAmount + conveyanceAllowanceAmount + medicalAllowanceAmount
+      salary.basic +
+      hraAmount +
+      specialAllowanceAmount +
+      conveyanceAllowanceAmount +
+      medicalAllowanceAmount +
+      customEarningsTotal
 
     const pfDed = salary.basic * 0.12
     const esicApplicable = salary.applyESIC && grossSalary <= 21000
@@ -124,7 +149,7 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
     const pfEmp = salary.basic * 0.12
     const esicEmp = esicApplicable ? grossSalary * 0.0325 : 0
     const gratuityAmount = salary.basic * 0.0481
-    const totalDeductions = pfDed + esicDed + salary.professionalTax + salary.tds
+    const totalDeductions = pfDed + esicDed + salary.professionalTax + salary.tds + customDeductionsTotal
     const netSalary = grossSalary - totalDeductions
     const totalEmployerCost = grossSalary + pfEmp + esicEmp + gratuityAmount
 
@@ -143,7 +168,7 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
       conveyanceAllowanceAmount,
       medicalAllowanceAmount,
     }
-  }, [salary, useFormulas, formulaComponents, formulaPercent])
+  }, [salary, useFormulas, formulaComponents, formulaPercent, customEarningsTotal, customDeductionsTotal])
 
   const handleEarningChange = (
     field: "basic" | "hra" | "specialAllowance" | "conveyanceAllowance" | "medicalAllowance",
@@ -154,6 +179,47 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
 
   const handleDeductionChange = (field: "professionalTax" | "tds", value: number) => {
     setSalary((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const addCustomComponent = (type: "earning" | "deduction") => {
+    const nextComponent: CustomComponent = {
+      id: `${type}-${Date.now()}`,
+      name: type === "earning" ? "New Earning" : "New Deduction",
+      amount: 0,
+    }
+
+    if (type === "earning") {
+      setCustomEarnings((prev) => [...prev, nextComponent])
+      return
+    }
+
+    setCustomDeductions((prev) => [...prev, nextComponent])
+  }
+
+  const updateCustomComponent = (
+    type: "earning" | "deduction",
+    id: string,
+    field: "name" | "amount",
+    value: string | number,
+  ) => {
+    const update = (components: CustomComponent[]) =>
+      components.map((component) => (component.id === id ? { ...component, [field]: value } : component))
+
+    if (type === "earning") {
+      setCustomEarnings((prev) => update(prev))
+      return
+    }
+
+    setCustomDeductions((prev) => update(prev))
+  }
+
+  const removeCustomComponent = (type: "earning" | "deduction", id: string) => {
+    if (type === "earning") {
+      setCustomEarnings((prev) => prev.filter((component) => component.id !== id))
+      return
+    }
+
+    setCustomDeductions((prev) => prev.filter((component) => component.id !== id))
   }
 
   const handleSubmit = () => {
@@ -172,6 +238,8 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
       specialAllowanceComponents: formulaComponents.specialAllowance,
       conveyanceAllowanceComponents: formulaComponents.conveyanceAllowance,
       medicalAllowanceComponents: formulaComponents.medicalAllowance,
+      customEarnings,
+      customDeductions,
     })
   }
 
@@ -341,6 +409,55 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
               <div className="rounded border border-blue-200 bg-blue-50 p-3 text-xs font-semibold text-blue-900">
                 Gross Salary: {formatCurrency(calculations.grossSalary)}
               </div>
+
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Additional Earnings</p>
+                    <p className="text-xs text-muted-foreground">Add reusable earning rows beyond the standard structure.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => addCustomComponent("earning")}>
+                    <Plus className="h-4 w-4" />
+                    Add Earning
+                  </Button>
+                </div>
+
+                {customEarnings.length > 0 ? (
+                  <div className="space-y-3">
+                    {customEarnings.map((component) => (
+                      <div key={component.id} className="grid gap-3 md:grid-cols-[1fr_180px_40px]">
+                        <Input
+                          value={component.name}
+                          onChange={(e) => updateCustomComponent("earning", component.id, "name", e.target.value)}
+                          placeholder="Component name"
+                        />
+                        <Input
+                          type="number"
+                          value={component.amount}
+                          onChange={(e) =>
+                            updateCustomComponent("earning", component.id, "amount", parseFloat(e.target.value) || 0)
+                          }
+                          placeholder="0"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeCustomComponent("earning", component.id)}
+                          aria-label={`Remove ${component.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="text-xs font-medium text-emerald-700">
+                      Additional Earnings Total: {formatCurrency(customEarningsTotal)}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No additional earnings added.</p>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -402,6 +519,55 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
 
               <div className="rounded border border-red-200 bg-red-50 p-3 text-xs text-red-900">
                 <p className="font-semibold">Total Deductions: {formatCurrency(calculations.totalDeductions)}</p>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Additional Deductions</p>
+                    <p className="text-xs text-muted-foreground">Add custom deduction rows for employee-specific recovery or adjustments.</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => addCustomComponent("deduction")}>
+                    <Plus className="h-4 w-4" />
+                    Add Deduction
+                  </Button>
+                </div>
+
+                {customDeductions.length > 0 ? (
+                  <div className="space-y-3">
+                    {customDeductions.map((component) => (
+                      <div key={component.id} className="grid gap-3 md:grid-cols-[1fr_180px_40px]">
+                        <Input
+                          value={component.name}
+                          onChange={(e) => updateCustomComponent("deduction", component.id, "name", e.target.value)}
+                          placeholder="Component name"
+                        />
+                        <Input
+                          type="number"
+                          value={component.amount}
+                          onChange={(e) =>
+                            updateCustomComponent("deduction", component.id, "amount", parseFloat(e.target.value) || 0)
+                          }
+                          placeholder="0"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeCustomComponent("deduction", component.id)}
+                          aria-label={`Remove ${component.name}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="text-xs font-medium text-rose-700">
+                      Additional Deductions Total: {formatCurrency(customDeductionsTotal)}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No additional deductions added.</p>
+                )}
               </div>
             </CardContent>
           </Card>
