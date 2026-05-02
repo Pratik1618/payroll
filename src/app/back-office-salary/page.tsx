@@ -24,6 +24,16 @@ interface Employee {
   department: string
   grossSalary: number
   netSalary: number
+  salaryStructure?: SalaryStructure
+  attendanceEntries?: AttendanceEntry[]
+}
+
+interface AttendanceEntry {
+  date: string
+  status: "present" | "weekly-off" | "leave"
+  location: string
+  shift: string
+  remark?: string
 }
 
 interface SubDepartment {
@@ -83,6 +93,43 @@ interface UploadedSalaryPayload {
   gratuity: number
 }
 
+const buildSalaryStructureFromUpload = (salary: UploadedSalaryPayload): SalaryStructure => ({
+  basic: salary.basic,
+  hra: salary.hra,
+  specialAllowance: salary.specialAllowance,
+  conveyanceAllowance: salary.conveyanceAllowance,
+  medicalAllowance: salary.medicalAllowance,
+  pfDeduction: salary.pfDeduction,
+  esicDeduction: salary.esicDeduction,
+  professionalTax: salary.professionalTax,
+  tds: salary.tds,
+  pfEmployer: salary.pfEmployer,
+  esicEmployer: salary.esicEmployer,
+  gratuity: salary.gratuity,
+  customEarnings: [],
+  customDeductions: [],
+  applyESIC: salary.esicDeduction > 0,
+})
+
+const calculateSalaryTotals = (salary: SalaryStructure) => {
+  const customEarningsTotal = salary.customEarnings?.reduce((sum, item) => sum + item.amount, 0) ?? 0
+  const customDeductionsTotal = salary.customDeductions?.reduce((sum, item) => sum + item.amount, 0) ?? 0
+
+  const grossSalary =
+    salary.basic +
+    salary.hra +
+    salary.specialAllowance +
+    salary.conveyanceAllowance +
+    salary.medicalAllowance +
+    customEarningsTotal
+
+  const netSalary =
+    grossSalary -
+    (salary.pfDeduction + salary.esicDeduction + salary.professionalTax + salary.tds + customDeductionsTotal)
+
+  return { grossSalary, netSalary }
+}
+
 const INITIAL_MODULE_STATE: ModuleState = {
   selectedSubDepartments: [],
   selectedDepartments: [],
@@ -93,6 +140,22 @@ const INITIAL_MODULE_STATE: ModuleState = {
   salaryMode: "add",
   salarySheetTab: "manual",
   selectedEmployee: null,
+}
+
+const createAttendanceEntries = (
+  entries: Array<{ day: number; status: AttendanceEntry["status"]; location: string; shift: string; remark?: string }>,
+): AttendanceEntry[] => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = today.getMonth()
+
+  return entries.map((entry) => ({
+    date: new Date(year, month, entry.day).toISOString(),
+    status: entry.status,
+    location: entry.location,
+    shift: entry.shift,
+    remark: entry.remark,
+  }))
 }
 
 const MODULE_CONFIGS: Record<ModuleKey, ModuleConfig> = {
@@ -210,24 +273,126 @@ const MODULE_CONFIGS: Record<ModuleKey, ModuleConfig> = {
     ],
     employeesBySubDepartment: {
       "rel-sub-001": [
-        { id: "rel-emp-001", name: "Kunal Shah", code: "REL001", department: "Site Relievers", grossSalary: 28000, netSalary: 23750 },
-        { id: "rel-emp-002", name: "Meena Yadav", code: "REL002", department: "Site Relievers", grossSalary: 29500, netSalary: 24980 },
+        {
+          id: "rel-emp-001",
+          name: "Kunal Shah",
+          code: "REL001",
+          department: "Site Relievers",
+          grossSalary: 28000,
+          netSalary: 23750,
+          attendanceEntries: createAttendanceEntries([
+            { day: 1, status: "present", location: "HDFC Bank - Fort Gate", shift: "Day", remark: "Main gate cover" },
+            { day: 2, status: "present", location: "Axis House - Lobby Desk", shift: "Day" },
+            { day: 3, status: "weekly-off", location: "Weekly Off", shift: "Off" },
+            { day: 4, status: "present", location: "ICICI Plaza - Dock Entry", shift: "Night" },
+            { day: 7, status: "present", location: "HDFC Bank - Cash Van Escort", shift: "Day" },
+          ]),
+        },
+        {
+          id: "rel-emp-002",
+          name: "Meena Yadav",
+          code: "REL002",
+          department: "Site Relievers",
+          grossSalary: 29500,
+          netSalary: 24980,
+          attendanceEntries: createAttendanceEntries([
+            { day: 1, status: "present", location: "Infosys Campus - Reception", shift: "Day" },
+            { day: 2, status: "leave", location: "Sick Leave", shift: "Off", remark: "Medical leave" },
+            { day: 5, status: "present", location: "Infosys Campus - Visitor Gate", shift: "Evening" },
+            { day: 6, status: "present", location: "TCS Tower - Help Desk", shift: "Day" },
+            { day: 8, status: "present", location: "TCS Tower - Parking Bay", shift: "Night" },
+          ]),
+        },
       ],
       "rel-sub-002": [
-        { id: "rel-emp-003", name: "Shubham Das", code: "REL003", department: "Night Shift Relievers", grossSalary: 32000, netSalary: 27160 },
+        {
+          id: "rel-emp-003",
+          name: "Shubham Das",
+          code: "REL003",
+          department: "Night Shift Relievers",
+          grossSalary: 32000,
+          netSalary: 27160,
+          attendanceEntries: createAttendanceEntries([
+            { day: 1, status: "present", location: "Phoenix Mall - Night Patrol", shift: "Night" },
+            { day: 2, status: "present", location: "Phoenix Mall - Control Room", shift: "Night" },
+            { day: 4, status: "present", location: "Phoenix Mall - Loading Dock", shift: "Night" },
+            { day: 6, status: "weekly-off", location: "Weekly Off", shift: "Off" },
+          ]),
+        },
       ],
       "rel-sub-003": [
-        { id: "rel-emp-004", name: "Pooja Saini", code: "REL004", department: "Front Desk Relievers", grossSalary: 26500, netSalary: 22520 },
+        {
+          id: "rel-emp-004",
+          name: "Pooja Saini",
+          code: "REL004",
+          department: "Front Desk Relievers",
+          grossSalary: 26500,
+          netSalary: 22520,
+          attendanceEntries: createAttendanceEntries([
+            { day: 1, status: "present", location: "Embassy One - Front Desk", shift: "Day" },
+            { day: 3, status: "present", location: "Embassy One - Visitor Lounge", shift: "Day" },
+            { day: 4, status: "leave", location: "Casual Leave", shift: "Off", remark: "Approved CL" },
+          ]),
+        },
       ],
       "rel-sub-004": [
-        { id: "rel-emp-005", name: "Harish Babu", code: "REL005", department: "Transport Desk", grossSalary: 31000, netSalary: 26260 },
+        {
+          id: "rel-emp-005",
+          name: "Harish Babu",
+          code: "REL005",
+          department: "Transport Desk",
+          grossSalary: 31000,
+          netSalary: 26260,
+          attendanceEntries: createAttendanceEntries([
+            { day: 2, status: "present", location: "Transport Hub - Dispatch Counter", shift: "Day" },
+            { day: 3, status: "present", location: "Transport Hub - Yard Exit", shift: "Evening" },
+            { day: 5, status: "present", location: "Airport Cargo - Dispatch Desk", shift: "Night" },
+          ]),
+        },
       ],
       "rel-sub-005": [
-        { id: "rel-emp-006", name: "Tenzin Lama", code: "REL006", department: "Mobile Relief Team", grossSalary: 33500, netSalary: 28280 },
-        { id: "rel-emp-007", name: "Nazia Khan", code: "REL007", department: "Mobile Relief Team", grossSalary: 34200, netSalary: 28850 },
+        {
+          id: "rel-emp-006",
+          name: "Tenzin Lama",
+          code: "REL006",
+          department: "Mobile Relief Team",
+          grossSalary: 33500,
+          netSalary: 28280,
+          attendanceEntries: createAttendanceEntries([
+            { day: 1, status: "present", location: "Vodafone Site - Tower Access", shift: "Day" },
+            { day: 2, status: "present", location: "Airtel Hub - Perimeter Patrol", shift: "Night" },
+            { day: 7, status: "present", location: "Jio Node - Emergency Cover", shift: "Day", remark: "Short notice deployment" },
+          ]),
+        },
+        {
+          id: "rel-emp-007",
+          name: "Nazia Khan",
+          code: "REL007",
+          department: "Mobile Relief Team",
+          grossSalary: 34200,
+          netSalary: 28850,
+          attendanceEntries: createAttendanceEntries([
+            { day: 1, status: "present", location: "Capgemini Park - Gate 2", shift: "Day" },
+            { day: 3, status: "present", location: "Capgemini Park - Admin Block", shift: "Evening" },
+            { day: 5, status: "weekly-off", location: "Weekly Off", shift: "Off" },
+            { day: 9, status: "present", location: "Wipro Campus - Visitor Gate", shift: "Day" },
+          ]),
+        },
       ],
       "rel-sub-006": [
-        { id: "rel-emp-008", name: "Ravi Shekhar", code: "REL008", department: "Emergency Backup", grossSalary: 36000, netSalary: 30320 },
+        {
+          id: "rel-emp-008",
+          name: "Ravi Shekhar",
+          code: "REL008",
+          department: "Emergency Backup",
+          grossSalary: 36000,
+          netSalary: 30320,
+          attendanceEntries: createAttendanceEntries([
+            { day: 2, status: "present", location: "Reliance DC - Server Room Access", shift: "Night" },
+            { day: 4, status: "present", location: "Reliance DC - Emergency Exit", shift: "Night" },
+            { day: 6, status: "present", location: "Reliance DC - Main Gate", shift: "Day" },
+          ]),
+        },
       ],
     },
   },
@@ -339,18 +504,13 @@ export default function BackOfficeSalaryPage() {
       return
     }
 
-    const grossSalary =
-      salary.basic +
-      salary.hra +
-      salary.specialAllowance +
-      salary.conveyanceAllowance +
-      salary.medicalAllowance
-    const netSalary = grossSalary - (salary.pfDeduction + salary.esicDeduction + salary.professionalTax + salary.tds)
+    const salaryStructure = buildSalaryStructureFromUpload(salary)
+    const { grossSalary, netSalary } = calculateSalaryTotals(salaryStructure)
 
     updateActiveState((state) => ({
       ...state,
       employees: state.employees.map((employee) =>
-        employee.id === selectedEmployee.id ? { ...employee, grossSalary, netSalary } : employee,
+        employee.id === selectedEmployee.id ? { ...employee, grossSalary, netSalary, salaryStructure } : employee,
       ),
       showSalarySheet: false,
     }))
@@ -362,18 +522,12 @@ export default function BackOfficeSalaryPage() {
     const selectedEmployee = currentState.selectedEmployee
     if (!selectedEmployee) return
 
-    const grossSalary =
-      salary.basic +
-      salary.hra +
-      salary.specialAllowance +
-      salary.conveyanceAllowance +
-      salary.medicalAllowance
-    const netSalary = grossSalary - (salary.pfDeduction + salary.esicDeduction + salary.professionalTax + salary.tds)
+    const { grossSalary, netSalary } = calculateSalaryTotals(salary)
 
     updateActiveState((state) => ({
       ...state,
       employees: state.employees.map((employee) =>
-        employee.id === selectedEmployee.id ? { ...employee, grossSalary, netSalary } : employee,
+        employee.id === selectedEmployee.id ? { ...employee, grossSalary, netSalary, salaryStructure: salary } : employee,
       ),
       showSalarySheet: false,
     }))
@@ -414,11 +568,6 @@ export default function BackOfficeSalaryPage() {
               return (
                 <TabsContent key={moduleKey} value={moduleKey} forceMount className={moduleKey !== activeModule ? "hidden" : ""}>
                   <div className="space-y-4">
-                    <div className="rounded-lg border border-border bg-card p-4">
-                      <p className="font-medium text-foreground">{config.label} Salary Management</p>
-                      <p className="text-sm text-muted-foreground">{config.description}</p>
-                    </div>
-
                     {stats && state.selectedBranch && (
                       <BranchSummaryCards
                         branchName={state.selectedBranch}
@@ -498,6 +647,7 @@ export default function BackOfficeSalaryPage() {
                         <EmployeeTable
                           employees={state.employees}
                           isLoading={state.isLoading}
+                          showAttendanceCalendar={moduleKey === "reliever"}
                           onAddSalary={
                             moduleKey === activeModule
                               ? handleAddSalary
@@ -582,14 +732,24 @@ export default function BackOfficeSalaryPage() {
                   <TabsTrigger value="upload">Upload Excel</TabsTrigger>
                 </TabsList>
                 <TabsContent value="manual" className="mt-4">
-                  <SalaryForm mode="add" onSubmit={handleSalarySubmit} />
+                  <SalaryForm
+                    mode="add"
+                    initialValues={currentState.selectedEmployee?.salaryStructure}
+                    onCancel={() => updateActiveState((state) => ({ ...state, showSalarySheet: false }))}
+                    onSubmit={handleSalarySubmit}
+                  />
                 </TabsContent>
                 <TabsContent value="upload" className="mt-4">
                   <SalaryUpload selectedEmployee={currentState.selectedEmployee ?? undefined} onUpload={handleSalaryUpload} />
                 </TabsContent>
               </Tabs>
             ) : (
-              <SalaryForm mode="edit" onSubmit={handleSalarySubmit} />
+              <SalaryForm
+                mode="edit"
+                initialValues={currentState.selectedEmployee?.salaryStructure}
+                onCancel={() => updateActiveState((state) => ({ ...state, showSalarySheet: false }))}
+                onSubmit={handleSalarySubmit}
+              />
             )}
           </div>
         </SheetContent>

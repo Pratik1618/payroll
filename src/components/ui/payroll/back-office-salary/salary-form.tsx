@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AlertCircle, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +12,8 @@ import { FormulaBuilder, FormulaComponent } from "./formula-builder"
 
 interface SalaryFormProps {
   mode: "add" | "edit"
+  initialValues?: SalaryStructure
+  onCancel?: () => void
   onSubmit: (salary: SalaryStructure) => void
 }
 
@@ -59,10 +61,15 @@ const INITIAL_SALARY: SalaryStructure = {
   applyESIC: true,
 }
 
+const createSalaryDraft = (initialValues?: SalaryStructure): SalaryStructure => ({
+  ...INITIAL_SALARY,
+  ...initialValues,
+})
+
 const formatCurrency = (value: number) => `Rs. ${value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`
 
-export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
-  const [salary, setSalary] = useState<SalaryStructure>(INITIAL_SALARY)
+export function SalaryForm({ mode, initialValues, onCancel, onSubmit }: SalaryFormProps) {
+  const [salary, setSalary] = useState<SalaryStructure>(() => createSalaryDraft(initialValues))
   const [useFormulas, setUseFormulas] = useState({
     hra: false,
     specialAllowance: false,
@@ -81,8 +88,32 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
     conveyanceAllowance: 0,
     medicalAllowance: 0,
   })
-  const [customEarnings, setCustomEarnings] = useState<CustomComponent[]>([])
-  const [customDeductions, setCustomDeductions] = useState<CustomComponent[]>([])
+  const [customEarnings, setCustomEarnings] = useState<CustomComponent[]>(() => initialValues?.customEarnings ?? [])
+  const [customDeductions, setCustomDeductions] = useState<CustomComponent[]>(() => initialValues?.customDeductions ?? [])
+
+  useEffect(() => {
+    setSalary(createSalaryDraft(initialValues))
+    setCustomEarnings(initialValues?.customEarnings ?? [])
+    setCustomDeductions(initialValues?.customDeductions ?? [])
+    setUseFormulas({
+      hra: false,
+      specialAllowance: false,
+      conveyanceAllowance: false,
+      medicalAllowance: false,
+    })
+    setFormulaComponents({
+      hra: initialValues?.hraComponents ?? [],
+      specialAllowance: initialValues?.specialAllowanceComponents ?? [],
+      conveyanceAllowance: initialValues?.conveyanceAllowanceComponents ?? [],
+      medicalAllowance: initialValues?.medicalAllowanceComponents ?? [],
+    })
+    setFormulaPercent({
+      hra: 0,
+      specialAllowance: 0,
+      conveyanceAllowance: 0,
+      medicalAllowance: 0,
+    })
+  }, [initialValues])
 
   const availableComponents = ["Basic", "HRA", "Special Allowance", "Conveyance", "Medical"]
 
@@ -169,6 +200,35 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
       medicalAllowanceAmount,
     }
   }, [salary, useFormulas, formulaComponents, formulaPercent, customEarningsTotal, customDeductionsTotal])
+
+  const summaryEarnings = [
+    { label: "Basic Salary", value: salary.basic },
+    { label: "HRA", value: calculations.hraAmount },
+    { label: "Special Allowance", value: calculations.specialAllowanceAmount },
+    { label: "Conveyance Allowance", value: calculations.conveyanceAllowanceAmount },
+    { label: "Medical Allowance", value: calculations.medicalAllowanceAmount },
+    ...customEarnings.map((component) => ({
+      label: component.name || "Additional Earning",
+      value: component.amount,
+    })),
+  ]
+
+  const summaryDeductions = [
+    { label: "PF Deduction", value: calculations.pfDed },
+    { label: "ESIC Deduction", value: calculations.esicDed },
+    { label: "Professional Tax", value: salary.professionalTax },
+    { label: "TDS", value: salary.tds },
+    ...customDeductions.map((component) => ({
+      label: component.name || "Additional Deduction",
+      value: component.amount,
+    })),
+  ]
+
+  const summaryEmployerContributions = [
+    { label: "PF Employer", value: calculations.pfEmp },
+    { label: "ESIC Employer", value: calculations.esicEmp },
+    { label: "Gratuity", value: calculations.gratuityAmount },
+  ]
 
   const handleEarningChange = (
     field: "basic" | "hra" | "specialAllowance" | "conveyanceAllowance" | "medicalAllowance",
@@ -608,32 +668,84 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
             <CardHeader>
               <CardTitle className="text-base">Salary Summary (Read-only)</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded bg-blue-50 p-3">
-                  <p className="text-xs text-muted-foreground">Gross Salary</p>
-                  <p className="text-lg font-bold text-foreground">{formatCurrency(calculations.grossSalary)}</p>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-3 rounded-lg border border-border p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Earnings</p>
+                    <p className="text-xs text-muted-foreground">All earning components included in gross salary.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {summaryEarnings.map((item) => (
+                      <div key={item.label} className="flex items-center justify-between gap-4 text-sm">
+                        <span className="text-muted-foreground">{item.label}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(item.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between rounded bg-blue-50 p-3 text-sm">
+                    <span className="font-semibold text-blue-900">Gross Salary</span>
+                    <span className="font-bold text-blue-900">{formatCurrency(calculations.grossSalary)}</span>
+                  </div>
                 </div>
-                <div className="rounded bg-red-50 p-3">
-                  <p className="text-xs text-muted-foreground">Total Deductions</p>
-                  <p className="text-lg font-bold text-red-600">{formatCurrency(calculations.totalDeductions)}</p>
-                </div>
-                <div className="col-span-2 rounded bg-green-50 p-3">
-                  <p className="text-xs text-muted-foreground">Net Salary (Take-home)</p>
-                  <p className="text-2xl font-bold text-green-600">{formatCurrency(calculations.netSalary)}</p>
+
+                <div className="space-y-3 rounded-lg border border-border p-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Deductions</p>
+                    <p className="text-xs text-muted-foreground">Employee deductions applied before take-home salary.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {summaryDeductions.map((item) => (
+                      <div key={item.label} className="flex items-center justify-between gap-4 text-sm">
+                        <span className="text-muted-foreground">{item.label}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(item.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between rounded bg-red-50 p-3 text-sm">
+                    <span className="font-semibold text-red-900">Total Deductions</span>
+                    <span className="font-bold text-red-900">{formatCurrency(calculations.totalDeductions)}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-6 flex gap-3 rounded border border-amber-200 bg-amber-50 p-4">
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Employer Contribution</p>
+                  <p className="text-xs text-muted-foreground">Company-side statutory contribution and benefit cost.</p>
+                </div>
+                <div className="grid gap-2 md:grid-cols-3">
+                  {summaryEmployerContributions.map((item) => (
+                    <div key={item.label} className="rounded bg-amber-50 p-3">
+                      <p className="text-xs text-amber-900">{item.label}</p>
+                      <p className="text-sm font-bold text-amber-950">{formatCurrency(item.value)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded bg-blue-50 p-4">
+                  <p className="text-xs text-muted-foreground">Gross Salary</p>
+                  <p className="text-lg font-bold text-foreground">{formatCurrency(calculations.grossSalary)}</p>
+                </div>
+                <div className="rounded bg-green-50 p-4">
+                  <p className="text-xs text-muted-foreground">Net Salary</p>
+                  <p className="text-lg font-bold text-green-600">{formatCurrency(calculations.netSalary)}</p>
+                </div>
+                <div className="rounded bg-amber-50 p-4">
+                  <p className="text-xs text-muted-foreground">CTC</p>
+                  <p className="text-lg font-bold text-amber-700">{formatCurrency(calculations.totalEmployerCost)}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 rounded border border-amber-200 bg-amber-50 p-4">
                 <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
                 <div className="text-xs text-amber-900">
-                  <p className="mb-1 font-semibold">Employer Cost Breakdown:</p>
+                  <p className="mb-1 font-semibold">Cost to Company Formula</p>
                   <p>
-                    PF: {formatCurrency(calculations.pfEmp)} + ESIC: {formatCurrency(calculations.esicEmp)} + Gratuity:{" "}
-                    {formatCurrency(calculations.gratuityAmount)}
-                  </p>
-                  <p className="mt-2 font-semibold">
-                    Total Cost to Company: {formatCurrency(calculations.totalEmployerCost)}
+                    Gross Salary + PF Employer + ESIC Employer + Gratuity ={" "}
+                    <span className="font-semibold">{formatCurrency(calculations.totalEmployerCost)}</span>
                   </p>
                 </div>
               </div>
@@ -646,7 +758,9 @@ export function SalaryForm({ mode, onSubmit }: SalaryFormProps) {
         <Button onClick={handleSubmit} className="bg-primary text-primary-foreground">
           {mode === "add" ? "Add Salary" : "Update Salary"}
         </Button>
-        <Button variant="outline">Cancel</Button>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
       </div>
     </div>
   )

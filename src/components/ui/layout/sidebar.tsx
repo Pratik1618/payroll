@@ -20,13 +20,15 @@ import {
   BanknoteArrowUp,
   BanknoteArrowDown,
   Repeat,
-  BriefcaseBusiness
+  BriefcaseBusiness,
+  Building2
 } from "lucide-react"
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Back Office", href: "/back-office-salary", icon: BriefcaseBusiness },
-  {name:"Leave Tracking Page",href:"/leave-tracking",icon:CalendarMinus},
+  { name: "Organization Management", href: "/organization-management", icon: Building2 },
+  { name: "Leave Tracking Page", href: "/leave-tracking", icon: CalendarMinus },
   { name: "Manual Attendance Upload", href: "/manualAttendance", icon: Upload },
   { name: "Attendance Verification", href: "/attendance-verification", icon: BadgeCheck },
   { name: "Payroll Processing", href: "/payroll", icon: Calculator },
@@ -34,12 +36,12 @@ const navigation = [
   { name: "Salary Status", href: "/salary-status", icon: Lock },
   { name: "Lock Salary", href: "/lockSalary", icon: BookLock },
   { name: "Arreras", href: "/arreras", icon: AtSign },
-  { name: "Bonus Working", href: "/bonus-working", icon: Gift },  
-  {name:"Leave Provision",href:"/leave-provision",icon:CalendarRange},
+  { name: "Bonus Working", href: "/bonus-working", icon: Gift },
+  { name: "Leave Provision", href: "/leave-provision", icon: CalendarRange },
   { name: "Earning/Deduction", href: "/earnDed", icon: Diff },
-  {name:"Manual Salary Processing",href:"/manual-salary",icon:HandCoins},
+  { name: "Manual Salary Processing", href: "/manual-salary", icon: HandCoins },
   { name: "Statutory Reports", href: "/statutory", icon: FileText },
-  {name:"Statutory Reconciliation",href:"/statutory-reconciliation",icon:FileArchiveIcon},
+  { name: "Statutory Reconciliation", href: "/statutory-reconciliation", icon: FileArchiveIcon },
   { name: "PF ESIC Highlight", href: "/pf-esic-highlight", icon: Radar },
   { name: "F&F Settlement", href: "/fnf", icon: UserX },
   { name: "MIS Reports", href: "/reports", icon: BarChart3 },
@@ -50,10 +52,10 @@ const navigation = [
   { name: "Employee IT declaration", href: "/it-declaration", icon: UserPenIcon },
   { name: "IT Declarations", href: "/hr-itdeclarations", icon: Users2 },
   { name: "Employee History", href: "/empHistory", icon: History },
-  {name:"Transfer Employees",href:"/transfer-employees",icon:Repeat},
+  { name: "Transfer Employees", href: "/transfer-employees", icon: Repeat },
   { name: "Employee Transfer", href: "/emptransfer", icon: Shuffle },
-  {name:"Cash Reliever",href:"/cash-reliever-maker",icon:BanknoteArrowUp},
-  {name:"Cash Reliever Verfication",href:"/cash-reliever-checker",icon:BanknoteArrowDown},
+  { name: "Cash Reliever", href: "/cash-reliever-maker", icon: BanknoteArrowUp },
+  { name: "Cash Reliever Verfication", href: "/cash-reliever-checker", icon: BanknoteArrowDown },
   { name: "Analytics", href: "/analytics", icon: ChartPieIcon },
 ]
 
