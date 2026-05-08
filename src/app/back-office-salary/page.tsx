@@ -31,7 +31,7 @@ interface Employee {
 interface AttendanceEntry {
   date: string
   status: "present" | "weekly-off" | "leave"
-  location: string
+  costCenter: string
   shift: string
   remark?: string
 }
@@ -55,7 +55,7 @@ interface Branch {
 
 type SalarySheetMode = "add" | "edit"
 type SalarySheetTab = "manual" | "upload"
-type ModuleKey = "back-office" | "reliever"
+type ModuleKey = "back-office" | "reliever" | "csr-cost"
 
 interface ModuleConfig {
   id: ModuleKey
@@ -152,7 +152,7 @@ const createAttendanceEntries = (
   return entries.map((entry) => ({
     date: new Date(year, month, entry.day).toISOString(),
     status: entry.status,
-    location: entry.location,
+    costCenter: entry.location,
     shift: entry.shift,
     remark: entry.remark,
   }))
@@ -396,6 +396,42 @@ const MODULE_CONFIGS: Record<ModuleKey, ModuleConfig> = {
       ],
     },
   },
+  "csr-cost": {
+    id: "csr-cost",
+    label: "CSR Cost",
+    description: "Manage CSR and FOC cost structures and compliance.",
+    selectionHint: "Select a branch and department to begin CSR and FOC cost management.",
+    branches: [
+      {
+        id: "csr-br-001",
+        name: "Central CSR Office",
+        departments: [
+          {
+            id: "csr-dept-001",
+            name: "Corporate Social Responsibility",
+            subDepartments: [
+              { id: "csr-sub-001", name: "CSR Projects" },
+            ],
+          },
+          {
+            id: "csr-dept-002",
+            name: "Free of Cost (FOC)",
+            subDepartments: [
+              { id: "csr-sub-002", name: "FOC Team" },
+            ],
+          },
+        ],
+      },
+    ],
+    employeesBySubDepartment: {
+      "csr-sub-001": [
+        { id: "csr-emp-001", name: "Anjali Desai", code: "CSR001", department: "CSR Projects", grossSalary: 45000, netSalary: 38000 },
+      ],
+      "csr-sub-002": [
+        { id: "csr-emp-002", name: "Kiran Patel", code: "FOC001", department: "FOC Team", grossSalary: 42000, netSalary: 35000 },
+      ],
+    },
+  },
 }
 
 const formatCurrency = (value: number) => `Rs. ${value.toLocaleString("en-IN")}`
@@ -405,6 +441,7 @@ export default function BackOfficeSalaryPage() {
   const [moduleState, setModuleState] = useState<Record<ModuleKey, ModuleState>>({
     "back-office": { ...INITIAL_MODULE_STATE },
     reliever: { ...INITIAL_MODULE_STATE },
+    "csr-cost": { ...INITIAL_MODULE_STATE },
   })
 
   const currentConfig = MODULE_CONFIGS[activeModule]
@@ -554,12 +591,13 @@ export default function BackOfficeSalaryPage() {
           </div>
 
           <Tabs value={activeModule} onValueChange={(value) => setActiveModule(value as ModuleKey)} className="w-full">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsList className="grid w-full max-w-2xl grid-cols-3">
               <TabsTrigger value="back-office">Back Office</TabsTrigger>
               <TabsTrigger value="reliever">Reliever</TabsTrigger>
+              <TabsTrigger value="csr-cost">CSR Cost</TabsTrigger>
             </TabsList>
 
-            {(["back-office", "reliever"] as ModuleKey[]).map((moduleKey) => {
+            {(["back-office", "reliever", "csr-cost"] as ModuleKey[]).map((moduleKey) => {
               const config = MODULE_CONFIGS[moduleKey]
               const state = moduleState[moduleKey]
               const stats =

@@ -31,7 +31,7 @@ interface Employee {
 interface AttendanceEntry {
   date: string
   status: "present" | "weekly-off" | "leave"
-  location: string
+  costCenter: string
   shift: string
   remark?: string
 }
@@ -77,7 +77,7 @@ function AttendanceCalendar({ employee }: { employee: Employee }) {
       <PopoverContent align="end" className="w-auto border-slate-200 p-0">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
           <p className="text-sm font-semibold text-slate-950">{employee.name}</p>
-          <p className="text-xs text-slate-600">Hover a marked date to check posting location and shift.</p>
+          <p className="text-xs text-slate-600">Hover a marked date to check posting cost center and shift.</p>
         </div>
         <Calendar
           mode="single"
@@ -106,7 +106,7 @@ function AttendanceCalendar({ employee }: { employee: Employee }) {
                     <div className="space-y-1">
                       <p className="font-semibold">{format(props.day.date, "dd MMM yyyy")}</p>
                       <p>Status: {entry.status}</p>
-                      <p>Location: {entry.location}</p>
+                      <p>Cost Center: {entry.costCenter}</p>
                       <p>Shift: {entry.shift}</p>
                       {entry.remark ? <p>Remark: {entry.remark}</p> : null}
                     </div>

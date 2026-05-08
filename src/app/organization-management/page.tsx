@@ -72,6 +72,7 @@ interface DepartmentFormState {
   employeeCount: string
   status: "Active" | "Inactive"
   description: string
+  branchId: string
 }
 
 const initialBranches: Branch[] = [
@@ -151,6 +152,7 @@ const emptyDepartmentForm: DepartmentFormState = {
   employeeCount: "",
   status: "Active",
   description: "",
+  branchId: initialBranches[0]?.id ?? "",
 }
 
 export default function OrganizationManagementPage() {
@@ -220,7 +222,7 @@ export default function OrganizationManagementPage() {
   const openCreateDepartmentDialog = () => {
     setDepartmentMode("create")
     setEditingDepartmentId(null)
-    setDepartmentForm(emptyDepartmentForm)
+    setDepartmentForm({ ...emptyDepartmentForm, branchId: selectedBranchId })
     setDepartmentDialogOpen(true)
   }
 
@@ -234,6 +236,7 @@ export default function OrganizationManagementPage() {
       employeeCount: String(department.employeeCount),
       status: department.status,
       description: department.description,
+      branchId: selectedBranchId,
     })
     setDepartmentDialogOpen(true)
   }
@@ -282,7 +285,8 @@ export default function OrganizationManagementPage() {
   }
 
   const handleDepartmentSave = () => {
-    if (!selectedBranch) {
+    const targetBranchId = departmentForm.branchId || selectedBranch?.id
+    if (!targetBranchId) {
       return
     }
 
@@ -294,48 +298,56 @@ export default function OrganizationManagementPage() {
       return
     }
 
+    const departmentPayload = {
+      id: departmentMode === "create" ? `department-${Date.now()}` : editingDepartmentId ?? `department-${Date.now()}`,
+      name: trimmedName,
+      code: trimmedCode,
+      manager: departmentForm.manager.trim(),
+      employeeCount: parsedEmployeeCount,
+      status: departmentForm.status,
+      description: departmentForm.description.trim(),
+    }
+
     setBranches((current) =>
       current.map((branch) => {
-        if (branch.id !== selectedBranch.id) {
-          return branch
-        }
-
         if (departmentMode === "create") {
+          if (branch.id !== targetBranchId) {
+            return branch
+          }
+
           return {
             ...branch,
-            departments: [
-              ...branch.departments,
-              {
-                id: `department-${Date.now()}`,
-                name: trimmedName,
-                code: trimmedCode,
-                manager: departmentForm.manager.trim(),
-                employeeCount: parsedEmployeeCount,
-                status: departmentForm.status,
-                description: departmentForm.description.trim(),
-              },
-            ],
+            departments: [...branch.departments, departmentPayload],
           }
         }
 
-        return {
-          ...branch,
-          departments: branch.departments.map((department) =>
-            department.id === editingDepartmentId
-              ? {
-                  ...department,
-                  name: trimmedName,
-                  code: trimmedCode,
-                  manager: departmentForm.manager.trim(),
-                  employeeCount: parsedEmployeeCount,
-                  status: departmentForm.status,
-                  description: departmentForm.description.trim(),
-                }
-              : department,
-          ),
+        if (branch.id === selectedBranch?.id && branch.id !== targetBranchId) {
+          return {
+            ...branch,
+            departments: branch.departments.filter((department) => department.id !== editingDepartmentId),
+          }
         }
+
+        if (branch.id === targetBranchId) {
+          const hasExisting = branch.departments.some((department) => department.id === editingDepartmentId)
+
+          return {
+            ...branch,
+            departments: hasExisting
+              ? branch.departments.map((department) =>
+                  department.id === editingDepartmentId ? departmentPayload : department,
+                )
+              : [...branch.departments, departmentPayload],
+          }
+        }
+
+        return branch
       }),
     )
+
+    if (targetBranchId !== selectedBranchId) {
+      setSelectedBranchId(targetBranchId)
+    }
 
     resetDepartmentDialog()
   }
@@ -697,6 +709,23 @@ export default function OrganizationManagementPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="department-branch">Branch</Label>
+              <select
+                id="department-branch"
+                value={departmentForm.branchId}
+                onChange={(event) =>
+                  setDepartmentForm((current) => ({ ...current, branchId: event.target.value }))
+                }
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+              >
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="department-name">Department Name</Label>
               <Input
