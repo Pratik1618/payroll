@@ -22,9 +22,15 @@ export function SalaryCostTab({ node }: SalaryCostTabProps) {
         <CardContent>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Budget Consumed</span>
-            <span className="text-sm font-medium">{data.payrollBudgetUsedPercent}%</span>
+            <span className="text-sm font-semibold">
+              ₹{((node.monthlyPayroll || 0) * 12).toLocaleString()} 
+              <span className="text-muted-foreground font-normal ml-1">({data.payrollBudgetUsedPercent}%)</span>
+            </span>
           </div>
           <Progress value={data.payrollBudgetUsedPercent} className="h-3" />
+          <div className="text-xs text-muted-foreground text-right mt-3">
+            Budget Allotted for FY: <span className="font-semibold text-foreground">₹{Math.round(((node.monthlyPayroll || 0) * 12) / (data.payrollBudgetUsedPercent / 100)).toLocaleString()}</span>
+          </div>
         </CardContent>
       </Card>
     </div>

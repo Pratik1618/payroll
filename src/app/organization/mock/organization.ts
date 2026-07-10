@@ -45,7 +45,7 @@ export const organizationData: OrganizationNode[] = [
       {
         id: "operations",
         name: "Operations",
-        head: "VP Operations",
+        head: "Director Operations",
         employeeCount: 16,
         monthlyPayroll: 12000000,
         employerCost: 1320000,
@@ -122,7 +122,20 @@ export const organizationData: OrganizationNode[] = [
         ],
       },
       { id: "procurement", name: "Procurement", head: "VP Procurement", employeeCount: 20, monthlyPayroll: 1200000, employerCost: 132000, activeManagers: 2, description: "Procurement & Sourcing" },
-      { id: "marketing", name: "Marketing", head: "CMO", employeeCount: 40, monthlyPayroll: 3000000, employerCost: 330000, activeManagers: 3, description: "Marketing and Sales" },
+      { 
+        id: "marketing", 
+        name: "Marketing", 
+        head: "CMO", 
+        employeeCount: 40, 
+        monthlyPayroll: 3000000, 
+        employerCost: 330000, 
+        activeManagers: 3, 
+        description: "Marketing and Sales",
+        children: [
+          { id: "mkt_commercial", name: "Commercial", head: "Commercial Director", employeeCount: 10, monthlyPayroll: 800000, employerCost: 88000, activeManagers: 1, description: "Commercial & Strategy" },
+          { id: "mkt_bd", name: "Business Development", head: "BD Head", employeeCount: 15, monthlyPayroll: 1200000, employerCost: 132000, activeManagers: 2, description: "New Business & Partnerships" }
+        ]
+      },
 
       { id: "admin", name: "Admin", head: "Admin Head", employeeCount: 15, monthlyPayroll: 800000, employerCost: 88000, activeManagers: 1, description: "Administration and Facilities" },
     ],

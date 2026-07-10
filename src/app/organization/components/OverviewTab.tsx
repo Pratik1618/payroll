@@ -72,14 +72,6 @@ export function OverviewTab({ node }: OverviewTabProps) {
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Active Managers</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-lg font-semibold">{node.activeManagers?.toLocaleString() || 0}</div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
