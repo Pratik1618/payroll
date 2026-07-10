@@ -5,7 +5,7 @@ export async function POST(req: Request) {
     const body = await req.json()
 
     const res = await fetch(
-      getBackendUrl('/api/auth/login'),
+      getBackendUrl('/api/payroll-auth/login'),
       {
         method: 'POST',
         headers: {

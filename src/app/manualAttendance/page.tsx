@@ -2,8 +2,9 @@
 
 import type React from "react"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import * as XLSX from "xlsx"
+import { useRouter } from "next/navigation"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -47,6 +48,7 @@ interface TemporaryAttendanceRecord {
   employee_code: string
   new_emp_code: string
   employee_name: string
+  salary: number
   month_name: string
   year_name: string
   normal_days: number
@@ -73,13 +75,28 @@ interface SubmissionRecord {
   tempRecords?: TemporaryAttendanceRecord[]
 }
 
+interface SiteOption {
+  id: string
+  name: string
+  clientId: string
+}
+
+interface SalaryStructureOption {
+  DESIGNATIONID?: number | string
+  DESIGNATION?: string
+  DUTYID?: number | string
+  DUTY?: string
+  GROSS?: number | string
+  SALARYBILLINGTOTAL?: number | string
+}
+
 const clients = [
   { id: "client-1", name: "Acme Corp" },
   { id: "client-2", name: "Tech Solutions" },
   { id: "client-3", name: "Global Services" },
 ]
 
-const allSites = [
+const fallbackSites: SiteOption[] = [
   { id: "site-a", name: "Site A", clientId: "client-1" },
   { id: "site-b", name: "Site B", clientId: "client-1" },
   { id: "site-c", name: "Site C", clientId: "client-2" },
@@ -184,7 +201,12 @@ function autoEmpCode(employeeCode: string, newSiteCode: string, rowNumber: numbe
   return `${newSiteCode}-${String(rowNumber).padStart(4, "0")}`
 }
 
+function formatCurrency(value: number) {
+  return `₹${value.toLocaleString("en-IN")}`
+}
+
 export default function ManualAttendanceUploadPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState("standard")
   const [client, setClient] = useState("")
   const [site, setSite] = useState("")
@@ -193,10 +215,14 @@ export default function ManualAttendanceUploadPage() {
   const [uploadedData, setUploadedData] = useState<AttendanceRecord[]>([])
   const [tempClient, setTempClient] = useState("")
   const [tempSite, setTempSite] = useState("")
+  const [tempMonth, setTempMonth] = useState("")
   const [tempFile, setTempFile] = useState<File | null>(null)
   const [tempUploadedData, setTempUploadedData] = useState<TemporaryAttendanceRecord[]>([])
   const [tempUploadErrors, setTempUploadErrors] = useState<string[]>([])
   const tempFileInputRef = useRef<HTMLInputElement>(null)
+  const [clientSites, setClientSites] = useState<SiteOption[]>([])
+  const [tempClientSites, setTempClientSites] = useState<SiteOption[]>([])
+  const [salaryStructures, setSalaryStructures] = useState<SalaryStructureOption[]>([])
   const [submissions, setSubmissions] = useState<SubmissionRecord[]>([
     {
       id: "SUB001",
@@ -222,8 +248,8 @@ export default function ManualAttendanceUploadPage() {
   const [loading, setLoading] = useState(false)
   const [tempLoading, setTempLoading] = useState(false)
 
-  const sites = client ? allSites.filter((siteOption) => siteOption.clientId === client) : []
-  const tempSites = tempClient ? allSites.filter((siteOption) => siteOption.clientId === tempClient) : []
+  const sites = client ? clientSites : []
+  const tempSites = tempClient ? tempClientSites : []
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -241,8 +267,76 @@ export default function ManualAttendanceUploadPage() {
   const getClientName = (clientId: string) =>
     clients.find((item) => item.id === clientId)?.name ?? clientId
 
-  const getSiteName = (siteId: string, availableSites: typeof allSites) =>
+  const getSiteName = (siteId: string, availableSites: SiteOption[]) =>
     availableSites.find((item) => item.id === siteId)?.name ?? siteId
+
+  useEffect(() => {
+    void loadSalaryStructures()
+  }, [])
+
+  useEffect(() => {
+    if (!client) {
+      setClientSites([])
+      return
+    }
+
+    void loadSitesForClient(client, setClientSites)
+  }, [client])
+
+  useEffect(() => {
+    if (!tempClient) {
+      setTempClientSites([])
+      return
+    }
+
+    void loadSitesForClient(tempClient, setTempClientSites)
+  }, [tempClient])
+
+  const loadSitesForClient = async (clientId: string, setter: (sites: SiteOption[]) => void) => {
+    try {
+      const response = await fetch(withBasePath(`/api/clients/${encodeURIComponent(clientId)}/sites`), {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      })
+
+      if (response.status === 401) {
+        toast.error("Your session has expired. Please log in again.")
+        router.replace(withBasePath("/login"))
+        return
+      }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sites: ${response.status}`)
+      }
+
+      const payload = await response.json()
+      const normalizedSites = normalizeSites(payload, clientId)
+      setter(normalizedSites.length ? normalizedSites : fallbackSites.filter((siteOption) => siteOption.clientId === clientId))
+    } catch (error) {
+      console.error("Error loading sites:", error)
+      setter(fallbackSites.filter((siteOption) => siteOption.clientId === clientId))
+    }
+  }
+
+  const loadSalaryStructures = async () => {
+    try {
+      const response = await fetch(withBasePath("/salary_structure.json"), {
+        method: "GET",
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch salary structure: ${response.status}`)
+      }
+
+      const payload = await response.json()
+      setSalaryStructures(Array.isArray(payload) ? payload : [])
+    } catch (error) {
+      console.error("Error loading salary structure:", error)
+      setSalaryStructures([])
+    }
+  }
 
   const handleUpload = async () => {
     if (!client || !site || !month || !file) {
@@ -261,9 +355,16 @@ export default function ManualAttendanceUploadPage() {
       const res = await fetch(withBasePath("/api/attendance/upload"), {
         method: "POST",
         body: formData,
+        credentials: "include",
       })
 
       const data = await res.json()
+
+      if (res.status === 401) {
+        toast.error("Your session has expired. Please log in again.")
+        router.replace(withBasePath("/login"))
+        return
+      }
 
       if (!res.ok) {
         throw new Error(data?.message || "Failed to upload attendance file")
@@ -288,8 +389,8 @@ export default function ManualAttendanceUploadPage() {
   }
 
   const handleTempUpload = async () => {
-    if (!tempClient || !tempSite || !tempFile) {
-      toast.error("Please select client, site and upload a file")
+    if (!tempClient || !tempSite || !tempMonth || !tempFile) {
+      toast.error("Please select client, site, month and upload a file")
       return
     }
 
@@ -319,7 +420,7 @@ export default function ManualAttendanceUploadPage() {
       const parsedRecords = rows
         .slice(1)
         .filter((row) => row.some((value) => String(value ?? "").trim()))
-        .map((row, index) => mapTemporaryAttendanceRow(headers, row, index + 2, tempSite))
+        .map((row, index) => mapTemporaryAttendanceRow(headers, row, index + 2, tempSite, salaryStructures))
 
       if (!parsedRecords.length) {
         throw new Error("No attendance rows found in the uploaded file")
@@ -327,7 +428,7 @@ export default function ManualAttendanceUploadPage() {
 
       setTempUploadedData(parsedRecords)
       toast.success(
-        `Temporary attendance file loaded for ${getClientName(tempClient)} - ${getSiteName(tempSite, tempSites)}`,
+        `Temporary attendance file loaded for ${getClientName(tempClient)} - ${getSiteName(tempSite, tempSites)} - ${tempMonth}`,
       )
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to parse temporary attendance file"
@@ -378,7 +479,7 @@ export default function ManualAttendanceUploadPage() {
       id: `SUB${Math.floor(Math.random() * 10000)}`,
       client: getClientName(tempClient),
       site: getSiteName(tempSite, tempSites),
-      month: derivedMonth,
+      month: tempMonth || derivedMonth,
       records: [],
       status: "pending",
       submittedAt: new Date().toLocaleString("en-IN"),
@@ -390,6 +491,7 @@ export default function ManualAttendanceUploadPage() {
     setTempUploadedData([])
     setTempClient("")
     setTempSite("")
+    setTempMonth("")
     setTempFile(null)
     setTempUploadErrors([])
     if (tempFileInputRef.current) {
@@ -562,7 +664,7 @@ export default function ManualAttendanceUploadPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Client</label>
                     <Select
@@ -579,6 +681,22 @@ export default function ManualAttendanceUploadPage() {
                         {clients.map((c) => (
                           <SelectItem key={c.id} value={c.id}>
                             {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Month</label>
+                    <Select value={tempMonth} onValueChange={setTempMonth}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select month" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {months.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {m}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -646,7 +764,7 @@ export default function ManualAttendanceUploadPage() {
                 <CardHeader>
                   <CardTitle>Uploaded Attendance Data 2</CardTitle>
                   <CardDescription>
-                    {getClientName(tempClient)} • {getSiteName(tempSite, tempSites)} • {tempUploadedData.length} records
+                    {getClientName(tempClient)} • {getSiteName(tempSite, tempSites)} • {tempMonth} • {tempUploadedData.length} records
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -661,6 +779,8 @@ export default function ManualAttendanceUploadPage() {
                           <TableHead>Emp Code</TableHead>
                           <TableHead>New Emp Code</TableHead>
                           <TableHead>Employee Name</TableHead>
+                          <TableHead>Month</TableHead>
+                          <TableHead className="text-right">Salary</TableHead>
                           <TableHead className="text-center">Normal Days</TableHead>
                           <TableHead className="text-center">Weekly Off</TableHead>
                           <TableHead className="text-center">Paid Holiday</TableHead>
@@ -681,6 +801,10 @@ export default function ManualAttendanceUploadPage() {
                             <TableCell>{record.employee_code}</TableCell>
                             <TableCell>{record.new_emp_code}</TableCell>
                             <TableCell>{record.employee_name}</TableCell>
+                            <TableCell>{tempMonth}</TableCell>
+                            <TableCell className="text-right text-sm font-medium">
+                              {formatCurrency(record.salary)}
+                            </TableCell>
                             <TableCell className="text-center text-sm">{record.normal_days}</TableCell>
                             <TableCell className="text-center text-sm">{record.weekly_off}</TableCell>
                             <TableCell className="text-center text-sm">{record.paid_holiday}</TableCell>
@@ -798,9 +922,68 @@ async function readWorksheetRows(file: File) {
     .map((line) => line.split(",").map((value) => value.trim()))
 }
 
+function normalizeSites(payload: unknown, clientId: string): SiteOption[] {
+  const rawList = Array.isArray(payload)
+    ? payload
+    : Array.isArray((payload as any)?.data)
+      ? (payload as any).data
+      : Array.isArray((payload as any)?.results?.data)
+        ? (payload as any).results.data
+        : Array.isArray((payload as any)?.results)
+          ? (payload as any).results
+          : []
+
+  return rawList
+    .map((item: any, index: number) => {
+      const name = String(item?.name ?? item?.siteName ?? item?.site_name ?? "").trim()
+      if (!name) return null
+
+      return {
+        id: String(item?.id ?? item?.siteId ?? item?.site_id ?? `${clientId}-site-${index + 1}`),
+        name,
+        clientId,
+      }
+    })
+    .filter(Boolean) as SiteOption[]
+}
+
 function getCellValue(headers: string[], row: string[], aliases: string[]) {
   const index = headers.findIndex((header) => aliases.includes(header))
   return index >= 0 ? row[index] ?? "" : ""
+}
+
+function findGeneratedSalary(
+  designationId: string,
+  designationName: string,
+  dutyId: string,
+  dutyName: string,
+  salaryStructures: SalaryStructureOption[],
+) {
+  const normalizedDesignationId = String(designationId ?? "").trim()
+  const normalizedDutyId = String(dutyId ?? "").trim()
+  const normalizedDesignationName = String(designationName ?? "").trim().toLowerCase()
+  const normalizedDutyName = String(dutyName ?? "").trim().toLowerCase()
+
+  const matchedSalary = salaryStructures.find((item) => {
+    const itemDesignationId = String(item?.DESIGNATIONID ?? "").trim()
+    const itemDutyId = String(item?.DUTYID ?? "").trim()
+    const itemDesignationName = String(item?.DESIGNATION ?? "").trim().toLowerCase()
+    const itemDutyName = String(item?.DUTY ?? "").trim().toLowerCase()
+
+    const designationMatched =
+      (normalizedDesignationId && itemDesignationId === normalizedDesignationId) ||
+      (normalizedDesignationName && itemDesignationName === normalizedDesignationName)
+
+    const dutyMatched =
+      !normalizedDutyId && !normalizedDutyName
+        ? true
+        : (normalizedDutyId && itemDutyId === normalizedDutyId) ||
+          (normalizedDutyName && itemDutyName === normalizedDutyName)
+
+    return designationMatched && dutyMatched
+  })
+
+  return toNumber(matchedSalary?.GROSS ?? matchedSalary?.SALARYBILLINGTOTAL ?? 0)
 }
 
 function mapTemporaryAttendanceRow(
@@ -808,14 +991,20 @@ function mapTemporaryAttendanceRow(
   row: string[],
   rowNumber: number,
   selectedSiteId: string,
+  salaryStructures: SalaryStructureOption[],
 ): TemporaryAttendanceRecord {
   const employeeName = getCellValue(headers, row, TEMP_COLUMN_ALIASES.employee_name)
   const branchCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.branch_code)
   const siteCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.site_code)
   const employeeCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.employee_code)
+  const designationId = getCellValue(headers, row, TEMP_COLUMN_ALIASES.designation_id)
+  const designationName = getCellValue(headers, row, TEMP_COLUMN_ALIASES.designation_name)
+  const dutyId = getCellValue(headers, row, TEMP_COLUMN_ALIASES.duty_id)
+  const dutyName = getCellValue(headers, row, TEMP_COLUMN_ALIASES.duty_name)
   const newBranchCode = autoBranchCode(branchCode)
   const newSiteCode = autoSiteCode(siteCode, selectedSiteId)
   const newEmpCode = autoEmpCode(employeeCode, newSiteCode, rowNumber)
+  const salary = findGeneratedSalary(designationId, designationName, dutyId, dutyName, salaryStructures)
 
   if (!employeeName || !branchCode || !siteCode || !employeeCode) {
     throw new Error(`Row ${rowNumber}: branch code, site code, emp code and employee name are required`)
@@ -836,6 +1025,7 @@ function mapTemporaryAttendanceRow(
     employee_code: employeeCode,
     new_emp_code: newEmpCode,
     employee_name: employeeName,
+    salary,
     month_name: getCellValue(headers, row, TEMP_COLUMN_ALIASES.month_name),
     year_name: getCellValue(headers, row, TEMP_COLUMN_ALIASES.year_name),
     normal_days: toNumber(getCellValue(headers, row, TEMP_COLUMN_ALIASES.normal_days)),

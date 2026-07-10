@@ -27,7 +27,7 @@ import {
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: Home },
   { name: "Back Office", href: "/back-office-salary", icon: BriefcaseBusiness },
-  { name: "Organization Management", href: "/organization-management", icon: Building2 },
+  { name: "Organization Management", href: "/organization", icon: Building2 },
   { name: "Leave Tracking Page", href: "/leave-tracking", icon: CalendarMinus },
   { name: "Manual Attendance Upload", href: "/manualAttendance", icon: Upload },
   { name: "Attendance Verification", href: "/attendance-verification", icon: BadgeCheck },
