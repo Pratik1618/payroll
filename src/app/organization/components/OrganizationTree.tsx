@@ -25,6 +25,18 @@ const getIconForNode = (name: string) => {
   return <Building2 className="w-4 h-4" />;
 };
 
+const getRootColor = (name: string, isSelected: boolean) => {
+  const base = cn("my-0.5 border transition-all", isSelected ? "font-semibold shadow-sm border-indigo-200 dark:border-indigo-800" : "font-medium border-transparent");
+  
+  if (isSelected) {
+    // A pronounced blue/indigo style when selected
+    return cn(base, "bg-indigo-100 text-indigo-900 dark:bg-indigo-900/40 dark:text-indigo-100");
+  }
+  
+  // A subtle blue/indigo tint for all unselected root departments
+  return cn(base, "bg-indigo-50/80 text-indigo-800 hover:bg-indigo-100/80 dark:bg-indigo-950/30 dark:text-indigo-300 dark:hover:bg-indigo-900/40");
+};
+
 const TreeNode = ({
   node,
   level = 0,
@@ -36,7 +48,7 @@ const TreeNode = ({
   onSelect: (node: OrganizationNode) => void;
   selectedNodeId: string;
 }) => {
-  const [isExpanded, setIsExpanded] = useState(level < 2);
+  const [isExpanded, setIsExpanded] = useState(level < 1);
   const hasChildren = node.children && node.children.length > 0;
   const isSelected = selectedNodeId === node.id;
 
@@ -44,8 +56,14 @@ const TreeNode = ({
     <div className="w-full">
       <div
         className={cn(
-          "flex items-center gap-2 py-2 px-2 hover:bg-muted/50 rounded-md cursor-pointer transition-colors",
-          isSelected ? "bg-muted text-primary font-medium" : "text-muted-foreground",
+          "flex items-center gap-2 py-2 px-2 rounded-md cursor-pointer transition-all duration-200",
+          level === 0
+            ? isSelected ? "bg-accent text-accent-foreground font-bold shadow-sm border border-border/40" : "text-foreground font-bold hover:bg-muted/50"
+            : level === 1
+            ? getRootColor(node.name, isSelected)
+            : isSelected 
+              ? "bg-accent text-accent-foreground font-semibold shadow-sm border border-border/40" 
+              : "text-muted-foreground hover:bg-muted/40 hover:text-foreground",
           level > 0 && "ml-4"
         )}
         onClick={() => onSelect(node)}

@@ -38,3 +38,69 @@ export const employeesData: Employee[] = [
   { id: "e14", employeeId: "EMP-014", name: "Pooja Hegde", designation: "Regional Manager", department: "East Zone", reportingManager: "Arjun Das", monthlySalary: 100000, status: "Active", hierarchyLevel: 4, nodeId: "ops_east" },
   { id: "e15", employeeId: "EMP-015", name: "Sanjay Dutta", designation: "Operation Executive", department: "East Zone", reportingManager: "Pooja Hegde", monthlySalary: 45000, status: "Active", hierarchyLevel: 5, nodeId: "ops_east" }
 ];
+
+export const unassignedEmployees = [
+  { id: "u1", employeeId: "EMP-016", name: "Neha Verma", designation: "HR Executive", status: "Active" },
+  { id: "u2", employeeId: "EMP-017", name: "Rajat Kapoor", designation: "Regional Manager", status: "Active" },
+  { id: "u3", employeeId: "EMP-018", name: "Simran Kaur", designation: "Operations Executive", status: "Active" },
+  { id: "u4", employeeId: "EMP-019", name: "Tariq Ali", designation: "Financial Analyst", status: "Active" },
+  { id: "u5", employeeId: "EMP-020", name: "Aditi Rao", designation: "BD Manager", status: "Active" }
+];
+
+export function assignEmployee(employeeId: string, assignmentDetails: Partial<Employee>) {
+  const empIndex = unassignedEmployees.findIndex(e => e.id === employeeId);
+  if (empIndex > -1) {
+    const unassigned = unassignedEmployees[empIndex];
+    // Create new full employee record
+    const newEmployee: Employee = {
+      id: unassigned.id,
+      employeeId: unassigned.employeeId,
+      name: unassigned.name,
+      designation: unassigned.designation,
+      status: "Active",
+      department: assignmentDetails.department || "Unknown",
+      reportingManager: assignmentDetails.reportingManager || "TBD",
+      monthlySalary: assignmentDetails.monthlySalary || 50000,
+      hierarchyLevel: assignmentDetails.hierarchyLevel || 5,
+      nodeId: assignmentDetails.nodeId || "company"
+    };
+    
+    // Remove from unassigned
+    unassignedEmployees.splice(empIndex, 1);
+    
+    // Add to main employees list
+    employeesData.push(newEmployee);
+  }
+}
+
+export function removeEmployee(employeeId: string) {
+  const empIndex = employeesData.findIndex(e => e.id === employeeId);
+  if (empIndex > -1) {
+    const emp = employeesData[empIndex];
+    employeesData.splice(empIndex, 1);
+    
+    // Add back to unassigned pool
+    unassignedEmployees.push({
+      id: emp.id,
+      employeeId: emp.employeeId,
+      name: emp.name,
+      designation: emp.designation,
+      status: emp.status
+    });
+  }
+}
+
+export function transferEmployee(employeeId: string, newNodeId: string, newDepartmentName: string) {
+  const empIndex = employeesData.findIndex(e => e.id === employeeId);
+  if (empIndex > -1) {
+    employeesData[empIndex].nodeId = newNodeId;
+    employeesData[empIndex].department = newDepartmentName;
+  }
+}
+
+export function updateEmployee(employeeId: string, updates: Partial<Employee>) {
+  const empIndex = employeesData.findIndex(e => e.id === employeeId);
+  if (empIndex > -1) {
+    employeesData[empIndex] = { ...employeesData[empIndex], ...updates };
+  }
+}

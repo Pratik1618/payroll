@@ -22,7 +22,7 @@ export function AnalyticsTab() {
                   <span className="text-muted-foreground">{item.percentage}%</span>
                 </div>
                 <Progress value={item.percentage} className="h-2" />
-                <p className="text-xs text-muted-foreground mt-1">₹{item.cost.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground mt-1">₹{item.cost.toLocaleString("en-IN")}</p>
               </div>
             ))}
           </div>

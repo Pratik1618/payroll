@@ -141,3 +141,61 @@ export const organizationData: OrganizationNode[] = [
     ],
   },
 ];
+
+export function updateNodeZones(nodeId: string, zones: string[]) {
+  // We need to recursively find the node in organizationData and update it
+  const findAndUpdate = (nodes: OrganizationNode[]): boolean => {
+    for (const node of nodes) {
+      if (node.id === nodeId) {
+        node.coveredZones = zones;
+        return true;
+      }
+      if (node.children) {
+        if (findAndUpdate(node.children)) return true;
+      }
+    }
+    return false;
+  };
+
+  findAndUpdate(organizationData);
+}
+
+export function addDepartment(newDept: Omit<OrganizationNode, "id">, parentId?: string) {
+  const deptId = newDept.name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substring(2, 7);
+  
+  const nodeToAdd: OrganizationNode = {
+    ...newDept,
+    id: deptId,
+    employeeCount: 0,
+    monthlyPayroll: 0,
+    employerCost: 0,
+    activeManagers: 0,
+    children: []
+  };
+
+  if (!parentId || parentId === "company") {
+    // Add as root department under company
+    if (!organizationData[0].children) {
+      organizationData[0].children = [];
+    }
+    organizationData[0].children.push(nodeToAdd);
+    return;
+  }
+
+  // Find parent and append
+  const findAndAdd = (nodes: OrganizationNode[]): boolean => {
+    for (const node of nodes) {
+      if (node.id === parentId) {
+        if (!node.children) node.children = [];
+        node.children.push(nodeToAdd);
+        return true;
+      }
+      if (node.children) {
+        if (findAndAdd(node.children)) return true;
+      }
+    }
+    return false;
+  };
+
+  findAndAdd(organizationData);
+}

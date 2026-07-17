@@ -23,7 +23,7 @@ export function SummaryCards({ node }: SummaryCardsProps) {
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{node.employeeCount?.toLocaleString() || 0}</div>
+          <div className="text-2xl font-bold">{node.employeeCount?.toLocaleString("en-IN") || 0}</div>
           <p className="text-xs text-muted-foreground mt-1">Active headcount</p>
         </CardContent>
       </Card>
@@ -34,7 +34,7 @@ export function SummaryCards({ node }: SummaryCardsProps) {
           <IndianRupee className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">₹{(node.monthlyPayroll || 0).toLocaleString()}</div>
+          <div className="text-2xl font-bold">₹{(node.monthlyPayroll || 0).toLocaleString("en-IN")}</div>
           <p className="text-xs text-muted-foreground mt-1">Total salary payout</p>
         </CardContent>
       </Card>
@@ -45,7 +45,7 @@ export function SummaryCards({ node }: SummaryCardsProps) {
           <PieChart className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">₹{(node.employerCost || 0).toLocaleString()}</div>
+          <div className="text-2xl font-bold">₹{(node.employerCost || 0).toLocaleString("en-IN")}</div>
           <p className="text-xs text-muted-foreground mt-1">PF, ESIC, etc.</p>
         </CardContent>
       </Card>
@@ -67,7 +67,7 @@ export function SummaryCards({ node }: SummaryCardsProps) {
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">₹{Math.round(averageSalary).toLocaleString()}</div>
+          <div className="text-2xl font-bold">₹{Math.round(averageSalary).toLocaleString("en-IN")}</div>
           <p className="text-xs text-muted-foreground mt-1">Per employee</p>
         </CardContent>
       </Card>
