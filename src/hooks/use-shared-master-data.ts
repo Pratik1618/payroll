@@ -13,6 +13,11 @@ export type SiteOption = {
   name: string
 }
 
+export type ClientOption = {
+  id: string
+  name: string
+}
+
 export function useBranches(fallback: BranchOption[] = []) {
   const [branches, setBranches] = useState<BranchOption[]>(fallback)
   const [isLoading, setIsLoading] = useState(false)
@@ -67,6 +72,62 @@ export function useBranches(fallback: BranchOption[] = []) {
   return { branches, isLoading }
 }
 
+export function useClients(fallback: ClientOption[] = []) {
+  const [clients, setClients] = useState<ClientOption[]>(fallback)
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    let active = true
+
+    const loadClients = async () => {
+      setIsLoading(true)
+
+      try {
+        const res = await fetch(withBasePath('/api/commercial/clients/lookup'), {
+          cache: 'no-store',
+        })
+        const data = await res.json()
+
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to fetch clients')
+        }
+
+        const items = Array.isArray(data?.results?.data)
+          ? data.results.data
+          : Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data?.data)
+              ? data.data
+              : []
+
+        if (!active || items.length === 0) return
+
+        setClients(
+          items.map((item: any) => ({
+            id: String(item?.id ?? item?.clientId ?? ''),
+            name: String(item?.clientName ?? item?.name ?? ''),
+          }))
+        )
+      } catch {
+        if (!active) return
+        setClients(fallback)
+      } finally {
+        if (active) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadClients()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  return { clients, isLoading }
+}
+
 export function useClientSites(
   clientId: string,
   fallbackSites: Array<{ id: string; name: string; clientId?: string }> = []
@@ -104,9 +165,13 @@ export function useClientSites(
 
         const items = Array.isArray(data?.results?.data)
           ? data.results.data
-          : Array.isArray(data?.data)
-            ? data.data
-            : []
+          : Array.isArray(data?.results)
+            ? data.results
+            : Array.isArray(data?.data)
+              ? data.data
+              : Array.isArray(data)
+                ? data
+                : []
 
         if (!active) return
 

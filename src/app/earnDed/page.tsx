@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,8 +10,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
-import { Trash2, Plus } from "lucide-react"
+import { Trash2, Plus, ChevronDown } from "lucide-react"
 import { EmployeeAutocomplete } from "@/components/ui/payroll/employee-autocomplete"
+import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
 
 interface ScheduledEntry {
   id: string
@@ -48,10 +49,29 @@ const deductionComponents = [
   "Other Deduction",
 ]
 
+const fallbackClients = [
+  { id: "client-1", name: "ABC Corporation" },
+  { id: "client-2", name: "XYZ Industries" },
+]
+
+const fallbackSites = [
+  { id: "site-a", name: "Corporate Office", clientId: "client-1" },
+  { id: "site-b", name: "Manufacturing Unit", clientId: "client-1" },
+]
+
 export default function EarningDeductionPage() {
   const [selectedBranch, setSelectedBranch] = useState("")
-  const [selectedClient, setSelectedClient] = useState("")
+  const { clients: masterClients } = useClients(fallbackClients as any)
+  const clients = masterClients.length ? masterClients : fallbackClients
+  const [selectedClient, setSelectedClient] = useState(clients.length ? clients[0]?.id : "")
   const [selectedSite, setSelectedSite] = useState("")
+  const { sites: clientSites } = useClientSites(selectedClient, fallbackSites)
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+  const [clientSearch, setClientSearch] = useState("")
+  const clientDropdownRef = useRef<HTMLDivElement>(null)
+  const [siteDropdownOpen, setSiteDropdownOpen] = useState(false)
+  const [siteSearch, setSiteSearch] = useState("")
+  const siteDropdownRef = useRef<HTMLDivElement>(null)
   const [employeeCode, setEmployeeCode] = useState("")
   const [entryType, setEntryType] = useState<"Earning" | "Deduction">("Earning")
   const [selectedComponent, setSelectedComponent] = useState("")
@@ -68,6 +88,40 @@ export default function EarningDeductionPage() {
     { code: "EMP004", name: "Priya Patel", designation: "Designer", site: "Mumbai" },
     { code: "EMP005", name: "Amit Singh", designation: "QA Engineer", site: "Hyderabad" },
   ]
+
+  const filteredClients = clients.filter((client) =>
+    client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+    client.id.toLowerCase().includes(clientSearch.toLowerCase())
+  )
+  const filteredSites = clientSites.filter((site) =>
+    site.name.toLowerCase().includes(siteSearch.toLowerCase()) ||
+    site.id.toLowerCase().includes(siteSearch.toLowerCase())
+  )
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+        setClientDropdownOpen(false)
+      }
+      if (siteDropdownRef.current && !siteDropdownRef.current.contains(event.target as Node)) {
+        setSiteDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    if (!selectedClient) {
+      setSelectedSite("")
+      return
+    }
+
+    if (!clientSites.some((site) => site.id === selectedSite)) {
+      setSelectedSite(clientSites[0]?.id ?? "")
+    }
+  }, [clientSites, selectedClient, selectedSite])
 
   const selectedEmployee = mockEmployees.find((emp) => emp.code === employeeCode)
     ? {
@@ -207,28 +261,106 @@ if (exists) {
 
               <div>
                 <label className="text-sm font-medium text-foreground block mb-2">Client</label>
-                <Select value={selectedClient} onValueChange={setSelectedClient}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="client1">Client A</SelectItem>
-                    <SelectItem value="client2">Client B</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative" ref={clientDropdownRef}>
+                  <button
+                    type="button"
+                    className="w-full border rounded-md px-3 py-2 text-left bg-background h-10 text-sm flex items-center justify-between hover:bg-muted"
+                    onClick={() => setClientDropdownOpen((value) => !value)}
+                  >
+                    <span className="truncate">
+                      {selectedClient ? clients.find((client) => client.id === selectedClient)?.name || "Select client" : "Select client"}
+                    </span>
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </button>
+                  {clientDropdownOpen && (
+                    <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col">
+                      <div className="p-2 border-b">
+                        <input
+                          type="text"
+                          placeholder="Search client..."
+                          className="w-full px-2 py-1 border rounded text-sm bg-background"
+                          value={clientSearch}
+                          onChange={(e) => setClientSearch(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="overflow-y-auto max-h-56">
+                        {filteredClients.length > 0 ? (
+                          filteredClients.map((client) => (
+                            <button
+                              key={client.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                              onClick={() => {
+                                setSelectedClient(client.id)
+                                setSelectedSite("")
+                                setClientDropdownOpen(false)
+                                setClientSearch("")
+                              }}
+                            >
+                              <span>{client.name}</span>
+                              {selectedClient === client.id && <span className="text-xs font-semibold text-blue-600">?</span>}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">No clients found</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-foreground block mb-2">Site</label>
-                <Select value={selectedSite} onValueChange={setSelectedSite}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Site" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="site1">Site A</SelectItem>
-                    <SelectItem value="site2">Site B</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="relative" ref={siteDropdownRef}>
+                  <button
+                    type="button"
+                    className="w-full border rounded-md px-3 py-2 text-left bg-background h-10 text-sm flex items-center justify-between hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => setSiteDropdownOpen((value) => !value)}
+                    disabled={!selectedClient}
+                  >
+                    <span className="truncate">
+                      {selectedSite ? clientSites.find((site) => site.id === selectedSite)?.name || "Select site" : "Select site"}
+                    </span>
+                    <ChevronDown className="h-4 w-4 opacity-50" />
+                  </button>
+                  {siteDropdownOpen && selectedClient && (
+                    <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col">
+                      <div className="p-2 border-b">
+                        <input
+                          type="text"
+                          placeholder="Search site..."
+                          className="w-full px-2 py-1 border rounded text-sm bg-background"
+                          value={siteSearch}
+                          onChange={(e) => setSiteSearch(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className="overflow-y-auto max-h-56">
+                        {filteredSites.length > 0 ? (
+                          filteredSites.map((site) => (
+                            <button
+                              key={site.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                              onClick={() => {
+                                setSelectedSite(site.id)
+                                setSiteDropdownOpen(false)
+                                setSiteSearch("")
+                              }}
+                            >
+                              <span>{site.name}</span>
+                              {selectedSite === site.id && <span className="text-xs font-semibold text-blue-600">?</span>}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">No sites found</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>

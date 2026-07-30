@@ -42,3 +42,6 @@ next-env.d.ts
 
 # documentation
 docs/
+
+manual_attendance_upload_2_api.md
+organization-management-prd-plan.md

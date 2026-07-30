@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner"
 import { AlertTriangle, ChevronDown, Lock } from "lucide-react"
 import { generateMonthOptions, formatMonthLabel } from "@/utils/month-utility"
+import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
 
 const initialSteps = [
     {
@@ -121,14 +122,60 @@ type LeaveTrackerItem = {
 export default function LeaveProvisionPage() {
     const [currentStep, setCurrentStep] = useState(1)
     const [steps, setSteps] = useState(initialSteps)
+    const { clients: masterClients } = useClients(mockClients as any)
+    const clients = masterClients.length ? masterClients : mockClients
 
     // Step 1: Context Selection
     const [selectedBranch, setSelectedBranch] = useState("branch-1")
-    const [selectedClient, setSelectedClient] = useState("client-1")
+    const [selectedClient, setSelectedClient] = useState(clients.length ? clients[0]?.id : "client-1")
     const [selectedSite, setSelectedSite] = useState("site-a")
     const [fromMonth, setFromMonth] = useState("2025-01")
     const [toMonth, setToMonth] = useState("2025-03")
     const [employeeStatusFilter, setEmployeeStatusFilter] = useState<EmployeeStatusFilter>("active")
+    const { sites: clientSites } = useClientSites(selectedClient, mockSites)
+
+    const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+    const [clientSearch, setClientSearch] = useState("")
+    const clientDropdownRef = useRef<HTMLDivElement>(null)
+
+    const [siteDropdownOpen, setSiteDropdownOpen] = useState(false)
+    const [siteSearch, setSiteSearch] = useState("")
+    const siteDropdownRef = useRef<HTMLDivElement>(null)
+
+    const filteredClients = clients.filter(
+        (client) =>
+            client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+            client.id.toLowerCase().includes(clientSearch.toLowerCase()),
+    )
+    const filteredSites = clientSites.filter(
+        (site) =>
+            site.name.toLowerCase().includes(siteSearch.toLowerCase()) ||
+            site.id.toLowerCase().includes(siteSearch.toLowerCase()),
+    )
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+                setClientDropdownOpen(false)
+            }
+            if (siteDropdownRef.current && !siteDropdownRef.current.contains(event.target as Node)) {
+                setSiteDropdownOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    useEffect(() => {
+        if (!selectedClient) {
+            setSelectedSite("")
+            return
+        }
+
+        if (!clientSites.some((site) => site.id === selectedSite)) {
+            setSelectedSite(clientSites[0]?.id ?? "")
+        }
+    }, [clientSites, selectedClient, selectedSite])
 
     const getFilteredEmployees = (site = selectedSite, status = employeeStatusFilter) => {
         return mockEmployees
@@ -244,8 +291,6 @@ export default function LeaveProvisionPage() {
         setCurrentStep(4)
     }
 
-    const filteredSites = mockSites.filter((site) => site.clientId === selectedClient)
-
     const employeeAggregates = provisions.reduce(
         (acc, prov) => {
             const key = prov.employeeId
@@ -342,34 +387,106 @@ export default function LeaveProvisionPage() {
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">Client</label>
-                                    <Select value={selectedClient} onValueChange={setSelectedClient}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {mockClients.map((client) => (
-                                                <SelectItem key={client.id} value={client.id}>
-                                                    {client.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <div className="relative" ref={clientDropdownRef}>
+                                        <button
+                                            type="button"
+                                            className="w-full border rounded-md px-3 py-2 text-left bg-background h-10 text-sm flex items-center justify-between hover:bg-muted"
+                                            onClick={() => setClientDropdownOpen((value) => !value)}
+                                        >
+                                            <span className="truncate">
+                                                {selectedClient ? clients.find((c) => c.id === selectedClient)?.name || "Select client" : "Select client"}
+                                            </span>
+                                            <ChevronDown className="h-4 w-4 opacity-50" />
+                                        </button>
+                                        {clientDropdownOpen && (
+                                            <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col">
+                                                <div className="p-2 border-b">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search client..."
+                                                        className="w-full px-2 py-1 border rounded text-sm bg-background"
+                                                        value={clientSearch}
+                                                        onChange={(e) => setClientSearch(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="overflow-y-auto max-h-56">
+                                                    {filteredClients.length > 0 ? (
+                                                        filteredClients.map((client) => (
+                                                            <button
+                                                                key={client.id}
+                                                                type="button"
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                                                                onClick={() => {
+                                                                    setSelectedClient(client.id)
+                                                                    setSelectedSite("")
+                                                                    setClientDropdownOpen(false)
+                                                                    setClientSearch("")
+                                                                }}
+                                                            >
+                                                                <span>{client.name}</span>
+                                                                {selectedClient === client.id && <span className="text-xs font-semibold text-blue-600">?</span>}
+                                                            </button>
+                                                        ))
+                                                    ) : (
+                                                        <div className="px-3 py-2 text-sm text-muted-foreground">No clients found</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">Site</label>
-                                    <Select value={selectedSite} onValueChange={setSelectedSite}>
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {filteredSites.map((site) => (
-                                                <SelectItem key={site.id} value={site.id}>
-                                                    {site.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <div className="relative" ref={siteDropdownRef}>
+                                        <button
+                                            type="button"
+                                            className="w-full border rounded-md px-3 py-2 text-left bg-background h-10 text-sm flex items-center justify-between hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                                            onClick={() => setSiteDropdownOpen((value) => !value)}
+                                            disabled={!selectedClient}
+                                        >
+                                            <span className="truncate">
+                                                {selectedSite ? clientSites.find((s) => s.id === selectedSite)?.name || "Select site" : "Select site"}
+                                            </span>
+                                            <ChevronDown className="h-4 w-4 opacity-50" />
+                                        </button>
+                                        {siteDropdownOpen && selectedClient && (
+                                            <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col">
+                                                <div className="p-2 border-b">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search site..."
+                                                        className="w-full px-2 py-1 border rounded text-sm bg-background"
+                                                        value={siteSearch}
+                                                        onChange={(e) => setSiteSearch(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                </div>
+                                                <div className="overflow-y-auto max-h-56">
+                                                    {filteredSites.length > 0 ? (
+                                                        filteredSites.map((site) => (
+                                                            <button
+                                                                key={site.id}
+                                                                type="button"
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                                                                onClick={() => {
+                                                                    setSelectedSite(site.id)
+                                                                    setSiteDropdownOpen(false)
+                                                                    setSiteSearch("")
+                                                                }}
+                                                            >
+                                                                <span>{site.name}</span>
+                                                                {selectedSite === site.id && <span className="text-xs font-semibold text-blue-600">?</span>}
+                                                            </button>
+                                                        ))
+                                                    ) : (
+                                                        <div className="px-3 py-2 text-sm text-muted-foreground">No sites found</div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">
@@ -667,7 +784,7 @@ export default function LeaveProvisionPage() {
                                 </div>
                                 <div className="space-y-1 p-4 bg-accent rounded-lg">
                                     <p className="text-sm text-muted-foreground">Site</p>
-                                    <p className="text-lg font-medium">{mockSites.find((s) => s.id === selectedSite)?.name}</p>
+                                    <p className="text-lg font-medium">{clientSites.find((s) => s.id === selectedSite)?.name}</p>
                                 </div>
                                 <div className="space-y-1 p-4 bg-accent rounded-lg">
                                     <p className="text-sm text-muted-foreground">Total Employees</p>
@@ -696,8 +813,8 @@ export default function LeaveProvisionPage() {
                                 <Button
                                     onClick={() => {
                                         const trackerId = `${selectedSite}-${fromMonth}-${toMonth}`
-                                        const currentClientName = mockClients.find((c) => c.id === selectedClient)?.name ?? selectedClient
-                                        const currentSiteName = mockSites.find((s) => s.id === selectedSite)?.name ?? selectedSite
+                                        const currentClientName = clients.find((c) => c.id === selectedClient)?.name ?? selectedClient
+                                        const currentSiteName = clientSites.find((s) => s.id === selectedSite)?.name ?? selectedSite
                                         const employeeCount = Object.keys(employeeAggregates).length
                                         setLeaveTracker((prev) => {
                                             const existing = prev.find((item) => item.id === trackerId)

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,10 +12,10 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-import { AlertTriangle, Lock } from "lucide-react"
+import { AlertTriangle, Lock, ChevronDown } from "lucide-react"
 import { generateMonthOptions, formatMonthLabel } from "@/utils/month-utility"
 import { toast } from "sonner"
-import { useClientSites } from "@/hooks/use-shared-master-data"
+import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
 
 const initialSteps = [
   {
@@ -48,12 +48,12 @@ const initialSteps = [
   },
 ]
 
-const mockClients = [
+const fallbackClients = [
   { id: "client-1", name: "ABC Corporation" },
   { id: "client-2", name: "XYZ Industries" },
 ]
 
-const mockSites = [
+const fallbackSites = [
   { id: "site-a", name: "Corporate Office", clientId: "client-1" },
   { id: "site-b", name: "Manufacturing Unit", clientId: "client-1" },
 ]
@@ -85,15 +85,51 @@ export default function BonusWorkingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [steps, setSteps] = useState(initialSteps)
 
+  // Fetch clients from common endpoint
+  const { clients: masterClients } = useClients(fallbackClients as any)
+  const clients = masterClients.length ? masterClients : fallbackClients
 
   // Step 1: Context Selection
-  const [selectedClient, setSelectedClient] = useState("client-1")
+  const [selectedClient, setSelectedClient] = useState(clients.length ? clients[0]?.id : "client-1")
   const [selectedSite, setSelectedSite] = useState("site-a")
   const [financialYear, setFinancialYear] = useState("2025-26")
   const [bonusPercentage, setBonusPercentage] = useState("8.33")
   const [payoutMonth, setPayoutMonth] = useState("2026-03")
   const [employeeStatusFilter, setEmployeeStatusFilter] = useState<EmployeeStatusFilter>("active")
-  const { sites: clientSites } = useClientSites(selectedClient, mockSites)
+  const { sites: clientSites } = useClientSites(selectedClient, fallbackSites)
+
+  // Client dropdown search states
+  const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+  const [clientSearch, setClientSearch] = useState("")
+  const clientDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Site dropdown search states
+  const [siteDropdownOpen, setSiteDropdownOpen] = useState(false)
+  const [siteSearch, setSiteSearch] = useState("")
+  const siteDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Filtered lists for search
+  const filteredClients = clients.filter((c) =>
+    c.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
+    c.id.toLowerCase().includes(clientSearch.toLowerCase())
+  )
+  const filteredSites = clientSites.filter((s) =>
+    s.name.toLowerCase().includes(siteSearch.toLowerCase()) ||
+    s.id.toLowerCase().includes(siteSearch.toLowerCase())
+  )
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+        setClientDropdownOpen(false)
+      }
+      if (siteDropdownRef.current && !siteDropdownRef.current.contains(event.target as Node)) {
+        setSiteDropdownOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   const getFilteredEmployees = (site = selectedSite, status = employeeStatusFilter) => {
     return mockEmployees
@@ -200,10 +236,9 @@ export default function BonusWorkingPage() {
   const handleReviewConfirm = () => {
     const trackerId = `${financialYear}-${payoutMonth}`
     const selectedCount = employeeList.filter((emp) => emp.selected).length
-    const currentClient = mockClients.find((client) => client.id === selectedClient)?.name ?? selectedClient
+    const currentClient = clients.find((client) => client.id === selectedClient)?.name ?? selectedClient
     const currentSite =
       clientSites.find((site) => site.id === selectedSite)?.name ??
-      mockSites.find((site) => site.id === selectedSite)?.name ??
       selectedSite
     setBonusTracker((prev) => {
       const existing = prev.find((item) => item.id === trackerId)
@@ -300,37 +335,106 @@ export default function BonusWorkingPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Client *</label>
-                  <Select value={selectedClient} onValueChange={(value) => {
-                    setSelectedClient(value)
-                    setSelectedSite("")
-                  }}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select client" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {mockClients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="relative" ref={clientDropdownRef}>
+                    <button
+                      type="button"
+                      className="w-full border rounded-md px-3 py-2 text-left bg-background h-10 text-sm flex items-center justify-between hover:bg-muted"
+                      onClick={() => setClientDropdownOpen((v) => !v)}
+                    >
+                      <span className="truncate">
+                        {selectedClient ? clients.find((c) => c.id === selectedClient)?.name || "Select client" : "Select client"}
+                      </span>
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </button>
+                    {clientDropdownOpen && (
+                      <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col">
+                        <div className="p-2 border-b">
+                          <input
+                            type="text"
+                            placeholder="Search client..."
+                            className="w-full px-2 py-1 border rounded text-sm bg-background"
+                            value={clientSearch}
+                            onChange={(e) => setClientSearch(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="overflow-y-auto max-h-56">
+                          {filteredClients.length > 0 ? (
+                            filteredClients.map((c) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                                onClick={() => {
+                                  setSelectedClient(c.id)
+                                  setSelectedSite("")
+                                  setClientDropdownOpen(false)
+                                  setClientSearch("")
+                                }}
+                              >
+                                <span>{c.name}</span>
+                                {selectedClient === c.id && <span className="text-xs font-semibold text-blue-600">✓</span>}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">No clients found</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Site *</label>
-                  <Select value={selectedSite} onValueChange={setSelectedSite}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select site" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clientSites.map((site) => (
-                        <SelectItem key={site.id} value={site.id}>
-                          {site.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="relative" ref={siteDropdownRef}>
+                    <button
+                      type="button"
+                      className="w-full border rounded-md px-3 py-2 text-left bg-background h-10 text-sm flex items-center justify-between hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => setSiteDropdownOpen((v) => !v)}
+                      disabled={!selectedClient}
+                    >
+                      <span className="truncate">
+                        {selectedSite ? clientSites.find((s) => s.id === selectedSite)?.name || "Select site" : "Select site"}
+                      </span>
+                      <ChevronDown className="h-4 w-4 opacity-50" />
+                    </button>
+                    {siteDropdownOpen && selectedClient && (
+                      <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col">
+                        <div className="p-2 border-b">
+                          <input
+                            type="text"
+                            placeholder="Search site..."
+                            className="w-full px-2 py-1 border rounded text-sm bg-background"
+                            value={siteSearch}
+                            onChange={(e) => setSiteSearch(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                        <div className="overflow-y-auto max-h-56">
+                          {filteredSites.length > 0 ? (
+                            filteredSites.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                                onClick={() => {
+                                  setSelectedSite(s.id)
+                                  setSiteDropdownOpen(false)
+                                  setSiteSearch("")
+                                }}
+                              >
+                                <span>{s.name}</span>
+                                {selectedSite === s.id && <span className="text-xs font-semibold text-blue-600">✓</span>}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-muted-foreground">No sites found</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

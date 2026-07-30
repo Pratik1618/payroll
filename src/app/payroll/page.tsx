@@ -7,12 +7,14 @@
   import { Badge } from "@/components/ui/badge"
   import { Stepper } from "@/components/ui/stepper"
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-  import { Upload, Lock, Copy, AlertTriangle, CheckCircle, Calendar } from "lucide-react"
+  import { Upload, Lock, Copy, AlertTriangle, CheckCircle, Calendar, ChevronDown } from "lucide-react"
   import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
   import { toast } from "sonner"
   import { SitesDropdown } from "@/components/ui/sites-dropdown"
   import * as XLSX from 'xlsx';
   import { withBasePath } from "@/lib/base-path"
+  import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
+  import { generateMonthOptions, formatMonthLabel } from "@/utils/month-utility"
 
   interface BranchOption {
     id: string
@@ -70,6 +72,8 @@
     { empId: "EMP005", name: "David Brown", designation: "supervisor", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000, advanceRemaining: 0 },
   ]
 
+  const payrollMonthOptions = generateMonthOptions(2025, 2027)
+
   // add an initial payroll-data constant for easy reset
   const initialPayrollData = {
     totalEmployees: 0,
@@ -85,6 +89,7 @@
   }
 
   export default function PayrollPage() {
+    const { clients } = useClients(mockClients as any)
     const [currentStep, setCurrentStep] = useState(1)
     const [payrollSteps, setPayrollSteps] = useState(initialPayrollSteps)
     const [isProcessing, setIsProcessing] = useState(false)
@@ -95,7 +100,28 @@
     const [selectedClient, setSelectedClient] = useState("")
     const [selectedClients, setSelectedClients] = useState<string[]>([]) // when branch selected: multi-client selection
     const [selectedSites, setSelectedSites] = useState<string[]>([])
+    const [selectedPayrollMonth, setSelectedPayrollMonth] = useState("")
     const [selectedBranch, setSelectedBranch] = useState<string>("") // new: branch/state selection
+    
+    // Fetch sites for single client selection
+    const { sites: apiSites, isLoading: isSitesLoading } = useClientSites(selectedClient, mockSites)
+
+    const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
+    const [clientSearch, setClientSearch] = useState("")
+    const clientDropdownRef = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+      function handleClickOutside(event: MouseEvent) {
+        if (clientDropdownRef.current && !clientDropdownRef.current.contains(event.target as Node)) {
+          setClientDropdownOpen(false)
+        }
+      }
+      if (clientDropdownOpen) {
+        document.addEventListener("mousedown", handleClickOutside)
+      }
+      return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [clientDropdownOpen])
+
     const [branches, setBranches] = useState<BranchOption[]>(fallbackBranches)
     const [attendanceData, setAttendanceData] = useState<any[]>([])
     const [mergedData, setMergedData] = useState<any[]>([]);
@@ -211,7 +237,9 @@
       }
 
       if (!selectedClient) return []
-      return mockSites.filter((site) => site.clientId === selectedClient)
+      
+      // Use dynamically fetched sites for the selected client
+      return apiSites
     }
 
     const toggleClientSelection = (clientId: string) => {
@@ -568,7 +596,7 @@
       switch (currentStep) {
         case 1:
           // allow proceed if branch selected (bulk import) or client+sites selected
-          return !!selectedBranch || (selectedClient && selectedSites.length > 0)
+          return (!!selectedBranch || (selectedClient && selectedSites.length > 0)) && !!selectedPayrollMonth
         case 2:
           return payrollData.attendanceImported
         case 3:
@@ -835,11 +863,11 @@
                   {selectedBranch ? (
                     <div className="border rounded p-2 bg-background">
                       {/* compute clients that have sites in this branch */}
-                      {(() => {
+                      {selectedPayrollMonth ? `Payroll month: ${formatMonthLabel(selectedPayrollMonth)}. ` : ""}{(() => {
                         const branchClientIds = Array.from(
                           new Set(mockSites.filter((s) => s.branchId === selectedBranch).map((s) => s.clientId))
                         )
-                        const branchClients = mockClients.filter((c) => branchClientIds.includes(c.id))
+                        const branchClients = clients.filter((c) => branchClientIds.includes(c.id))
                         const allSelected = branchClients.length > 0 && branchClients.every((c) => selectedClients.includes(c.id))
                         return (
                           <>
@@ -874,18 +902,55 @@
                       })()}
                     </div>
                   ) : (
-                    <Select value={selectedClient} onValueChange={(v) => { setSelectedClient(v); setSelectedSites([]) }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mockClients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="relative" ref={clientDropdownRef}>
+                      <button
+                        type="button"
+                        className="w-full border rounded-md px-3 py-2 text-left bg-background h-10 text-sm flex items-center justify-between"
+                        onClick={() => setClientDropdownOpen((v) => !v)}
+                      >
+                        <span className="truncate">
+                          {selectedClient
+                            ? clients.find((c) => c.id === selectedClient)?.name || "Select Client"
+                            : "Choose a client"}
+                        </span>
+                        <ChevronDown className="h-4 w-4 opacity-50" />
+                      </button>
+                      {clientDropdownOpen && (
+                        <div className="absolute z-20 mt-2 w-full bg-popover border rounded-md shadow-lg max-h-64 overflow-hidden flex flex-col">
+                          <div className="p-2 border-b">
+                            <input
+                              type="text"
+                              placeholder="Search client..."
+                              className="w-full px-2 py-1 border rounded text-sm bg-background"
+                              value={clientSearch}
+                              onChange={(e) => setClientSearch(e.target.value)}
+                              autoFocus
+                            />
+                          </div>
+                          <div className="overflow-y-auto">
+                            {clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
+                              <div className="p-2 text-muted-foreground text-sm">No clients found</div>
+                            )}
+                            {clients
+                              .filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()))
+                              .map((client) => (
+                                <div
+                                  key={client.id}
+                                  className={`px-2 py-2 cursor-pointer hover:bg-accent text-sm flex items-center ${selectedClient === client.id ? 'bg-accent/50' : ''}`}
+                                  onClick={() => {
+                                    setSelectedClient(client.id)
+                                    setSelectedSites([])
+                                    setClientDropdownOpen(false)
+                                    setClientSearch("")
+                                  }}
+                                >
+                                  {client.name}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -898,8 +963,21 @@
                     label="Select Sites"
                   />
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
 
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Select Month</label>
+                  <Select value={selectedPayrollMonth} onValueChange={setSelectedPayrollMonth}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose payroll month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {payrollMonthOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
