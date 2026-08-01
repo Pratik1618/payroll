@@ -34,9 +34,11 @@ interface GenerateOfferModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+import { addOfferLetter } from "../mock/offerLetters";
+
 export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalProps) {
   const [step, setStep] = useState(1);
-  
+
   // Step 1: Details
   const [candidateName, setCandidateName] = useState("");
   const [candidateEmail, setCandidateEmail] = useState("");
@@ -44,7 +46,7 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
   const [departmentId, setDepartmentId] = useState("");
 
   const [components, setComponents] = useState<SalaryComp[]>(DEFAULT_COMPONENTS);
-  
+
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // Reset form
@@ -82,7 +84,7 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
   const handleSendOffer = async () => {
     setIsGeneratingPdf(true);
     toast.info("Generating PDF, please wait...");
-    
+
     try {
       const MyDocument = (
         <Document>
@@ -90,17 +92,17 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
             <View style={{ marginBottom: 30 }}>
               <Text style={{ textAlign: 'right', color: '#64748b', fontSize: 10 }}>Date: {new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</Text>
             </View>
-            
+
             <View style={{ marginBottom: 20 }}>
               <Text style={{ fontFamily: 'Helvetica-Bold' }}>To,</Text>
               <Text>{candidateName}</Text>
               <Text style={{ color: '#64748b' }}>{candidateEmail}</Text>
             </View>
-            
+
             <View style={{ marginBottom: 20 }}>
               <Text style={{ fontFamily: 'Helvetica-Bold', textDecoration: 'underline' }}>Subject: Offer of Employment</Text>
             </View>
-            
+
             <View style={{ marginBottom: 30, lineHeight: 1.5 }}>
               <Text>Dear {candidateName.split(' ')[0]},</Text>
               <Text>{"\n"}We are pleased to offer you the position of {designation} in the {deptName} department at our organization. Your Annual Cost to Company (CTC) will be Rs. {calculations.computedCTC.toLocaleString("en-IN")}.</Text>
@@ -114,7 +116,7 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
               <View style={{ backgroundColor: '#0f172a', padding: 8, borderTopLeftRadius: 4, borderTopRightRadius: 4 }}>
                 <Text style={{ color: 'white', textAlign: 'center', fontFamily: 'Helvetica-Bold', fontSize: 12 }}>Annexure A: Salary Structure</Text>
               </View>
-              
+
               <View style={{ flexDirection: 'row', backgroundColor: '#f8fafc', padding: 8, borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                 <Text style={{ width: '40%', fontFamily: 'Helvetica-Bold' }}>Salary Component</Text>
                 <Text style={{ width: '30%', textAlign: 'right', fontFamily: 'Helvetica-Bold' }}>Monthly (Rs)</Text>
@@ -125,7 +127,7 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
               <View style={{ backgroundColor: '#f1f5f9', padding: 4, paddingHorizontal: 8, borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                 <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#64748b' }}>EARNINGS</Text>
               </View>
-              
+
               {calculations.calculatedComponents.filter(c => c.type === 'earning').map(c => (
                 <View key={c.id} style={{ flexDirection: 'row', padding: 8, borderLeft: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
                   <Text style={{ width: '40%' }}>{c.name}</Text>
@@ -202,8 +204,23 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
       link.download = `${candidateName.replace(/\s+/g, '_') || 'Candidate'}_Offer_Letter.pdf`;
       link.click();
       URL.revokeObjectURL(url);
-      
-      toast.success(`Offer Letter Generated & Sent to ${candidateEmail}!`);
+
+      addOfferLetter({
+        candidateName,
+        candidateEmail,
+        designation,
+        departmentId,
+        departmentName: deptName,
+        ctc: calculations.computedCTC,
+        monthlyCtc: Math.round(calculations.computedCTC / 12),
+        status: "Sent",
+        salaryComponents: calculations.calculatedComponents.map(c => ({
+          ...c,
+          value: Math.round(c.monthlyVal)
+        })),
+      });
+
+      toast.success(`Offer Letter Generated & Sent to ${candidateEmail}! Logged in Tracking.`);
       onOpenChange(false);
     } catch (error) {
       console.error(error);
@@ -285,10 +302,10 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
 
           {/* STEP 2: Salary Structure (70/30 Split) */}
           {step === 2 && (
-            <SalaryStructureBuilder 
-              components={components} 
-              onChange={setComponents} 
-              calculations={calculations} 
+            <SalaryStructureBuilder
+              components={components}
+              onChange={setComponents}
+              calculations={calculations}
             />
           )}
 
@@ -307,7 +324,7 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
                   <div className="mb-6 font-bold underline text-lg">Subject: Offer of Employment</div>
                   <div className="mb-8">
                     Dear {candidateName.split(' ')[0]},<br /><br />
-                    We are pleased to offer you the position of <strong>{designation}</strong> in the <strong>{deptName}</strong> department at our organization. 
+                    We are pleased to offer you the position of <strong>{designation}</strong> in the <strong>{deptName}</strong> department at our organization.
                     Your Annual Cost to Company (CTC) will be <strong>₹{calculations.computedCTC.toLocaleString("en-IN")}</strong>.
                     <br /><br />
                     Please find the detailed salary structure attached in Annexure A. We look forward to welcoming you to the team.
@@ -325,7 +342,7 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
                     <div className="text-right">Monthly (₹)</div>
                     <div className="text-right">Annual (₹)</div>
                   </div>
-                  
+
                   {/* Earnings List */}
                   <div className="bg-slate-100 p-2 px-4 font-bold text-xs text-slate-500 uppercase tracking-wider border-b">Earnings</div>
                   {calculations.calculatedComponents.filter(c => c.type === 'earning').map(c => (
@@ -335,7 +352,7 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
                       <div className="text-right text-slate-600">{c.annualVal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
                     </div>
                   ))}
-                  
+
                   {/* Gross Earnings */}
                   <div className="grid grid-cols-3 p-4 border-b bg-green-50 font-bold text-green-800 text-base">
                     <div>Gross Earnings (A)</div>
@@ -378,7 +395,7 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
                       <div className="text-right">{c.annualVal.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</div>
                     </div>
                   ))}
-                  
+
                   {/* Total CTC */}
                   <div className="grid grid-cols-3 p-5 bg-slate-900 text-white font-bold text-lg">
                     <div>Total Cost to Company (CTC)</div>

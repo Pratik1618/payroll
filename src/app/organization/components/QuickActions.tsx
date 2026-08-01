@@ -2,22 +2,24 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, Upload, FileText } from "lucide-react";
+import { Plus, Download, FileText, MapPin, Building } from "lucide-react";
 import { AddEmployeeModal } from "./AddEmployeeModal";
 import { AddDepartmentModal } from "./AddDepartmentModal";
-import { GenerateOfferModal } from "./GenerateOfferModal";
+import { AddStateModal } from "./AddStateModal";
+import { AddCityModal } from "./AddCityModal";
 import { DesignationMasterModal } from "./DesignationMasterModal";
 import { useRouter } from "next/navigation";
 
 export function QuickActions() {
   const [isAddEmployeeOpen, setIsAddEmployeeOpen] = useState(false);
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
-  const [isGenerateOfferOpen, setIsGenerateOfferOpen] = useState(false);
+  const [isAddStateOpen, setIsAddStateOpen] = useState(false);
+  const [isAddCityOpen, setIsAddCityOpen] = useState(false);
   const [isDesignationMasterOpen, setIsDesignationMasterOpen] = useState(false);
   const router = useRouter();
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       <Button variant="outline" size="sm" className="hidden lg:flex">
         <Download className="mr-2 h-4 w-4" />
         Export
@@ -25,10 +27,6 @@ export function QuickActions() {
       <Button variant="outline" size="sm" className="hidden lg:flex" onClick={() => setIsDesignationMasterOpen(true)}>
         <FileText className="mr-2 h-4 w-4" />
         Designations
-      </Button>
-      <Button size="sm" variant="secondary" onClick={() => setIsGenerateOfferOpen(true)}>
-        <FileText className="mr-2 h-4 w-4" />
-        Generate Offer
       </Button>
       <Button size="sm" onClick={() => setIsAddEmployeeOpen(true)}>
         <Plus className="mr-2 h-4 w-4" />
@@ -38,11 +36,14 @@ export function QuickActions() {
         <Plus className="mr-2 h-4 w-4" />
         Add Department
       </Button>
-
-      <GenerateOfferModal
-        open={isGenerateOfferOpen}
-        onOpenChange={setIsGenerateOfferOpen}
-      />
+      <Button size="sm" variant="outline" onClick={() => setIsAddStateOpen(true)}>
+        <MapPin className="mr-2 h-4 w-4" />
+        Add State
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => setIsAddCityOpen(true)}>
+        <Building className="mr-2 h-4 w-4" />
+        Add City
+      </Button>
 
       <AddEmployeeModal 
         open={isAddEmployeeOpen} 
@@ -53,6 +54,26 @@ export function QuickActions() {
         open={isAddDeptOpen}
         onOpenChange={(open) => {
           setIsAddDeptOpen(open);
+          if (!open) {
+            router.refresh();
+          }
+        }}
+      />
+
+      <AddStateModal
+        open={isAddStateOpen}
+        onOpenChange={(open) => {
+          setIsAddStateOpen(open);
+          if (!open) {
+            router.refresh();
+          }
+        }}
+      />
+
+      <AddCityModal
+        open={isAddCityOpen}
+        onOpenChange={(open) => {
+          setIsAddCityOpen(open);
           if (!open) {
             router.refresh();
           }

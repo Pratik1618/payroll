@@ -33,7 +33,10 @@ import {
   Trash2,
   UserRound,
   Users,
+  Building,
 } from "lucide-react"
+import { AddStateModal } from "../organization/components/AddStateModal"
+import { AddCityModal } from "../organization/components/AddCityModal"
 
 interface Department {
   id: string
@@ -160,6 +163,8 @@ export default function OrganizationManagementPage() {
   const [selectedBranchId, setSelectedBranchId] = useState(initialBranches[0]?.id ?? "")
   const [branchDialogOpen, setBranchDialogOpen] = useState(false)
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false)
+  const [stateDialogOpen, setStateDialogOpen] = useState(false)
+  const [cityDialogOpen, setCityDialogOpen] = useState(false)
   const [branchMode, setBranchMode] = useState<"create" | "edit">("create")
   const [departmentMode, setDepartmentMode] = useState<"create" | "edit">("create")
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null)
@@ -396,6 +401,14 @@ export default function OrganizationManagementPage() {
             <Button onClick={openCreateDepartmentDialog} disabled={!selectedBranch}>
               <Plus className="h-4 w-4" />
               Add Department
+            </Button>
+            <Button variant="outline" onClick={() => setStateDialogOpen(true)}>
+              <MapPin className="h-4 w-4" />
+              Add State
+            </Button>
+            <Button variant="outline" onClick={() => setCityDialogOpen(true)}>
+              <Building className="h-4 w-4" />
+              Add City
             </Button>
           </div>
         </div>
@@ -803,6 +816,9 @@ export default function OrganizationManagementPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddStateModal open={stateDialogOpen} onOpenChange={setStateDialogOpen} />
+      <AddCityModal open={cityDialogOpen} onOpenChange={setCityDialogOpen} />
     </MainLayout>
   )
 }

@@ -14,7 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { AlertCircle, Send, Upload, ChevronDown, Eye } from "lucide-react"
+import { AlertCircle, Send, Upload, ChevronDown, Eye, Search } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { withBasePath } from "@/lib/base-path"
 import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
@@ -45,6 +45,7 @@ interface TemporaryAttendanceRecord {
   salary_type_id: string
   designation_id: string
   designation_name: string
+  new_designation_name?: string
   duty_id: string
   duty_name: string
   employee_code: string
@@ -119,58 +120,86 @@ const months = [
   "December",
 ]
 
-const TEMP_REQUIRED_COLUMNS = [
-  "srno",
-  "branchcode",
-  "sitecode",
-  "sitename",
-  "salarytypeid",
-  "designationid",
-  "designationname",
-  "dutyid",
-  "dutyname",
-  "monthname",
-  "yearname",
-  "empcode",
-  "empname",
-  "normaldays",
-  "weeklyoff",
-  "paidholiday",
-  "otdays",
-  "othours",
-  "splotdays",
-  "splothours",
-  "pl",
-  "cl",
-  "sl",
+const REQUIRED_TEMP_FIELDS: { key: string; name: string }[] = [
+  { key: "sr_no", name: "srno" },
+  { key: "branch_code", name: "branchcode" },
+  { key: "site_code", name: "sitecode" },
+  { key: "site_name", name: "sitename" },
+  { key: "salary_type_id", name: "salarytypeid" },
+  { key: "designation_id", name: "designationid" },
+  { key: "designation_name", name: "designationname" },
+  { key: "duty_id", name: "dutyid" },
+  { key: "duty_name", name: "dutyname" },
+  { key: "month_name", name: "monthname" },
+  { key: "year_name", name: "yearname" },
+  { key: "employee_code", name: "empcode" },
+  { key: "employee_name", name: "empname" },
+  { key: "normal_days", name: "normaldays" },
+  { key: "weekly_off", name: "weeklyoff" },
+  { key: "paid_holiday", name: "paidholiday" },
+  { key: "ismart_ot_days", name: "otdays" },
+  { key: "ismart_ot_hrs", name: "othours" },
+  { key: "spl_ot_days", name: "splotdays" },
+  { key: "spl_ot_hrs", name: "splothours" },
+  { key: "pl", name: "pl" },
+  { key: "cl", name: "cl" },
+  { key: "sl", name: "sl" },
 ]
 
 const TEMP_COLUMN_ALIASES: Record<string, string[]> = {
-  sr_no: ["srno", "sr no", "serialno", "serial no"],
-  branch_code: ["branchcode", "branch code"],
-  site_code: ["sitecode", "site code"],
-  new_site_code: ["newsitecode", "new site code"],
-  site_name: ["sitename", "site name"],
-  salary_type_id: ["salarytypeid", "salary type id"],
-  salary: ["salary", "gross", "salarybillingtotal"],
-  designation_id: ["designationid", "designation id"],
-  designation_name: ["designationname", "designation name"],
-  duty_id: ["dutyid", "duty id"],
-  duty_name: ["dutyname", "duty name"],
-  employee_code: ["empcode", "emp code", "employeecode"],
-  employee_name: ["empname", "emp name", "employeename"],
-  month_name: ["monthname", "month name"],
-  year_name: ["yearname", "year name"],
-  normal_days: ["normaldays", "normal days"],
-  weekly_off: ["weeklyoff", "weekly off"],
-  paid_holiday: ["paidholiday", "paid holiday"],
-  ismart_ot_days: ["ismartotdays", "ismart ot days", "otdays", "ot days"],
-  ismart_ot_hrs: ["ismartothrs", "ismart ot hrs", "othours", "ot hrs"],
-  spl_ot_days: ["splotdays", "spl ot days"],
-  spl_ot_hrs: ["splothours", "splothrs", "spl ot hours", "spl ot hrs"],
+  sr_no: ["srno", "sr no", "serialno", "serial no", "sr_no", "sr_no.", "sr.no", "sr.no."],
+  branch_code: ["branchcode", "branch code", "branch_code"],
+  new_branch_code: ["newbranchcode", "new branch code", "new_branch_code"],
+  site_code: ["sitecode", "site code", "site_code"],
+  new_site_code: ["newsitecode", "new site code", "new_site_code"],
+  site_name: ["sitename", "site name", "site_name"],
+  salary_type_id: ["salarytypeid", "salary type id", "salary_type_id", "salarytype"],
+  salary: ["salary", "gross", "salarybillingtotal", "salary billing total"],
+  designation_id: ["designationid", "designation id", "designation_id"],
+  designation_name: ["designationname", "designation name", "designation_name"],
+  new_designation_name: ["newdesignationname", "new designation name", "new_designation_name", "newdesignation", "new designation"],
+  duty_id: ["dutyid", "duty id", "duty_id"],
+  duty_name: ["dutyname", "duty name", "duty_name"],
+  employee_code: ["empcode", "emp code", "employeecode", "employee code", "emp_code"],
+  new_emp_code: ["newempcode", "new emp code", "new_emp_code", "newemployeecode", "new employee code"],
+  employee_name: ["empname", "emp name", "employeename", "employee name", "emp_name"],
+  month_name: ["monthname", "month name", "month_name", "month"],
+  year_name: ["yearname", "year name", "year_name", "year"],
+  normal_days: ["normaldays", "normal days", "normal_days", "nd"],
+  weekly_off: ["weeklyoff", "weekly off", "weekly_off", "wo"],
+  paid_holiday: ["paidholiday", "paid holiday", "paid_holiday", "ph"],
+  ismart_ot_days: ["ismartotdays", "ismart ot days", "otdays", "ot days", "ot_days"],
+  ismart_ot_hrs: ["ismartothrs", "ismart ot hrs", "othours", "ot hours", "ot_hours", "othrs", "ot hrs", "ot_hrs"],
+  spl_ot_days: ["splotdays", "spl ot days", "spl_ot_days", "splot_days", "splotday", "splot day"],
+  spl_ot_hrs: ["splothours", "splothrs", "spl ot hours", "spl ot hrs", "spl_ot_hrs", "spl_ot_hours", "splot_hrs", "splot_hours"],
   pl: ["pl"],
   cl: ["cl"],
   sl: ["sl"],
+}
+
+function findHeaderRowIndex(rows: string[][]): number {
+  let bestIndex = 0
+  let maxScore = -1
+
+  const requiredKeys = REQUIRED_TEMP_FIELDS.map((f) => f.key)
+  const scanLimit = Math.min(rows.length, 15)
+
+  for (let i = 0; i < scanLimit; i++) {
+    const rowHeaders = rows[i].map((h) => normalizeHeader(h))
+    let score = 0
+    for (const key of requiredKeys) {
+      const aliases = (TEMP_COLUMN_ALIASES[key] || []).map((a) => normalizeHeader(a))
+      if (rowHeaders.some((h) => aliases.includes(h))) {
+        score++
+      }
+    }
+    if (score > maxScore) {
+      maxScore = score
+      bestIndex = i
+    }
+  }
+
+  return bestIndex
 }
 
 function normalizeHeader(value: string) {
@@ -287,6 +316,8 @@ export default function ManualAttendanceUploadPage() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewData, setPreviewData] = useState<any>(null)
+  const [previewSearch, setPreviewSearch] = useState("")
+  const [previewViewMode, setPreviewViewMode] = useState<"flat" | "grouped">("flat")
   
   // Client dropdown search states
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
@@ -376,6 +407,7 @@ export default function ManualAttendanceUploadPage() {
     setPreviewLoading(true)
     setPreviewModalOpen(true)
     setPreviewData(null)
+    setPreviewSearch("")
     
     try {
       const response = await fetch(withBasePath(`/api/attendance/temporary-upload/submissions/${encodeURIComponent(submissionId)}`), {
@@ -396,7 +428,8 @@ export default function ManualAttendanceUploadPage() {
       }
 
       const payload = await response.json()
-      setPreviewData(payload.results)
+      console.log("DEBUG Preview payload keys:", Object.keys(payload), "results keys:", payload?.results ? Object.keys(payload.results) : "no results", "siteGroups?:", !!payload?.results?.siteGroups)
+      setPreviewData(payload.results || payload.data || payload)
     } catch (error) {
       console.error("Preview error:", error)
       toast.error("Failed to load submission preview")
@@ -451,22 +484,66 @@ export default function ManualAttendanceUploadPage() {
       }
 
       if (!response.ok) {
+        const errorBody = await response.text()
+        console.error("DEBUG: Non-OK response body:", errorBody)
         throw new Error(`Failed to fetch temporary submissions: ${response.status}`)
       }
 
-      const payload = await response.json()
-      const items = Array.isArray(payload?.results?.data) ? payload.results.data : []
+      let payload = await response.json()
+      if (typeof payload === 'string') {
+        try { payload = JSON.parse(payload) } catch (e) {}
+      }
+      console.log("DEBUG: Raw payload from backend:", payload)
+      let items: any[] = []
+      if (Array.isArray(payload)) items = payload
+      else if (Array.isArray(payload?.data)) items = payload.data
+      else if (Array.isArray(payload?.results)) items = payload.results
+      else if (Array.isArray(payload?.results?.data)) items = payload.results.data
+      console.log("DEBUG: Extracted items length:", items.length)
+      // Group by batchSubmissionId
+      const batchMap = new Map<string, { client: string; month: string; status: string; submittedAt: string; batchSubmissionId: string; totalRecords: number; siteCount: number }>()
+      for (const item of items) {
+        const batchId = String(item?.batchSubmissionId ?? item?.submissionId ?? "")
+        const existing = batchMap.get(batchId)
+        
+        const itemSiteCount = Array.isArray(item?.siteGroups) && item.siteGroups.length > 0 
+          ? item.siteGroups.length 
+          : 1
+        const itemRecordsCount = Number(
+          item?.processedRecords ?? 
+          item?.recordsCount ?? 
+          (Array.isArray(item?.siteGroups) ? item.siteGroups.reduce((acc: number, g: any) => acc + Number(g?.recordsCount || 0), 0) : 0)
+        )
+
+        if (existing) {
+          existing.totalRecords += itemRecordsCount
+          existing.siteCount += itemSiteCount
+          // If any child is not pending, reflect that
+          if (item?.status === "rejected") existing.status = "rejected"
+          else if (item?.status === "approved" && existing.status !== "rejected") existing.status = "approved"
+        } else {
+          batchMap.set(batchId, {
+            batchSubmissionId: batchId,
+            client: String(item?.clientName ?? item?.clientId ?? ""),
+            month: String(item?.month ?? ""),
+            status: item?.status === "approved" || item?.status === "rejected" ? item.status : "pending",
+            submittedAt: String(item?.submittedAt ?? ""),
+            totalRecords: itemRecordsCount,
+            siteCount: itemSiteCount,
+          })
+        }
+      }
       setTemporarySubmissions(
-        items.map((item: any) => ({
-          id: String(item?.submissionId ?? item?.batchSubmissionId ?? ""),
-          batchSubmissionId: item?.batchSubmissionId ? String(item.batchSubmissionId) : undefined,
-          client: String(item?.clientName ?? item?.clientId ?? ""),
-          site: String(item?.siteName ?? item?.siteId ?? ""),
-          month: String(item?.month ?? ""),
+        Array.from(batchMap.values()).map((batch) => ({
+          id: batch.batchSubmissionId,
+          batchSubmissionId: batch.batchSubmissionId,
+          client: batch.client,
+          site: `${batch.siteCount} sites`,
+          month: batch.month,
           records: [],
-          recordsCount: Number(item?.recordsCount ?? 0),
-          status: item?.status === "approved" || item?.status === "rejected" ? item.status : "pending",
-          submittedAt: String(item?.submittedAt ?? ""),
+          recordsCount: batch.totalRecords,
+          status: batch.status as "pending" | "approved" | "rejected",
+          submittedAt: batch.submittedAt,
           type: "temporary",
         }))
       )
@@ -603,17 +680,23 @@ export default function ManualAttendanceUploadPage() {
         throw new Error("File must contain header and at least one data row")
       }
 
-      const headers = rows[0].map((header) => normalizeHeader(header))
-      const missingColumns = TEMP_REQUIRED_COLUMNS.filter((column) => !headers.includes(column))
+      const headerRowIndex = findHeaderRowIndex(rows)
+      const headers = rows[headerRowIndex].map((header) => normalizeHeader(header))
+
+      const missingColumns = REQUIRED_TEMP_FIELDS.filter((field) => {
+        const normalizedAliases = (TEMP_COLUMN_ALIASES[field.key] || []).map((a) => normalizeHeader(a))
+        return !headers.some((h) => normalizedAliases.includes(h))
+      }).map((field) => field.name)
 
       if (missingColumns.length > 0) {
         throw new Error(`Missing required columns: ${missingColumns.join(", ")}`)
       }
 
       const parsedRecords = rows
-        .slice(1)
+        .slice(headerRowIndex + 1)
         .filter((row) => row.some((value) => String(value ?? "").trim()))
-        .map((row, index) => mapTemporaryAttendanceRow(headers, row, index + 2, tempAutoSplitSites ? "" : tempSite))
+        .map((row, index) => mapTemporaryAttendanceRow(headers, row, headerRowIndex + 2 + index, tempAutoSplitSites ? "" : tempSite))
+        .filter((record): record is TemporaryAttendanceRecord => record !== null)
 
       if (!parsedRecords.length) {
         throw new Error("No attendance rows found in the uploaded file")
@@ -667,6 +750,30 @@ export default function ManualAttendanceUploadPage() {
     setFile(null)
     toast.success("Attendance submitted for verification")
   }
+  
+  const handleDownloadJSON = () => {
+    if (!tempUploadedData.length) return
+    const normalizedRecords = tempAutoSplitSites
+      ? buildTemporarySiteGroups(tempUploadedData, tempSites).flatMap((group) => group.records)
+      : tempUploadedData.map((record) => ({ ...record, new_site_code: tempSite }))
+    const payloadRecords = normalizedRecords.map((r) => ({
+      ...r,
+      new_branch_code: r.new_branch_code || null,
+      new_site_code: r.new_site_code || null,
+      new_emp_code: r.new_emp_code || null,
+      new_designation_name: r.new_designation_name || null,
+    }))
+    const payload = { clientId: tempClient, month: tempMonth, records: payloadRecords }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `attendance_payload_${tempClient}_${tempMonth.replace(/\s+/g, '_')}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   const handleTempSubmit = async () => {
     if (!tempUploadedData.length) {
@@ -693,6 +800,7 @@ export default function ManualAttendanceUploadPage() {
       new_branch_code: r.new_branch_code || null,
       new_site_code: r.new_site_code || null,
       new_emp_code: r.new_emp_code || null,
+      new_designation_name: r.new_designation_name || null,
     }))
 
     setTempLoading(true)
@@ -720,8 +828,20 @@ export default function ManualAttendanceUploadPage() {
 
       if (!res.ok) {
         if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
-          const preview = data.errors.slice(0, 3).join("\n")
-          const more = data.errors.length > 3 ? `\n...and ${data.errors.length - 3} more` : ""
+          const mappedErrors = data.errors.map((err: string) => {
+            const match = err.match(/^Row (\d+):/)
+            if (match) {
+              const rowIndex = parseInt(match[1]) - 1
+              const record = payloadRecords[rowIndex]
+              if (record) {
+                return err.replace(`Row ${match[1]}`, `Row ${match[1]} (Excel Sr No: ${record.sr_no}, Site: ${record.site_name})`)
+              }
+            }
+            return err
+          })
+          
+          const preview = mappedErrors.slice(0, 50).join("\n")
+          const more = mappedErrors.length > 50 ? `\n...and ${mappedErrors.length - 50} more` : ""
           throw new Error(`${data.message || "Validation failed"}:\n${preview}${more}`)
         }
         throw new Error(data?.message || "Failed to submit temporary attendance")
@@ -1203,7 +1323,7 @@ export default function ManualAttendanceUploadPage() {
 
                 <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                   Expected Excel columns: `Sr no.`, `BRANCHCODE`, `SITECODE`, `SITENAME`, `SalaryTypeID`,
-                  `DESIGNATIONID`, `DESIGNATIONNAME`, `DUTYID`, `DUTYNAME`, `MONTHNAME`, `YEARNAME`, `EMPCODE`,
+                  `DESIGNATIONID`, `DESIGNATIONNAME`, `NEW DESIGNATION NAME` (optional), `DUTYID`, `DUTYNAME`, `MONTHNAME`, `YEARNAME`, `EMPCODE`,
                   `EMPNAME`, `NORMALDAYS`, `WEEKLYOFF`, `PAIDHOLIDAY`, `OTDAYS`, `OTHOURS`, `SPLOTDAYS`,
                   `SPLOTHOURS`, `PL`, `CL`, and `SL`. In single-site mode, `new site code` comes from the selected site dropdown. In auto-split mode, records are grouped and submitted site-wise from the file.
                 </div>
@@ -1240,21 +1360,31 @@ export default function ManualAttendanceUploadPage() {
               <div className="max-h-[500px] overflow-y-auto rounded-lg border">
                     <Table>
                       <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
-                        <TableRow className="bg-transparent hover:bg-transparent">
+                        <TableRow className="bg-transparent hover:bg-transparent text-xs whitespace-nowrap">
+                          <TableHead>Sr No.</TableHead>
                           <TableHead>Branch Code</TableHead>
                           <TableHead>New Branch Code</TableHead>
                           <TableHead>Site Code</TableHead>
                           <TableHead>New Site Code</TableHead>
+                          <TableHead>Site Name</TableHead>
+                          <TableHead>Salary Type ID</TableHead>
+                          <TableHead>Designation ID</TableHead>
+                          <TableHead>Designation Name</TableHead>
+                          <TableHead className="font-semibold text-primary">New Designation Name</TableHead>
+                          <TableHead>Duty ID</TableHead>
+                          <TableHead>Duty Name</TableHead>
                           <TableHead>Emp Code</TableHead>
                           <TableHead>New Emp Code</TableHead>
                           <TableHead>Employee Name</TableHead>
                           <TableHead>Month</TableHead>
                           <TableHead className="text-right">Salary</TableHead>
-                          <TableHead className="text-center">Normal Days</TableHead>
-                          <TableHead className="text-center">Weekly Off</TableHead>
-                          <TableHead className="text-center">Paid Holiday</TableHead>
-                          <TableHead className="text-center">ISMART OT Days</TableHead>
-                          <TableHead className="text-center">ISMART OT Hrs</TableHead>
+                          <TableHead className="text-center">Normal</TableHead>
+                          <TableHead className="text-center">WO</TableHead>
+                          <TableHead className="text-center">PH</TableHead>
+                          <TableHead className="text-center">OT Days</TableHead>
+                          <TableHead className="text-center">OT Hrs</TableHead>
+                          <TableHead className="text-center">Spl OT Days</TableHead>
+                          <TableHead className="text-center">Spl OT Hrs</TableHead>
                           <TableHead className="text-center">PL</TableHead>
                           <TableHead className="text-center">CL</TableHead>
                           <TableHead className="text-center">SL</TableHead>
@@ -1262,32 +1392,43 @@ export default function ManualAttendanceUploadPage() {
                       </TableHeader>
                       <TableBody>
                         {tempUploadedData.map((record, idx) => (
-                          <TableRow key={`${record.new_emp_code}-${idx}`}>
+                          <TableRow key={`${record.new_emp_code}-${idx}`} className="text-xs whitespace-nowrap">
+                            <TableCell>{record.sr_no}</TableCell>
                             <TableCell>{record.branch_code}</TableCell>
                             <TableCell className="font-medium">{record.new_branch_code}</TableCell>
                             <TableCell>{record.site_code}</TableCell>
                             <TableCell className="font-medium">{record.new_site_code === record.site_code ? "" : record.new_site_code}</TableCell>
+                            <TableCell className="max-w-[200px] truncate" title={record.site_name}>{record.site_name}</TableCell>
+                            <TableCell>{record.salary_type_id}</TableCell>
+                            <TableCell>{record.designation_id}</TableCell>
+                            <TableCell className="max-w-[150px] truncate" title={record.designation_name}>{record.designation_name}</TableCell>
+                            <TableCell className="font-medium text-primary max-w-[150px] truncate" title={record.new_designation_name || ""}>{record.new_designation_name || "-"}</TableCell>
+                            <TableCell>{record.duty_id}</TableCell>
+                            <TableCell>{record.duty_name}</TableCell>
                             <TableCell>{record.employee_code}</TableCell>
-                            <TableCell>{record.new_emp_code}</TableCell>
-                            <TableCell>{record.employee_name}</TableCell>
-                            <TableCell>{tempMonth}</TableCell>
-                            <TableCell className="text-right text-sm font-medium">
-                              {formatCurrency(record.salary)}
-                            </TableCell>
-                            <TableCell className="text-center text-sm">{record.normal_days}</TableCell>
-                            <TableCell className="text-center text-sm">{record.weekly_off}</TableCell>
-                            <TableCell className="text-center text-sm">{record.paid_holiday}</TableCell>
-                            <TableCell className="text-center text-sm">{record.ismart_ot_days}</TableCell>
-                            <TableCell className="text-center text-sm">{record.ismart_ot_hrs}</TableCell>
-                            <TableCell className="text-center text-sm">{record.pl}</TableCell>
-                            <TableCell className="text-center text-sm">{record.cl}</TableCell>
-                            <TableCell className="text-center text-sm">{record.sl}</TableCell>
+                            <TableCell className="font-medium">{record.new_emp_code}</TableCell>
+                            <TableCell className="max-w-[150px] truncate" title={record.employee_name}>{record.employee_name}</TableCell>
+                            <TableCell>{record.month_name ? `${record.month_name} ${record.year_name}` : tempMonth}</TableCell>
+                            <TableCell className="text-right font-medium">{formatCurrency(record.salary)}</TableCell>
+                            <TableCell className="text-center">{record.normal_days}</TableCell>
+                            <TableCell className="text-center">{record.weekly_off}</TableCell>
+                            <TableCell className="text-center">{record.paid_holiday}</TableCell>
+                            <TableCell className="text-center">{record.ismart_ot_days}</TableCell>
+                            <TableCell className="text-center">{record.ismart_ot_hrs}</TableCell>
+                            <TableCell className="text-center">{record.spl_ot_days}</TableCell>
+                            <TableCell className="text-center">{record.spl_ot_hrs}</TableCell>
+                            <TableCell className="text-center">{record.pl}</TableCell>
+                            <TableCell className="text-center">{record.cl}</TableCell>
+                            <TableCell className="text-center">{record.sl}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
                     </Table>
                   </div>
-                  <div className="flex justify-end gap-3">
+                  <div className="flex justify-end gap-3 mt-4">
+                    <Button variant="outline" onClick={handleDownloadJSON}>
+                      Download JSON
+                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -1307,9 +1448,14 @@ export default function ManualAttendanceUploadPage() {
             )}
 
             <Card>
-              <CardHeader>
-                <CardTitle>Attendance Upload 2 Submission History</CardTitle>
-                <CardDescription>Track your temporary attendance submissions and their verification status</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <div>
+                  <CardTitle>Attendance Upload 2 Submission History</CardTitle>
+                  <CardDescription>Track your temporary attendance submissions and their verification status</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => loadTemporarySubmissions(tempClient || undefined, (tempAutoSplitSites ? undefined : tempSite) || undefined)}>
+                  Refresh List
+                </Button>
               </CardHeader>
               <CardContent>
                 {submissionsLoading && <p className="mb-3 text-sm text-muted-foreground">Loading submissions...</p>}
@@ -1320,11 +1466,11 @@ export default function ManualAttendanceUploadPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
-                          <TableHead>Submission ID</TableHead>
+                          <TableHead>Batch ID</TableHead>
                           <TableHead>Client</TableHead>
-                          <TableHead>Site</TableHead>
+                          <TableHead>Sites</TableHead>
                           <TableHead>Month</TableHead>
-                          <TableHead>Records</TableHead>
+                          <TableHead>Total Records</TableHead>
                           <TableHead>Submitted</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
@@ -1373,80 +1519,267 @@ export default function ManualAttendanceUploadPage() {
 
       <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
         <DialogContent className="w-[95vw] sm:max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Submission Preview</DialogTitle>
-            <DialogDescription>
-              {previewData ? `Client: ${previewData.clientName} | Month: ${previewData.month}` : "Loading..."}
-            </DialogDescription>
+          <DialogHeader className="pb-2 border-b">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <DialogTitle className="text-xl">Submission Preview</DialogTitle>
+                <DialogDescription>
+                  {previewData ? `Client: ${previewData.clientName} | Month: ${previewData.month}` : "Loading..."}
+                </DialogDescription>
+              </div>
+              {previewData && (
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="px-3 py-1 text-xs font-semibold">
+                    {previewData.siteGroups?.length ?? 0} Sites
+                  </Badge>
+                  <Badge variant="default" className="px-3 py-1 text-xs font-semibold">
+                    {previewData.processedRecords ?? previewData.siteGroups?.reduce((acc: number, g: any) => acc + (g.recordsCount || g.records?.length || 0), 0) ?? 0} Records
+                  </Badge>
+                </div>
+              )}
+            </div>
+
+            {previewData?.siteGroups && (
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search employee, emp code, site, site code, designation..."
+                    value={previewSearch}
+                    onChange={(e) => setPreviewSearch(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                  {previewSearch && (
+                    <button
+                      onClick={() => setPreviewSearch("")}
+                      className="absolute right-2.5 top-2.5 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 border rounded-lg p-1 bg-muted/30 text-xs">
+                  <Button
+                    variant={previewViewMode === "flat" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={() => setPreviewViewMode("flat")}
+                  >
+                    Flat Table (All Records)
+                  </Button>
+                  <Button
+                    variant={previewViewMode === "grouped" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 px-3 text-xs"
+                    onClick={() => setPreviewViewMode("grouped")}
+                  >
+                    Grouped by Site
+                  </Button>
+                </div>
+              </div>
+            )}
           </DialogHeader>
           
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto py-3">
             {previewLoading ? (
-              <p className="text-sm text-muted-foreground p-4">Loading preview data...</p>
-            ) : previewData?.siteGroups ? (
-              <div className="space-y-6">
-                {previewData.siteGroups.map((group: any) => (
-                  <div key={group.siteId} className="space-y-2">
-                    <h3 className="font-semibold text-sm">{group.siteName} (ID: {group.siteId}) - {group.recordsCount} records</h3>
-                    <div className="overflow-x-auto rounded-lg border">
-                      <Table>
-                        <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
-                          <TableRow className="bg-transparent hover:bg-transparent text-xs">
-                            <TableHead>Branch Code</TableHead>
-                            <TableHead>New Branch Code</TableHead>
-                            <TableHead>Site Code</TableHead>
-                            <TableHead>New Site Code</TableHead>
-                            <TableHead>Site Name</TableHead>
-                            <TableHead>Emp Code</TableHead>
-                            <TableHead>New Emp Code</TableHead>
-                            <TableHead>Employee Name</TableHead>
-                            <TableHead>Designation</TableHead>
-                            <TableHead>Duty</TableHead>
-                            <TableHead>Month</TableHead>
-                            <TableHead className="text-right">Salary</TableHead>
-                            <TableHead className="text-center">Normal</TableHead>
-                            <TableHead className="text-center">WO</TableHead>
-                            <TableHead className="text-center">PH</TableHead>
-                            <TableHead className="text-center">OT Days</TableHead>
-                            <TableHead className="text-center">OT Hrs</TableHead>
-                            <TableHead className="text-center">PL</TableHead>
-                            <TableHead className="text-center">CL</TableHead>
-                            <TableHead className="text-center">SL</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {group.records.map((record: any, idx: number) => (
-                            <TableRow key={idx} className="text-xs">
-                              <TableCell>{record.branch_code}</TableCell>
-                              <TableCell className="font-medium">{record.new_branch_code}</TableCell>
-                              <TableCell>{record.site_code}</TableCell>
-                              <TableCell className="font-medium">{record.new_site_code === record.site_code ? "" : record.new_site_code}</TableCell>
-                              <TableCell className="max-w-[200px] truncate" title={record.site_name}>{record.site_name}</TableCell>
-                              <TableCell>{record.employee_code}</TableCell>
-                              <TableCell className="font-medium">{record.new_emp_code}</TableCell>
-                              <TableCell className="max-w-[150px] truncate" title={record.employee_name}>{record.employee_name}</TableCell>
-                              <TableCell className="max-w-[150px] truncate" title={record.designation_name}>{record.designation_name}</TableCell>
-                              <TableCell>{record.duty_name}</TableCell>
-                              <TableCell>{record.month_name} {record.year_name}</TableCell>
-                              <TableCell className="text-right font-medium">{formatCurrency(record.salary)}</TableCell>
-                              <TableCell className="text-center">{record.normal_days}</TableCell>
-                              <TableCell className="text-center">{record.weekly_off}</TableCell>
-                              <TableCell className="text-center">{record.paid_holiday}</TableCell>
-                              <TableCell className="text-center">{record.ismart_ot_days}</TableCell>
-                              <TableCell className="text-center">{record.ismart_ot_hrs}</TableCell>
-                              <TableCell className="text-center">{record.pl}</TableCell>
-                              <TableCell className="text-center">{record.cl}</TableCell>
-                              <TableCell className="text-center">{record.sl}</TableCell>
+              <p className="text-sm text-muted-foreground p-4 text-center">Loading preview data...</p>
+            ) : previewData?.siteGroups ? (() => {
+                const searchLower = previewSearch.toLowerCase().trim()
+                
+                // Collect all records flat
+                const allFlatRecords: Array<{ record: any; siteName: string; siteId: string }> = []
+                previewData.siteGroups.forEach((group: any) => {
+                  group.records?.forEach((rec: any) => {
+                    allFlatRecords.push({ record: rec, siteName: group.siteName, siteId: group.siteId })
+                  })
+                })
+
+                const filteredFlatRecords = searchLower
+                  ? allFlatRecords.filter(
+                      ({ record, siteName, siteId }) =>
+                        (record.employee_name || "").toLowerCase().includes(searchLower) ||
+                        (record.employee_code || "").toLowerCase().includes(searchLower) ||
+                        (record.designation_name || "").toLowerCase().includes(searchLower) ||
+                        (record.site_name || "").toLowerCase().includes(searchLower) ||
+                        (record.site_code || "").toLowerCase().includes(searchLower) ||
+                        (siteName || "").toLowerCase().includes(searchLower) ||
+                        (siteId || "").toLowerCase().includes(searchLower)
+                    )
+                  : allFlatRecords
+
+                if (previewViewMode === "flat") {
+                  return (
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground px-1 flex justify-between items-center">
+                        <span>Showing {filteredFlatRecords.length} of {allFlatRecords.length} records</span>
+                      </div>
+                      <div className="overflow-x-auto rounded-lg border">
+                        <Table>
+                          <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
+                            <TableRow className="bg-transparent hover:bg-transparent text-xs whitespace-nowrap">
+                              <TableHead>Branch Code</TableHead>
+                              <TableHead>New Branch Code</TableHead>
+                              <TableHead>Site Code</TableHead>
+                              <TableHead>New Site Code</TableHead>
+                              <TableHead>Site Name</TableHead>
+                              <TableHead>Emp Code</TableHead>
+                              <TableHead>New Emp Code</TableHead>
+                              <TableHead>Employee Name</TableHead>
+                              <TableHead>Designation</TableHead>
+                              <TableHead>New Designation Name</TableHead>
+                              <TableHead>Duty</TableHead>
+                              <TableHead>Month</TableHead>
+                              <TableHead className="text-right">Salary</TableHead>
+                              <TableHead className="text-center">Normal</TableHead>
+                              <TableHead className="text-center">WO</TableHead>
+                              <TableHead className="text-center">PH</TableHead>
+                              <TableHead className="text-center">OT Days</TableHead>
+                              <TableHead className="text-center">OT Hrs</TableHead>
+                              <TableHead className="text-center">SPL OT Days</TableHead>
+                              <TableHead className="text-center">SPL OT Hrs</TableHead>
+                              <TableHead className="text-center">PL</TableHead>
+                              <TableHead className="text-center">CL</TableHead>
+                              <TableHead className="text-center">SL</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredFlatRecords.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={20} className="text-center py-8 text-muted-foreground text-xs">
+                                  No records matching "{previewSearch}"
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredFlatRecords.map(({ record, siteName }, idx) => (
+                                <TableRow key={idx} className="text-xs hover:bg-muted/40 whitespace-nowrap">
+                                  <TableCell>{record.branch_code || "-"}</TableCell>
+                                  <TableCell className="font-medium">{record.new_branch_code || "-"}</TableCell>
+                                  <TableCell>{record.site_code || "-"}</TableCell>
+                                  <TableCell className="font-medium">{record.new_site_code || record.site_code || "-"}</TableCell>
+                                  <TableCell className="font-medium">{record.site_name || siteName || "-"}</TableCell>
+                                  <TableCell>{record.employee_code || "-"}</TableCell>
+                                  <TableCell className="font-medium">{record.new_emp_code || "-"}</TableCell>
+                                  <TableCell className="font-semibold text-foreground">{record.employee_name || "-"}</TableCell>
+                                  <TableCell>{record.designation_name || "-"}</TableCell>
+                                  <TableCell className="font-medium">{record.new_designation_name || "-"}</TableCell>
+                                  <TableCell>{record.duty_name || "-"}</TableCell>
+                                  <TableCell>{record.month_name} {record.year_name}</TableCell>
+                                  <TableCell className="text-right font-medium">{formatCurrency(record.salary)}</TableCell>
+                                  <TableCell className="text-center">{record.normal_days}</TableCell>
+                                  <TableCell className="text-center">{record.weekly_off}</TableCell>
+                                  <TableCell className="text-center">{record.paid_holiday}</TableCell>
+                                  <TableCell className="text-center">{record.ismart_ot_days ?? 0}</TableCell>
+                                  <TableCell className="text-center">{record.ismart_ot_hrs ?? 0}</TableCell>
+                                  <TableCell className="text-center">{record.spl_ot_days ?? 0}</TableCell>
+                                  <TableCell className="text-center">{record.spl_ot_hrs ?? 0}</TableCell>
+                                  <TableCell className="text-center">{record.pl ?? 0}</TableCell>
+                                  <TableCell className="text-center">{record.cl}</TableCell>
+                                  <TableCell className="text-center">{record.sl}</TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
+                  )
+                }
+
+                // Grouped view
+                const filteredGroups = previewData.siteGroups
+                  .map((group: any) => {
+                    const records = searchLower
+                      ? group.records?.filter(
+                          (rec: any) =>
+                            (rec.employee_name || "").toLowerCase().includes(searchLower) ||
+                            (rec.employee_code || "").toLowerCase().includes(searchLower) ||
+                            (rec.designation_name || "").toLowerCase().includes(searchLower) ||
+                            (group.siteName || "").toLowerCase().includes(searchLower) ||
+                            (group.siteId || "").toLowerCase().includes(searchLower)
+                        )
+                      : group.records
+                    return { ...group, records }
+                  })
+                  .filter((group: any) => group.records?.length > 0)
+
+                return (
+                  <div className="space-y-6">
+                    {filteredGroups.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-4 text-center">No site groups matching "{previewSearch}"</p>
+                    ) : (
+                      filteredGroups.map((group: any) => (
+                        <div key={group.siteId} className="space-y-2">
+                          <h3 className="font-semibold text-sm flex items-center justify-between border-b pb-1">
+                            <span>{group.siteName} <span className="text-xs text-muted-foreground font-normal">(ID: {group.siteId})</span></span>
+                            <Badge variant="outline" className="text-xs">{group.records?.length || 0} records</Badge>
+                          </h3>
+                          <div className="overflow-x-auto rounded-lg border">
+                            <Table>
+                              <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
+                                <TableRow className="bg-transparent hover:bg-transparent text-xs whitespace-nowrap">
+                                  <TableHead>Branch Code</TableHead>
+                                  <TableHead>New Branch Code</TableHead>
+                                  <TableHead>Site Code</TableHead>
+                                  <TableHead>New Site Code</TableHead>
+                                  <TableHead>Site Name</TableHead>
+                                  <TableHead>Emp Code</TableHead>
+                                  <TableHead>New Emp Code</TableHead>
+                                  <TableHead>Employee Name</TableHead>
+                                  <TableHead>Designation</TableHead>
+                                  <TableHead>New Designation Name</TableHead>
+                                  <TableHead>Duty</TableHead>
+                                  <TableHead>Month</TableHead>
+                                  <TableHead className="text-right">Salary</TableHead>
+                                  <TableHead className="text-center">Normal</TableHead>
+                                  <TableHead className="text-center">WO</TableHead>
+                                  <TableHead className="text-center">PH</TableHead>
+                                  <TableHead className="text-center">OT Days</TableHead>
+                                  <TableHead className="text-center">OT Hrs</TableHead>
+                                  <TableHead className="text-center">SPL OT Days</TableHead>
+                                  <TableHead className="text-center">SPL OT Hrs</TableHead>
+                                  <TableHead className="text-center">PL</TableHead>
+                                  <TableHead className="text-center">CL</TableHead>
+                                  <TableHead className="text-center">SL</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {group.records.map((record: any, idx: number) => (
+                                  <TableRow key={idx} className="text-xs hover:bg-muted/40 whitespace-nowrap">
+                                    <TableCell>{record.branch_code || "-"}</TableCell>
+                                    <TableCell className="font-medium">{record.new_branch_code || "-"}</TableCell>
+                                    <TableCell>{record.site_code || "-"}</TableCell>
+                                    <TableCell className="font-medium">{record.new_site_code || record.site_code || "-"}</TableCell>
+                                    <TableCell className="font-medium">{record.site_name || group.siteName || "-"}</TableCell>
+                                    <TableCell>{record.employee_code || "-"}</TableCell>
+                                    <TableCell className="font-medium">{record.new_emp_code || "-"}</TableCell>
+                                    <TableCell className="font-semibold text-foreground">{record.employee_name || "-"}</TableCell>
+                                    <TableCell>{record.designation_name || "-"}</TableCell>
+                                    <TableCell className="font-medium">{record.new_designation_name || "-"}</TableCell>
+                                    <TableCell>{record.duty_name || "-"}</TableCell>
+                                    <TableCell>{record.month_name} {record.year_name}</TableCell>
+                                    <TableCell className="text-right font-medium">{formatCurrency(record.salary)}</TableCell>
+                                    <TableCell className="text-center">{record.normal_days}</TableCell>
+                                    <TableCell className="text-center">{record.weekly_off}</TableCell>
+                                    <TableCell className="text-center">{record.paid_holiday}</TableCell>
+                                    <TableCell className="text-center">{record.ismart_ot_days ?? 0}</TableCell>
+                                    <TableCell className="text-center">{record.ismart_ot_hrs ?? 0}</TableCell>
+                                    <TableCell className="text-center">{record.spl_ot_days ?? 0}</TableCell>
+                                    <TableCell className="text-center">{record.spl_ot_hrs ?? 0}</TableCell>
+                                    <TableCell className="text-center">{record.pl ?? 0}</TableCell>
+                                    <TableCell className="text-center">{record.cl}</TableCell>
+                                    <TableCell className="text-center">{record.sl}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground p-4">No data available.</p>
+                )
+              })() : (
+              <p className="text-sm text-muted-foreground p-4 text-center">No data available.</p>
             )}
           </div>
         </DialogContent>
@@ -1499,7 +1832,8 @@ function normalizeSites(payload: unknown, clientId: string): SiteOption[] {
 }
 
 function getCellValue(headers: string[], row: string[], aliases: string[]) {
-  const index = headers.findIndex((header) => aliases.includes(header))
+  const normalizedAliases = aliases.map((a) => normalizeHeader(a))
+  const index = headers.findIndex((header) => normalizedAliases.includes(header))
   return index >= 0 ? row[index] ?? "" : ""
 }
 
@@ -1508,21 +1842,39 @@ function mapTemporaryAttendanceRow(
   row: string[],
   rowNumber: number,
   selectedSiteId: string,
-): TemporaryAttendanceRecord {
+): TemporaryAttendanceRecord | null {
   const employeeName = getCellValue(headers, row, TEMP_COLUMN_ALIASES.employee_name)
   const branchCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.branch_code)
   const siteCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.site_code)
   const employeeCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.employee_code)
   const designationId = getCellValue(headers, row, TEMP_COLUMN_ALIASES.designation_id)
   const designationName = getCellValue(headers, row, TEMP_COLUMN_ALIASES.designation_name)
+  const newDesignationName = getCellValue(headers, row, TEMP_COLUMN_ALIASES.new_designation_name)
   const dutyId = getCellValue(headers, row, TEMP_COLUMN_ALIASES.duty_id)
   const dutyName = getCellValue(headers, row, TEMP_COLUMN_ALIASES.duty_name)
-  const newBranchCode = autoBranchCode()
   
-  const explicitNewSiteCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.new_site_code)
+  const explicitNewBranchCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.new_branch_code)
+  const newBranchCode = explicitNewBranchCode || autoBranchCode()
+  
+  let explicitNewSiteCode = String(getCellValue(headers, row, TEMP_COLUMN_ALIASES.new_site_code))
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width characters
+    .replace(/[^\x20-\x7E]/g, '') // Remove all non-ASCII printable characters
+    .trim()
+  const upperSiteCode = explicitNewSiteCode.toUpperCase()
+  if (
+    upperSiteCode === "NOT FOUND" ||
+    upperSiteCode === "#N/A" ||
+    upperSiteCode.startsWith("#REF") ||
+    upperSiteCode.startsWith("#VALUE") ||
+    upperSiteCode.startsWith("#NAME")
+  ) {
+    return null
+  }
   const newSiteCode = explicitNewSiteCode || autoSiteCode(selectedSiteId)
   
-  const newEmpCode = autoEmpCode()
+  const explicitNewEmpCode = getCellValue(headers, row, TEMP_COLUMN_ALIASES.new_emp_code)
+  const newEmpCode = explicitNewEmpCode || autoEmpCode()
+  
   const salary = toNumber(getCellValue(headers, row, TEMP_COLUMN_ALIASES.salary))
 
   if (!employeeName || !branchCode || !siteCode || !employeeCode) {
@@ -1537,10 +1889,11 @@ function mapTemporaryAttendanceRow(
     new_site_code: newSiteCode,
     site_name: getCellValue(headers, row, TEMP_COLUMN_ALIASES.site_name),
     salary_type_id: getCellValue(headers, row, TEMP_COLUMN_ALIASES.salary_type_id),
-    designation_id: getCellValue(headers, row, TEMP_COLUMN_ALIASES.designation_id),
-    designation_name: getCellValue(headers, row, TEMP_COLUMN_ALIASES.designation_name),
-    duty_id: getCellValue(headers, row, TEMP_COLUMN_ALIASES.duty_id),
-    duty_name: getCellValue(headers, row, TEMP_COLUMN_ALIASES.duty_name),
+    designation_id: designationId,
+    designation_name: designationName,
+    new_designation_name: newDesignationName,
+    duty_id: dutyId,
+    duty_name: dutyName,
     employee_code: employeeCode,
     new_emp_code: newEmpCode,
     employee_name: employeeName,

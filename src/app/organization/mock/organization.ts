@@ -14,7 +14,7 @@ export type OrganizationNode = {
 export const organizationData: OrganizationNode[] = [
   {
     id: "company",
-    name: "Company",
+    name: "Departments",
     head: "CEO",
     employeeCount: 500,
     monthlyPayroll: 50000000,
