@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { unassignedEmployees, assignEmployee } from "../mock/employees";
+import { fetchUnassignedEmployeesApi, assignEmployeeApi, UnassignedEmployeeItem } from "../services/masterDataService";
+import { assignEmployee } from "../mock/employees";
 import { organizationData } from "../mock/organization";
 import { designations } from "../mock/designations";
 import { toast } from "sonner";
@@ -26,13 +27,15 @@ import { toast } from "sonner";
 interface AddEmployeeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEmployeeAssigned?: () => void;
 }
 
-export function AddEmployeeModal({ open, onOpenChange }: AddEmployeeModalProps) {
+export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: AddEmployeeModalProps) {
   const [selectedEmpId, setSelectedEmpId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [subDepartmentId, setSubDepartmentId] = useState("");
   const [zoneId, setZoneId] = useState("");
+  const [unassignedList, setUnassignedList] = useState<UnassignedEmployeeItem[]>([]);
 
   // Reset form when opened
   useEffect(() => {
@@ -41,8 +44,14 @@ export function AddEmployeeModal({ open, onOpenChange }: AddEmployeeModalProps) 
       setDepartmentId("");
       setSubDepartmentId("");
       setZoneId("");
+      loadUnassignedPool();
     }
   }, [open]);
+
+  const loadUnassignedPool = async () => {
+    const data = await fetchUnassignedEmployeesApi();
+    setUnassignedList(data);
+  };
 
   // Top level departments (children of Company)
   const departments = useMemo(() => {
@@ -68,35 +77,28 @@ export function AddEmployeeModal({ open, onOpenChange }: AddEmployeeModalProps) 
     return ops?.children?.filter(c => c.name.includes("Zone")) || [];
   }, [departmentId, departments]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedEmpId || !departmentId) {
       toast.error("Please select at least an employee and a department.");
       return;
     }
 
-    // Determine the final node assignment
-    // If a zone is selected, use zone. If sub-dept selected, use sub-dept. Else use dept.
-    const targetNodeId = zoneId || subDepartmentId || departmentId;
-    
-    // Determine the department display name
-    let deptName = "";
-    if (zoneId) {
-      deptName = zones.find(z => z.id === zoneId)?.name || "Zone";
-    } else if (subDepartmentId) {
-      deptName = subDepartments.find(s => s.id === subDepartmentId)?.name || "Sub Department";
+    const payload = {
+      departmentId,
+      subDepartmentId: subDepartmentId || null,
+      zoneId: zoneId || null,
+      reportingManager: "TBD",
+      monthlySalary: 60000,
+    };
+
+    const success = await assignEmployeeApi(selectedEmpId, payload);
+    if (success) {
+      toast.success("Employee assigned successfully!");
+      if (onEmployeeAssigned) onEmployeeAssigned();
+      onOpenChange(false);
     } else {
-      deptName = departments.find(d => d.id === departmentId)?.name || "Department";
+      toast.error("Failed to assign employee.");
     }
-
-    assignEmployee(selectedEmpId, {
-      nodeId: targetNodeId,
-      department: deptName,
-      reportingManager: "TBD", // Could be enhanced to select a manager
-      monthlySalary: 60000, // Mock default
-    });
-
-    toast.success("Employee assigned successfully!");
-    onOpenChange(false);
   };
 
   return (
@@ -117,10 +119,10 @@ export function AddEmployeeModal({ open, onOpenChange }: AddEmployeeModalProps) 
                 <SelectValue placeholder="Select an employee" />
               </SelectTrigger>
               <SelectContent>
-                {unassignedEmployees.length === 0 ? (
+                {unassignedList.length === 0 ? (
                   <SelectItem value="none" disabled>No unassigned employees available</SelectItem>
                 ) : (
-                  unassignedEmployees.map(emp => (
+                  unassignedList.map(emp => (
                     <SelectItem key={emp.id} value={emp.id}>
                       {emp.name} - {emp.designation}
                     </SelectItem>

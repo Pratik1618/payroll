@@ -116,10 +116,12 @@ const TreeNode = ({
   );
 };
 
-export function OrganizationTree({ onSelect, selectedNodeId }: OrganizationTreeProps) {
+export function OrganizationTree({ onSelect, selectedNodeId, nodes }: OrganizationTreeProps) {
+  const treeData = nodes && nodes.length > 0 ? nodes : organizationData;
+
   return (
-    <div className="overflow-y-auto max-h-[calc(100vh-200px)] pr-4 custom-scrollbar">
-      {organizationData.map((node) => (
+    <div className="overflow-y-auto max-h-[calc(100vh-200px)] pr-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      {treeData.map((node) => (
         <TreeNode
           key={node.id}
           node={node}

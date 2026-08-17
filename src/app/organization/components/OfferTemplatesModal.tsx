@@ -40,6 +40,8 @@ import {
   X,
   Copy,
 } from "lucide-react";
+import { fetchOfferTemplatesApi, uploadOfferTemplateApi } from "../services/masterDataService";
+import { useEffect } from "react";
 import { getOfferTemplates, OfferTemplate, addOfferTemplate } from "../mock/offerTemplates";
 import { toast } from "sonner";
 
@@ -57,6 +59,21 @@ export function OfferTemplatesModal({
   const [templates, setTemplates] = useState<OfferTemplate[]>(() => getOfferTemplates());
   const [selectedTpl, setSelectedTpl] = useState<OfferTemplate | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      loadTemplates();
+    }
+  }, [open]);
+
+  const loadTemplates = async () => {
+    const data = await fetchOfferTemplatesApi();
+    if (data && data.length > 0) {
+      setTemplates(data);
+    } else {
+      setTemplates(getOfferTemplates());
+    }
+  };
 
   // New Template Form State
   const [name, setName] = useState("");
@@ -77,31 +94,30 @@ export function OfferTemplatesModal({
     onOpenChange(false);
   };
 
-  const handleCreateTemplate = () => {
+  const handleCreateTemplate = async () => {
     if (!name.trim()) {
       toast.error("Template Name is required.");
       return;
     }
 
-    addOfferTemplate({
-      name: name.trim(),
-      category,
-      description: description.trim() || "Custom offer letter template.",
-      noticePeriodDays: parseInt(noticePeriod) || 30,
-      validityDays: parseInt(validity) || 15,
-      probationMonths: 6,
-      isDefault: false,
-      terms: [
-        "Standard terms and conditions as specified in this offer template.",
-        "Probation and notice period clauses subject to employment contract.",
-      ],
-    });
+    const formData = new FormData();
+    formData.append("name", name.trim());
+    formData.append("category", category);
+    formData.append("description", description.trim() || "Default standard offer letter template");
+    formData.append("noticePeriodDays", noticePeriod || "30");
+    formData.append("validityDays", validity || "15");
+    formData.append("probationMonths", "6");
 
-    toast.success(`New offer template "${name.trim()}" created successfully!`);
-    refreshTemplates();
-    setIsCreateOpen(false);
-    setName("");
-    setDescription("");
+    const created = await uploadOfferTemplateApi(formData);
+    if (created) {
+      toast.success(`New offer template "${name.trim()}" uploaded successfully!`);
+      loadTemplates();
+      setIsCreateOpen(false);
+      setName("");
+      setDescription("");
+    } else {
+      toast.error("Failed to upload offer template.");
+    }
   };
 
   return (

@@ -40,8 +40,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# documentation
+# documentation (keep README.md)
 docs/
-
 manual_attendance_upload_2_api.md
 organization-management-prd-plan.md
+organization_management_api_docs.md
+
+# helper/seed scripts
+post_departments.js
+post_designations.js
+post_salary_components.js
+delete_all_departments.js

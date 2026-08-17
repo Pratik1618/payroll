@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OrganizationTree } from "./components/OrganizationTree";
 import { QuickActions } from "./components/QuickActions";
@@ -10,12 +10,29 @@ import { EmployeesTable } from "./components/EmployeesTable";
 import { SalaryCostTab } from "./components/SalaryCostTab";
 import { OfferManagementModule } from "./components/OfferManagementModule";
 import { organizationData, OrganizationNode } from "./mock/organization";
+import { fetchOrgTree } from "./services/masterDataService";
 import { MainLayout } from "@/components/ui/layout/main-layout";
 import { Building2, FileCheck } from "lucide-react";
 
 export default function OrganizationManagementPage() {
+  const [treeNodes, setTreeNodes] = useState<OrganizationNode[]>(organizationData);
   const [selectedNode, setSelectedNode] = useState<OrganizationNode>(organizationData[0]);
   const [activeMainTab, setActiveMainTab] = useState<"hierarchy" | "offers">("hierarchy");
+
+  useEffect(() => {
+    loadOrgTree();
+  }, []);
+
+  const loadOrgTree = async () => {
+    const data = await fetchOrgTree();
+    if (data && data.length > 0) {
+      setTreeNodes(data);
+      setSelectedNode((prev) => {
+        const found = data.find((n) => n.id === prev.id);
+        return found || data[0];
+      });
+    }
+  };
 
   return (
     <MainLayout>
@@ -30,8 +47,8 @@ export default function OrganizationManagementPage() {
             <div className="flex flex-col">
               <h1 className="text-xl font-semibold tracking-tight">Organization Management</h1>
               <p className="text-xs text-muted-foreground">
-                {activeMainTab === "hierarchy" 
-                  ? "Manage department hierarchy, employees, and zones." 
+                {activeMainTab === "hierarchy"
+                  ? "Manage department hierarchy, employees, and zones."
                   : "Track candidate offer letters and salary CTC breakdowns."}
               </p>
             </div>
@@ -58,26 +75,27 @@ export default function OrganizationManagementPage() {
                   Organization Structure
                 </div>
                 <div className="flex-1 p-2 overflow-hidden">
-                  <OrganizationTree 
-                    selectedNodeId={selectedNode.id} 
-                    onSelect={setSelectedNode} 
+                  <OrganizationTree
+                    selectedNodeId={selectedNode.id}
+                    onSelect={setSelectedNode}
+                    nodes={treeNodes}
                   />
                 </div>
               </aside>
 
               {/* Right Panel: Dashboard with Action Buttons inside tab screen */}
-              <main className="flex-1 overflow-y-auto custom-scrollbar bg-background border rounded-lg shadow-sm p-6">
+              <main className="flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-background border rounded-lg shadow-sm p-6">
                 {/* Header Action Bar inside Tab Screen */}
                 <div className="mb-6 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 pb-4 border-b">
                   <div>
                     <h2 className="text-xl font-bold tracking-tight mb-1">{selectedNode.name}</h2>
                     <p className="text-xs text-muted-foreground">Dashboard & Hierarchy Metrics</p>
                   </div>
-                  
+
                   {/* Action buttons embedded inside tab screen */}
                   <QuickActions />
                 </div>
-                
+
                 <SummaryCards node={selectedNode} />
 
                 <Tabs defaultValue="overview" className="mt-8">
@@ -86,15 +104,15 @@ export default function OrganizationManagementPage() {
                     <TabsTrigger value="employees" className="py-2 text-xs md:text-sm">Employees</TabsTrigger>
                     <TabsTrigger value="salary" className="py-2 text-xs md:text-sm">Salary Cost</TabsTrigger>
                   </TabsList>
-                  
+
                   <TabsContent value="overview">
-                    <OverviewTab node={selectedNode} />
+                    <OverviewTab node={selectedNode} onDeleteSuccess={() => setSelectedNode(organizationData[0])} />
                   </TabsContent>
-                  
+
                   <TabsContent value="employees">
                     <EmployeesTable nodeId={selectedNode.id} />
                   </TabsContent>
-                  
+
                   <TabsContent value="salary">
                     <SalaryCostTab node={selectedNode} />
                   </TabsContent>
@@ -104,7 +122,7 @@ export default function OrganizationManagementPage() {
           </TabsContent>
 
           {/* Tab 2: Offer Letter Management Screen */}
-          <TabsContent value="offers" className="m-0 border-0 p-6 focus-visible:outline-none flex-1">
+          <TabsContent value="offers" className="m-0 border-0 p-6 focus-visible:outline-none flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <OfferManagementModule />
           </TabsContent>
         </Tabs>

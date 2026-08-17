@@ -810,12 +810,8 @@
     };
 
 
-  useEffect(() => {
-    if (finalSalary.length > 0) {
-      localStorage.setItem("finalSalaryData", JSON.stringify(finalSalary));
-      console.log("🟢 Final Salary stored in Local Storage!");
-    }
-  }, [finalSalary]);
+
+
 
 
     const renderStepContent = () => {
@@ -1258,8 +1254,8 @@
           otHours: emp.overtime
         }));
 
-        localStorage.setItem("reviewData", JSON.stringify(earnedData));
-        console.log("✅ Earned salary structure saved to localStorage");
+
+
       }
     }, [currentStep, payrollCalculations]);
 

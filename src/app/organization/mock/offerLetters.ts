@@ -21,7 +21,7 @@ export interface OfferLetter {
 export const initialOfferLetters: OfferLetter[] = [
   {
     id: "OFF-2026-001",
-    tid: "TMP-84920",
+    tid: "",
     candidateName: "Aarav Sharma",
     candidateEmail: "aarav.sharma@example.com",
     designation: "Software Engineer",
@@ -34,14 +34,14 @@ export const initialOfferLetters: OfferLetter[] = [
     status: "Sent",
     salaryComponents: [
       { id: "c_basic", name: "Basic Salary", type: "earning", calcType: "fixed", value: 50000, formulaBaseIds: [] },
-      { id: "c_hra", name: "House Rent Allowance (HRA)", type: "earning", calcType: "fixed", value: 25000, formulaBaseIds: [] },
+      { id: "c_hra", name: "House Rent Allowance", type: "earning", calcType: "fixed", value: 25000, formulaBaseIds: [] },
       { id: "c_special", name: "Special Allowance", type: "earning", calcType: "fixed", value: 20000, formulaBaseIds: [] },
-      { id: "c_epf", name: "PF (Employer)", type: "employer_contribution", calcType: "fixed", value: 1800, formulaBaseIds: [] },
+      { id: "c_epf", name: "Provident Fund Employer", type: "employer_contribution", calcType: "fixed", value: 1800, formulaBaseIds: [] },
     ],
   },
   {
     id: "OFF-2026-002",
-    tid: "TMP-30219",
+    tid: "",
     candidateName: "Riya Verma",
     candidateEmail: "riya.verma@example.com",
     designation: "HR Business Partner",
@@ -54,14 +54,14 @@ export const initialOfferLetters: OfferLetter[] = [
     status: "Accepted",
     salaryComponents: [
       { id: "c_basic", name: "Basic Salary", type: "earning", calcType: "fixed", value: 37500, formulaBaseIds: [] },
-      { id: "c_hra", name: "House Rent Allowance (HRA)", type: "earning", calcType: "fixed", value: 18750, formulaBaseIds: [] },
+      { id: "c_hra", name: "House Rent Allowance", type: "earning", calcType: "fixed", value: 18750, formulaBaseIds: [] },
       { id: "c_special", name: "Special Allowance", type: "earning", calcType: "fixed", value: 16950, formulaBaseIds: [] },
-      { id: "c_epf", name: "PF (Employer)", type: "employer_contribution", calcType: "fixed", value: 1800, formulaBaseIds: [] },
+      { id: "c_epf", name: "Provident Fund Employer", type: "employer_contribution", calcType: "fixed", value: 1800, formulaBaseIds: [] },
     ],
   },
   {
     id: "OFF-2026-003",
-    tid: "TMP-71840",
+    tid: "TID-2026-71840",
     candidateName: "Vikram Patel",
     candidateEmail: "vikram.patel@example.com",
     designation: "Senior Finance Manager",
@@ -74,14 +74,14 @@ export const initialOfferLetters: OfferLetter[] = [
     status: "Joined",
     salaryComponents: [
       { id: "c_basic", name: "Basic Salary", type: "earning", calcType: "fixed", value: 75000, formulaBaseIds: [] },
-      { id: "c_hra", name: "House Rent Allowance (HRA)", type: "earning", calcType: "fixed", value: 37500, formulaBaseIds: [] },
+      { id: "c_hra", name: "House Rent Allowance", type: "earning", calcType: "fixed", value: 37500, formulaBaseIds: [] },
       { id: "c_special", name: "Special Allowance", type: "earning", calcType: "fixed", value: 35700, formulaBaseIds: [] },
-      { id: "c_epf", name: "PF (Employer)", type: "employer_contribution", calcType: "fixed", value: 1800, formulaBaseIds: [] },
+      { id: "c_epf", name: "Provident Fund Employer", type: "employer_contribution", calcType: "fixed", value: 1800, formulaBaseIds: [] },
     ],
   },
   {
     id: "OFF-2026-004",
-    tid: "TMP-49102",
+    tid: "",
     candidateName: "Ananya Iyer",
     candidateEmail: "ananya.iyer@example.com",
     designation: "Marketing Specialist",
@@ -94,9 +94,9 @@ export const initialOfferLetters: OfferLetter[] = [
     status: "Declined",
     salaryComponents: [
       { id: "c_basic", name: "Basic Salary", type: "earning", calcType: "fixed", value: 31250, formulaBaseIds: [] },
-      { id: "c_hra", name: "House Rent Allowance (HRA)", type: "earning", calcType: "fixed", value: 15625, formulaBaseIds: [] },
+      { id: "c_hra", name: "House Rent Allowance", type: "earning", calcType: "fixed", value: 15625, formulaBaseIds: [] },
       { id: "c_special", name: "Special Allowance", type: "earning", calcType: "fixed", value: 13825, formulaBaseIds: [] },
-      { id: "c_epf", name: "PF (Employer)", type: "employer_contribution", calcType: "fixed", value: 1800, formulaBaseIds: [] },
+      { id: "c_epf", name: "Provident Fund Employer", type: "employer_contribution", calcType: "fixed", value: 1800, formulaBaseIds: [] },
     ],
   },
 ];
@@ -112,7 +112,13 @@ export function addOfferLetter(
 ): OfferLetter {
   const count = offerLettersStore.length + 1;
   const id = `OFF-2026-${String(count).padStart(3, "0")}`;
-  const tid = newOffer.tid || `TMP-${Math.floor(10000 + Math.random() * 90000)}`;
+  const initialStatus = newOffer.status || "Sent";
+  
+  // TID is generated ONLY when status is Joined
+  const tid = initialStatus === "Joined" 
+    ? (newOffer.tid || `TID-2026-${Math.floor(10000 + Math.random() * 90000)}`)
+    : "";
+
   const now = new Date();
   const issuedDate = now.toISOString().split("T")[0];
   
@@ -132,7 +138,7 @@ export function addOfferLetter(
     monthlyCtc: newOffer.monthlyCtc,
     issuedDate,
     validTill,
-    status: newOffer.status || "Sent",
+    status: initialStatus,
     salaryComponents: newOffer.salaryComponents || [],
   };
 
@@ -143,7 +149,19 @@ export function addOfferLetter(
 export function updateOfferStatus(id: string, status: OfferStatus): OfferLetter | null {
   const index = offerLettersStore.findIndex((o) => o.id === id);
   if (index !== -1) {
-    offerLettersStore[index] = { ...offerLettersStore[index], status };
+    const current = offerLettersStore[index];
+    let newTid = current.tid;
+
+    // Generate TID ONLY when status changes to Joined
+    if (status === "Joined" && !newTid) {
+      newTid = `TID-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    }
+
+    offerLettersStore[index] = { 
+      ...current, 
+      status, 
+      tid: newTid 
+    };
     return offerLettersStore[index];
   }
   return null;

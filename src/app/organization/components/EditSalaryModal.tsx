@@ -16,6 +16,8 @@ import { SalaryComp, DEFAULT_COMPONENTS } from "../types/salary";
 import { useSalaryEngine } from "../hooks/useSalaryEngine";
 import { SalaryStructureBuilder } from "./SalaryStructureBuilder";
 
+import { updateEmployeeSalaryStructureApi } from "../services/masterDataService";
+
 interface EditSalaryModalProps {
   employee: Employee | null;
   onOpenChange: (open: boolean) => void;
@@ -24,6 +26,7 @@ interface EditSalaryModalProps {
 
 export function EditSalaryModal({ employee, onOpenChange, onSave }: EditSalaryModalProps) {
   const [components, setComponents] = useState<SalaryComp[]>(DEFAULT_COMPONENTS);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (employee) {
@@ -41,14 +44,25 @@ export function EditSalaryModal({ employee, onOpenChange, onSave }: EditSalaryMo
 
   const calculations = useSalaryEngine(components);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (calculations.unresolvedComps.length > 0) {
       toast.error("Please fix circular dependencies before saving.");
       return;
     }
-    onSave(calculations.grossMonthly);
-    toast.success("Salary structure updated successfully.");
-    onOpenChange(false);
+
+    if (!employee) return;
+
+    setIsSaving(true);
+    const success = await updateEmployeeSalaryStructureApi(employee.id, components);
+    setIsSaving(false);
+
+    if (success) {
+      onSave(calculations.grossMonthly);
+      toast.success("Salary structure updated successfully.");
+      onOpenChange(false);
+    } else {
+      toast.error("Failed to update salary structure.");
+    }
   };
 
   return (

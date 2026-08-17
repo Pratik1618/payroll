@@ -1,12 +1,11 @@
-"use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { employeesData, removeEmployee, transferEmployee, updateEmployee, Employee } from "../mock/employees";
+import { removeEmployee, transferEmployee, updateEmployee, Employee } from "../mock/employees";
+import { fetchEmployeesApi, editEmployeeApi, transferEmployeeApi, unassignEmployeeApi } from "../services/masterDataService";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Edit2, Replace, Trash2, Wallet } from "lucide-react";
+import { MoreVertical, Edit2, Replace, Trash2, Wallet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -26,8 +25,8 @@ const AvatarPlaceholder = ({ name }: { name: string }) => {
 };
 
 export function EmployeesTable({ nodeId }: { nodeId?: string }) {
-  // We use local state to trigger re-renders since we mutate the array directly
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [employeesList, setEmployeesList] = useState<Employee[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [editingEmp, setEditingEmp] = useState<Employee | null>(null);
   const [editingSalaryEmp, setEditingSalaryEmp] = useState<Employee | null>(null);
   const [transferringEmp, setTransferringEmp] = useState<Employee | null>(null);
@@ -44,16 +43,25 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
 
   const AVAILABLE_ZONES = ["West", "East", "North", "South"];
 
-  const forceUpdate = () => setRefreshKey(prev => prev + 1);
+  useEffect(() => {
+    loadEmployees();
+  }, [nodeId]);
 
-  const filteredEmployees = nodeId 
-    ? employeesData.filter((emp) => emp.nodeId === nodeId)
-    : employeesData;
+  const loadEmployees = async () => {
+    setIsLoading(true);
+    const data = await fetchEmployeesApi(nodeId);
+    setEmployeesList(data);
+    setIsLoading(false);
+  };
 
-  const handleRemove = (empId: string) => {
-    removeEmployee(empId);
-    toast.success("Employee removed and sent back to unassigned pool.");
-    forceUpdate();
+  const handleRemove = async (empId: string) => {
+    const success = await unassignEmployeeApi(empId);
+    if (success) {
+      toast.success("Employee removed and sent back to unassigned pool.");
+      loadEmployees();
+    } else {
+      toast.error("Failed to unassign employee.");
+    }
   };
 
   const openEdit = (emp: Employee) => {
@@ -63,16 +71,22 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
     setEditZones(emp.coveredZones ? [...emp.coveredZones] : []);
   };
 
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (editingEmp) {
-      updateEmployee(editingEmp.id, { 
-        designation: editDesignation, 
+      const payload: Partial<Employee> = {
+        designation: editDesignation,
         monthlySalary: editSalary,
-        coveredZones: editZones.length > 0 ? editZones : undefined
-      });
-      toast.success("Employee details updated.");
-      setEditingEmp(null);
-      forceUpdate();
+        coveredZones: editZones.length > 0 ? editZones : undefined,
+      };
+
+      const success = await editEmployeeApi(editingEmp.id, payload);
+      if (success) {
+        toast.success("Employee details updated.");
+        setEditingEmp(null);
+        loadEmployees();
+      } else {
+        toast.error("Failed to update employee details.");
+      }
     }
   };
 
@@ -83,47 +97,29 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
     setTransferZoneId("");
   };
 
-  const saveTransfer = () => {
+  const saveTransfer = async () => {
     if (transferringEmp && transferDeptId) {
-      const depts = organizationData[0].children || [];
-      const dept = depts.find(d => d.id === transferDeptId);
-      
-      let targetId = transferDeptId;
-      let targetName = dept?.name || "Unknown";
+      const payload = {
+        targetDepartmentId: transferDeptId,
+        targetSubDepartmentId: transferSubDeptId && transferSubDeptId !== "none" ? transferSubDeptId : null,
+        targetZone: transferZoneId && transferZoneId !== "none" ? transferZoneId : null,
+      };
 
-      if (transferZoneId && transferZoneId !== "none") {
-        const zone = dept?.children?.find(z => z.id === transferZoneId);
-        if (zone) {
-          targetId = zone.id;
-          targetName = zone.name;
-        }
-      } else if (transferSubDeptId && transferSubDeptId !== "none") {
-        const subDept = dept?.children?.find(s => s.id === transferSubDeptId);
-        if (subDept) {
-          targetId = subDept.id;
-          targetName = subDept.name;
-        }
+      const success = await transferEmployeeApi(transferringEmp.id, payload);
+      if (success) {
+        toast.success("Employee transferred successfully.");
+        setTransferringEmp(null);
+        loadEmployees();
+      } else {
+        toast.error("Failed to transfer employee.");
       }
-      
-      transferEmployee(transferringEmp.id, targetId, targetName);
-      toast.success("Employee transferred successfully.");
-      setTransferringEmp(null);
-      forceUpdate();
     }
   };
 
-  if (filteredEmployees.length === 0) {
-    return (
-      <div className="mt-8 text-center p-8 border border-dashed rounded-lg text-muted-foreground">
-        No employees assigned directly to this organizational unit.
-      </div>
-    );
-  }
-
   const departments = organizationData[0]?.children || [];
-  
-  const transferSubDepartments = transferDeptId 
-    ? departments.find(d => d.id === transferDeptId)?.children?.filter(c => !c.name.includes("Zone")) || [] 
+
+  const transferSubDepartments = transferDeptId
+    ? departments.find(d => d.id === transferDeptId)?.children?.filter(c => !c.name.includes("Zone")) || []
     : [];
 
   const transferZones = transferDeptId === "operations"
@@ -131,7 +127,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
     : [];
 
   return (
-    <div className="mt-4 border rounded-md overflow-hidden">
+    <div className="mt-4 border rounded-md overflow-hidden bg-background shadow-sm">
       <Table>
         <TableHeader className="bg-muted/50">
           <TableRow>
@@ -145,7 +141,21 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredEmployees.map((emp) => (
+          {isLoading ? (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                Loading employees...
+              </TableCell>
+            </TableRow>
+          ) : employeesList.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                No employees assigned directly to this organizational unit.
+              </TableCell>
+            </TableRow>
+          ) : (
+            employeesList.map((emp) => (
             <TableRow key={emp.id} className="hover:bg-muted/20">
               <TableCell className="flex items-center gap-3 py-3">
                 <AvatarPlaceholder name={emp.name} />
@@ -195,7 +205,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
                 </DropdownMenu>
               </TableCell>
             </TableRow>
-          ))}
+          )))}
         </TableBody>
       </Table>
 
@@ -220,7 +230,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
                 <div className="flex flex-wrap gap-4 mt-1">
                   {AVAILABLE_ZONES.map(zone => (
                     <div key={zone} className="flex items-center space-x-2">
-                      <Checkbox 
+                      <Checkbox
                         id={`edit-zone-${zone}`}
                         checked={editZones.includes(zone)}
                         onCheckedChange={(checked) => {
@@ -256,8 +266,8 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label>Select New Department</Label>
-              <Select 
-                value={transferDeptId} 
+              <Select
+                value={transferDeptId}
                 onValueChange={(val) => {
                   setTransferDeptId(val);
                   setTransferSubDeptId("");
@@ -274,7 +284,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {transferSubDepartments.length > 0 && (
               <div className="grid gap-2">
                 <Label>Select Sub Department (Optional)</Label>
@@ -322,7 +332,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
         onSave={(newSalary) => {
           if (editingSalaryEmp) {
             updateEmployee(editingSalaryEmp.id, { monthlySalary: newSalary });
-            forceUpdate();
+            // forceUpdate();
           }
         }}
       />

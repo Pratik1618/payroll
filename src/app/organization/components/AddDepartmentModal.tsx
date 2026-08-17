@@ -21,20 +21,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { organizationData, addDepartment } from "../mock/organization";
+import { organizationData, DesignationQuantity } from "../mock/organization";
+import { createDepartmentApi, fetchDesignations } from "../services/masterDataService";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AddDepartmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDepartmentCreated?: () => void;
 }
 
-export function AddDepartmentModal({ open, onOpenChange }: AddDepartmentModalProps) {
+export function AddDepartmentModal({ open, onOpenChange, onDepartmentCreated }: AddDepartmentModalProps) {
   const [deptName, setDeptName] = useState("");
   const [deptHead, setDeptHead] = useState("");
   const [description, setDescription] = useState("");
   const [deptType, setDeptType] = useState<"root" | "sub">("root");
   const [parentDeptId, setParentDeptId] = useState("");
+  const [designationQuantities, setDesignationQuantities] = useState<DesignationQuantity[]>([]);
+  const [selectedDesignation, setSelectedDesignation] = useState("");
+  const [designationQty, setDesignationQty] = useState<number>(1);
+  const [availableDesignations, setAvailableDesignations] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form when opened
   useEffect(() => {
@@ -44,15 +52,48 @@ export function AddDepartmentModal({ open, onOpenChange }: AddDepartmentModalPro
       setDescription("");
       setDeptType("root");
       setParentDeptId("");
+      setDesignationQuantities([]);
+      setSelectedDesignation("");
+      setDesignationQty(1);
+      loadDesignationsList();
     }
   }, [open]);
+
+  const loadDesignationsList = async () => {
+    const list = await fetchDesignations();
+    setAvailableDesignations(list);
+  };
 
   // Top level departments (children of Company)
   const departments = useMemo(() => {
     return organizationData[0]?.children || [];
-  }, [open]); // Refresh when opened
+  }, [open]);
 
-  const handleSave = () => {
+  const handleAddDesignationQty = () => {
+    if (!selectedDesignation) {
+      toast.error("Please select a designation.");
+      return;
+    }
+    if (designationQty <= 0) {
+      toast.error("Quantity must be at least 1.");
+      return;
+    }
+
+    if (designationQuantities.some(d => d.designation === selectedDesignation)) {
+      toast.error("This designation has already been added.");
+      return;
+    }
+
+    setDesignationQuantities(prev => [...prev, { designation: selectedDesignation, quantity: designationQty }]);
+    setSelectedDesignation("");
+    setDesignationQty(1);
+  };
+
+  const handleRemoveDesignationQty = (designationName: string) => {
+    setDesignationQuantities(prev => prev.filter(d => d.designation !== designationName));
+  };
+
+  const handleSave = async () => {
     if (!deptName.trim()) {
       toast.error("Department Name is required.");
       return;
@@ -63,14 +104,23 @@ export function AddDepartmentModal({ open, onOpenChange }: AddDepartmentModalPro
       return;
     }
 
-    addDepartment({
-      name: deptName,
-      head: deptHead || "TBD",
-      description: description,
-    }, deptType === "root" ? "company" : parentDeptId);
+    setIsSubmitting(true);
+    const created = await createDepartmentApi({
+      name: deptName.trim(),
+      head: deptHead.trim() || "TBD",
+      parentId: deptType === "root" ? "company" : parentDeptId,
+      description: description.trim() || undefined,
+      designationQuantities: designationQuantities.length > 0 ? designationQuantities : undefined,
+    });
+    setIsSubmitting(false);
 
-    toast.success(`${deptName} has been added successfully!`);
-    onOpenChange(false);
+    if (created) {
+      toast.success(`Department '${deptName.trim()}' has been added successfully!`);
+      if (onDepartmentCreated) onDepartmentCreated();
+      onOpenChange(false);
+    } else {
+      toast.error("Failed to create department. Please try again.");
+    }
   };
 
   return (
@@ -155,10 +205,67 @@ export function AddDepartmentModal({ open, onOpenChange }: AddDepartmentModalPro
             />
           </div>
 
+          {/* Designation Headcount Quantity Allocation */}
+          <div className="grid gap-2 pt-2 border-t">
+            <Label className="font-semibold text-xs">Set Designation Headcount Quantities</Label>
+            <div className="flex items-center gap-2">
+              <Select value={selectedDesignation} onValueChange={setSelectedDesignation}>
+                <SelectTrigger className="flex-1 text-xs">
+                  <SelectValue placeholder="Select Designation" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableDesignations.map((d) => (
+                    <SelectItem key={d} value={d} className="text-xs">
+                      {d}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                min={1}
+                value={designationQty}
+                onChange={(e) => setDesignationQty(Number(e.target.value))}
+                className="w-20 text-xs"
+                placeholder="Qty"
+              />
+              <Button type="button" size="sm" variant="secondary" onClick={handleAddDesignationQty} className="h-9 px-3">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {designationQuantities.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2 max-h-28 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900 border rounded-md">
+                {designationQuantities.map((item) => (
+                  <div key={item.designation} className="flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border rounded-md text-xs font-medium shadow-sm">
+                    <span>{item.designation}</span>
+                    <span className="font-bold text-blue-600 dark:text-blue-400">({item.quantity})</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDesignationQty(item.designation)}
+                      className="text-slate-400 hover:text-red-600 transition-colors ml-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSave}>Create Department</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
+          <Button onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Create Department"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

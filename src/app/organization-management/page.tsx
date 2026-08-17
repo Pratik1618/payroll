@@ -37,6 +37,9 @@ import {
 } from "lucide-react"
 import { AddStateModal } from "../organization/components/AddStateModal"
 import { AddCityModal } from "../organization/components/AddCityModal"
+import { SafeDeleteDepartmentModal } from "../organization/components/SafeDeleteDepartmentModal"
+import { OrganizationNode } from "../organization/mock/organization"
+import { getStates, getCities } from "../organization/mock/statesAndCities"
 
 interface Department {
   id: string
@@ -52,6 +55,7 @@ interface Branch {
   id: string
   name: string
   code: string
+  state?: string
   city: string
   manager: string
   status: "Active" | "Inactive"
@@ -62,6 +66,7 @@ interface Branch {
 interface BranchFormState {
   name: string
   code: string
+  state: string
   city: string
   manager: string
   status: "Active" | "Inactive"
@@ -142,6 +147,7 @@ const initialBranches: Branch[] = [
 const emptyBranchForm: BranchFormState = {
   name: "",
   code: "",
+  state: "",
   city: "",
   manager: "",
   status: "Active",
@@ -165,12 +171,17 @@ export default function OrganizationManagementPage() {
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false)
   const [stateDialogOpen, setStateDialogOpen] = useState(false)
   const [cityDialogOpen, setCityDialogOpen] = useState(false)
+
+  const [deleteTargetDeptNode, setDeleteTargetDeptNode] = useState<OrganizationNode | null>(null)
   const [branchMode, setBranchMode] = useState<"create" | "edit">("create")
   const [departmentMode, setDepartmentMode] = useState<"create" | "edit">("create")
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null)
   const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null)
   const [branchForm, setBranchForm] = useState<BranchFormState>(emptyBranchForm)
   const [departmentForm, setDepartmentForm] = useState<DepartmentFormState>(emptyDepartmentForm)
+
+  const statesList = useMemo(() => getStates(), [stateDialogOpen, cityDialogOpen, branchDialogOpen])
+  const citiesList = useMemo(() => getCities(), [stateDialogOpen, cityDialogOpen, branchDialogOpen])
 
   const selectedBranch = branches.find((branch) => branch.id === selectedBranchId) ?? null
 
@@ -213,9 +224,11 @@ export default function OrganizationManagementPage() {
   const openEditBranchDialog = (branch: Branch) => {
     setBranchMode("edit")
     setEditingBranchId(branch.id)
+    const cityMatch = citiesList.find((c) => c.name.toLowerCase() === branch.city.toLowerCase())
     setBranchForm({
       name: branch.name,
       code: branch.code,
+      state: branch.state || (cityMatch ? cityMatch.stateId : ""),
       city: branch.city,
       manager: branch.manager,
       status: branch.status,
@@ -410,6 +423,7 @@ export default function OrganizationManagementPage() {
               <Building className="h-4 w-4" />
               Add City
             </Button>
+
           </div>
         </div>
 
@@ -603,7 +617,7 @@ export default function OrganizationManagementPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDeleteDepartment(department.id)}
+                              onClick={() => setDeleteTargetDeptNode({ id: department.id, name: department.name, employeeCount: department.employeeCount, description: department.description })}
                               className="text-destructive hover:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -653,12 +667,46 @@ export default function OrganizationManagementPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-city">City</Label>
-              <Input
+              <Label htmlFor="branch-state">Select State</Label>
+              <select
+                id="branch-state"
+                value={branchForm.state}
+                onChange={(event) => {
+                  const selectedState = event.target.value
+                  setBranchForm((current) => ({
+                    ...current,
+                    state: selectedState,
+                    city: "",
+                  }))
+                }}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+              >
+                <option value="">-- Select State --</option>
+                {statesList.map((st) => (
+                  <option key={st.id} value={st.id}>
+                    {st.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="branch-city">Select City</Label>
+              <select
                 id="branch-city"
                 value={branchForm.city}
                 onChange={(event) => setBranchForm((current) => ({ ...current, city: event.target.value }))}
-              />
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
+              >
+                <option value="">-- Select City --</option>
+                {(branchForm.state
+                  ? citiesList.filter((c) => c.stateId === branchForm.state || c.stateName === branchForm.state)
+                  : citiesList
+                ).map((ct) => (
+                  <option key={ct.id} value={ct.name}>
+                    {ct.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="branch-manager">Branch Manager</Label>
@@ -819,6 +867,18 @@ export default function OrganizationManagementPage() {
 
       <AddStateModal open={stateDialogOpen} onOpenChange={setStateDialogOpen} />
       <AddCityModal open={cityDialogOpen} onOpenChange={setCityDialogOpen} />
+
+      <SafeDeleteDepartmentModal
+        open={!!deleteTargetDeptNode}
+        onOpenChange={(open) => !open && setDeleteTargetDeptNode(null)}
+        node={deleteTargetDeptNode}
+        onDeleteSuccess={() => {
+          if (deleteTargetDeptNode) {
+            handleDeleteDepartment(deleteTargetDeptNode.id);
+            setDeleteTargetDeptNode(null);
+          }
+        }}
+      />
     </MainLayout>
   )
 }

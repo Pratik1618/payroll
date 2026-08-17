@@ -22,12 +22,7 @@ interface HeaderProps {
 }
 
 export function Header({ isSidebarCollapsed, onToggleSidebar }: HeaderProps) {
-   const [currentRole] = useState<"Payroll Team" | "Employee">(() => {
-     if (typeof window !== 'undefined') {
-       return (localStorage.getItem('role') as "Payroll Team" | "Employee") || "Payroll Team"
-     }
-     return "Payroll Team"
-   })
+   const [currentRole] = useState<"Payroll Team" | "Employee">("Payroll Team")
    const router = useRouter()
 
   const handleLogout = async () => {

@@ -241,19 +241,9 @@ export default function Form16PartBPage() {
   const [selectedEmpId, setSelectedEmpId] = useState<string>("");
   const [previewData, setPreviewData] = useState<any | null>(null);
 
-  // load finalSalaryData from localStorage on client
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem("finalSalaryData") || localStorage.getItem("reviewData") || "[]";
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) setPayrollRows(parsed);
-      else setPayrollRows([]);
-    } catch (e) {
-      console.error("Failed loading finalSalaryData:", e);
-      setPayrollRows([]);
-    }
-  }, []);
+  // TODO: Load payroll data from API instead of localStorage
+  // useEffect(() => { fetch('/api/payroll/...').then(...) }, []);
+
 
   const employeesForSelect = useMemo(() => {
     return payrollRows.map((r: any) => ({

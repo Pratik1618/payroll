@@ -69,7 +69,8 @@ import {
 import { organizationData } from "../mock/organization";
 import { GenerateOfferModal } from "./GenerateOfferModal";
 import { OfferTemplatesModal } from "./OfferTemplatesModal";
-import { toast } from "sonner";
+import { fetchOfferLettersApi, updateOfferStatusApi, deleteOfferLetterApi } from "../services/masterDataService";
+import { useEffect } from "react";
 
 export function OfferManagementModule() {
   const [offers, setOffers] = useState<OfferLetter[]>(() => getOfferLetters());
@@ -83,8 +84,17 @@ export function OfferManagementModule() {
 
   const departments = useMemo(() => organizationData[0]?.children || [], []);
 
-  const refreshOffers = () => {
-    setOffers([...getOfferLetters()]);
+  useEffect(() => {
+    refreshOffers();
+  }, [statusFilter, deptFilter]);
+
+  const refreshOffers = async () => {
+    const list = await fetchOfferLettersApi(statusFilter, deptFilter);
+    if (list && list.length > 0) {
+      setOffers(list);
+    } else {
+      setOffers([...getOfferLetters()]);
+    }
   };
 
   const filteredOffers = useMemo(() => {
@@ -121,16 +131,26 @@ export function OfferManagementModule() {
     return { total, pending, accepted, joined, declined, totalCtcOffered };
   }, [offers]);
 
-  const handleStatusChange = (id: string, newStatus: OfferStatus) => {
-    updateOfferStatus(id, newStatus);
-    refreshOffers();
-    toast.success(`Offer ${id} status updated to "${newStatus}"`);
+  const handleStatusChange = async (id: string, newStatus: OfferStatus) => {
+    const success = await updateOfferStatusApi(id, newStatus);
+    if (success) {
+      updateOfferStatus(id, newStatus);
+      refreshOffers();
+      toast.success(`Offer ${id} status updated to "${newStatus}"`);
+    } else {
+      toast.error(`Failed to update offer ${id} status.`);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    deleteOfferLetter(id);
-    refreshOffers();
-    toast.success(`Offer letter ${id} has been removed.`);
+  const handleDelete = async (id: string) => {
+    const success = await deleteOfferLetterApi(id);
+    if (success) {
+      deleteOfferLetter(id);
+      refreshOffers();
+      toast.success(`Offer letter ${id} has been removed.`);
+    } else {
+      toast.error(`Failed to delete offer letter ${id}.`);
+    }
   };
 
   const getStatusBadge = (status: OfferStatus) => {
@@ -371,7 +391,13 @@ export function OfferManagementModule() {
                     </TableCell>
                     <TableCell>{getStatusBadge(offer.status)}</TableCell>
                     <TableCell className="font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">
-                      {offer.tid || `TMP-${offer.id.replace(/[^0-9]/g, '')}`}
+                      {offer.tid ? (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                          {offer.tid}
+                        </Badge>
+                      ) : (
+                        <span className="text-slate-400 font-normal text-xs">--</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>

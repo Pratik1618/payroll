@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -20,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { addState } from "../mock/statesAndCities";
+import { fetchStates, createNextState } from "../services/masterDataService";
+import { StateItem } from "../mock/statesAndCities";
 import { toast } from "sonner";
-import { MapPin } from "lucide-react";
+import { MapPin, Loader2 } from "lucide-react";
 
 interface AddStateModalProps {
   open: boolean;
@@ -31,47 +31,52 @@ interface AddStateModalProps {
 }
 
 export function AddStateModal({ open, onOpenChange, onStateAdded }: AddStateModalProps) {
+  const [selectedStateId, setSelectedStateId] = useState("");
   const [stateName, setStateName] = useState("");
-  const [stateCode, setStateCode] = useState("");
-  const [region, setRegion] = useState("West");
-  const [country, setCountry] = useState("India");
+  const [zone, setZone] = useState("West");
   const [status, setStatus] = useState<"Active" | "Inactive">("Active");
-  const [description, setDescription] = useState("");
+  const [states, setStates] = useState<StateItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
+      setSelectedStateId("");
       setStateName("");
-      setStateCode("");
-      setRegion("West");
-      setCountry("India");
+      setZone("West");
       setStatus("Active");
-      setDescription("");
+      loadStates("West");
     }
   }, [open]);
 
-  const handleSave = () => {
+  const loadStates = async (zoneFilter?: string) => {
+    setIsLoading(true);
+    const data = await fetchStates(zoneFilter);
+    setStates(data);
+    setIsLoading(false);
+  };
+
+  const handleSave = async () => {
     if (!stateName.trim()) {
       toast.error("State Name is required.");
       return;
     }
 
-    if (!stateCode.trim()) {
-      toast.error("State Code is required.");
-      return;
-    }
-
-    addState({
+    setIsSubmitting(true);
+    const created = await createNextState({
       name: stateName.trim(),
-      code: stateCode.trim().toUpperCase(),
-      region,
-      country: country.trim() || "India",
+      zone,
       status,
-      description: description.trim(),
     });
+    setIsSubmitting(false);
 
-    toast.success(`State "${stateName.trim()}" has been added successfully!`);
-    if (onStateAdded) onStateAdded();
-    onOpenChange(false);
+    if (created) {
+      toast.success(`State "${created.name}" has been added successfully!`);
+      if (onStateAdded) onStateAdded();
+      onOpenChange(false);
+    } else {
+      toast.error("Failed to create state. Please try again.");
+    }
   };
 
   return (
@@ -93,6 +98,33 @@ export function AddStateModal({ open, onOpenChange, onStateAdded }: AddStateModa
 
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
+            <Label htmlFor="stateSelect">Select State</Label>
+            <Select
+              value={selectedStateId}
+              onValueChange={(val) => {
+                setSelectedStateId(val);
+                const found = states.find((s) => s.id === val);
+                if (found) {
+                  setStateName(found.name);
+                  setZone(found.zone || "West");
+                  setStatus(found.status);
+                }
+              }}
+            >
+              <SelectTrigger id="stateSelect">
+                <SelectValue placeholder="Select existing state" />
+              </SelectTrigger>
+              <SelectContent>
+                {states.map((st) => (
+                  <SelectItem key={st.id} value={st.id}>
+                    {st.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
             <Label htmlFor="stateName">State Name *</Label>
             <Input
               id="stateName"
@@ -104,21 +136,16 @@ export function AddStateModal({ open, onOpenChange, onStateAdded }: AddStateModa
 
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="stateCode">State Code *</Label>
-              <Input
-                id="stateCode"
-                placeholder="e.g. MH, KA"
-                value={stateCode}
-                onChange={(e) => setStateCode(e.target.value.toUpperCase())}
-                maxLength={5}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="region">Region / Zone</Label>
-              <Select value={region} onValueChange={setRegion}>
-                <SelectTrigger id="region">
-                  <SelectValue placeholder="Select region" />
+              <Label htmlFor="zone">Zone</Label>
+              <Select
+                value={zone}
+                onValueChange={(val) => {
+                  setZone(val);
+                  loadStates(val);
+                }}
+              >
+                <SelectTrigger id="zone">
+                  <SelectValue placeholder="Select zone" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="North">North</SelectItem>
@@ -129,18 +156,6 @@ export function AddStateModal({ open, onOpenChange, onStateAdded }: AddStateModa
                   <SelectItem value="North-East">North-East</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                placeholder="e.g. India"
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-              />
             </div>
 
             <div className="grid gap-2">
@@ -156,25 +171,22 @@ export function AddStateModal({ open, onOpenChange, onStateAdded }: AddStateModa
               </Select>
             </div>
           </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="Brief description or regional notes..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="resize-none"
-              rows={3}
-            />
-          </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Create State</Button>
+          <Button onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Create State"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

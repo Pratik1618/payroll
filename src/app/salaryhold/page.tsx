@@ -172,17 +172,6 @@ export default function SalaryHoldPage() {
   })
 
   useEffect(() => {
-    const stored = localStorage.getItem("employeeHoldData")
-    if (stored) {
-      setEmployeeHoldData(JSON.parse(stored))
-    }
-  }, [])
-
-  useEffect(() => {
-    localStorage.setItem("employeeHoldData", JSON.stringify(employeeHoldData))
-  }, [employeeHoldData])
-
-  useEffect(() => {
     setEmployeeHoldData((prev) => {
       const updated = { ...prev }
 

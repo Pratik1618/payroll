@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, FileText, MapPin, Building } from "lucide-react";
+import { Plus, Download, FileText, MapPin, Building, Layers } from "lucide-react";
 import { AddEmployeeModal } from "./AddEmployeeModal";
 import { AddDepartmentModal } from "./AddDepartmentModal";
 import { AddStateModal } from "./AddStateModal";
 import { AddCityModal } from "./AddCityModal";
 import { DesignationMasterModal } from "./DesignationMasterModal";
+import { SalaryComponentsMasterModal } from "./SalaryComponentsMasterModal";
 import { useRouter } from "next/navigation";
 
 export function QuickActions() {
@@ -16,6 +17,7 @@ export function QuickActions() {
   const [isAddStateOpen, setIsAddStateOpen] = useState(false);
   const [isAddCityOpen, setIsAddCityOpen] = useState(false);
   const [isDesignationMasterOpen, setIsDesignationMasterOpen] = useState(false);
+  const [isSalaryCompMasterOpen, setIsSalaryCompMasterOpen] = useState(false);
   const router = useRouter();
 
   return (
@@ -27,6 +29,10 @@ export function QuickActions() {
       <Button variant="outline" size="sm" className="hidden lg:flex" onClick={() => setIsDesignationMasterOpen(true)}>
         <FileText className="mr-2 h-4 w-4" />
         Designations
+      </Button>
+      <Button variant="outline" size="sm" className="hidden lg:flex" onClick={() => setIsSalaryCompMasterOpen(true)}>
+        <Layers className="mr-2 h-4 w-4 text-purple-600" />
+        Salary Components
       </Button>
       <Button size="sm" onClick={() => setIsAddEmployeeOpen(true)}>
         <Plus className="mr-2 h-4 w-4" />
@@ -45,11 +51,11 @@ export function QuickActions() {
         Add City
       </Button>
 
-      <AddEmployeeModal 
-        open={isAddEmployeeOpen} 
-        onOpenChange={setIsAddEmployeeOpen} 
+      <AddEmployeeModal
+        open={isAddEmployeeOpen}
+        onOpenChange={setIsAddEmployeeOpen}
       />
-      
+
       <AddDepartmentModal
         open={isAddDeptOpen}
         onOpenChange={(open) => {
@@ -79,10 +85,15 @@ export function QuickActions() {
           }
         }}
       />
-      
-      <DesignationMasterModal 
+
+      <DesignationMasterModal
         open={isDesignationMasterOpen}
         onOpenChange={setIsDesignationMasterOpen}
+      />
+
+      <SalaryComponentsMasterModal
+        open={isSalaryCompMasterOpen}
+        onOpenChange={setIsSalaryCompMasterOpen}
       />
     </div>
   );

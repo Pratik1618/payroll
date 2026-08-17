@@ -12,7 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -20,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getStates, addCity } from "../mock/statesAndCities";
+import { fetchStates, fetchCities, createNextCity } from "../services/masterDataService";
+import { StateItem, CityItem } from "../mock/statesAndCities";
 import { toast } from "sonner";
-import { Building } from "lucide-react";
+import { Building, Loader2 } from "lucide-react";
 
 interface AddCityModalProps {
   open: boolean;
@@ -32,26 +32,49 @@ interface AddCityModalProps {
 
 export function AddCityModal({ open, onOpenChange, onCityAdded }: AddCityModalProps) {
   const [cityName, setCityName] = useState("");
-  const [cityCode, setCityCode] = useState("");
   const [selectedStateId, setSelectedStateId] = useState("");
-  const [category, setCategory] = useState<"Metro" | "Non-Metro" | "Tier 1" | "Tier 2" | "Tier 3">("Tier 1");
+  const [selectedExistingCityId, setSelectedExistingCityId] = useState("");
   const [status, setStatus] = useState<"Active" | "Inactive">("Active");
-  const [description, setDescription] = useState("");
 
-  const states = useMemo(() => getStates(), [open]);
+  const [states, setStates] = useState<StateItem[]>([]);
+  const [stateCities, setStateCities] = useState<CityItem[]>([]);
+  const [isLoadingStates, setIsLoadingStates] = useState(false);
+  const [isLoadingCities, setIsLoadingCities] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
       setCityName("");
-      setCityCode("");
-      setSelectedStateId(states[0]?.id || "");
-      setCategory("Tier 1");
+      setSelectedExistingCityId("");
       setStatus("Active");
-      setDescription("");
+      loadInitialStates();
     }
-  }, [open, states]);
+  }, [open]);
 
-  const handleSave = () => {
+  const loadInitialStates = async () => {
+    setIsLoadingStates(true);
+    const data = await fetchStates();
+    setStates(data);
+    setIsLoadingStates(false);
+    if (data.length > 0) {
+      const defaultStateId = data[0].id;
+      setSelectedStateId(defaultStateId);
+      loadCitiesForState(defaultStateId);
+    }
+  };
+
+  const loadCitiesForState = async (stateId: string) => {
+    if (!stateId) {
+      setStateCities([]);
+      return;
+    }
+    setIsLoadingCities(true);
+    const citiesData = await fetchCities(stateId);
+    setStateCities(citiesData);
+    setIsLoadingCities(false);
+  };
+
+  const handleSave = async () => {
     if (!cityName.trim()) {
       toast.error("City Name is required.");
       return;
@@ -65,19 +88,22 @@ export function AddCityModal({ open, onOpenChange, onCityAdded }: AddCityModalPr
     const stateObj = states.find((s) => s.id === selectedStateId);
     const stateName = stateObj ? stateObj.name : "Unknown State";
 
-    addCity({
+    setIsSubmitting(true);
+    const created = await createNextCity({
       name: cityName.trim(),
-      code: cityCode.trim().toUpperCase() || cityName.substring(0, 3).toUpperCase(),
       stateId: selectedStateId,
       stateName,
-      category,
       status,
-      description: description.trim(),
     });
+    setIsSubmitting(false);
 
-    toast.success(`City "${cityName.trim()}" has been added under ${stateName}!`);
-    if (onCityAdded) onCityAdded();
-    onOpenChange(false);
+    if (created) {
+      toast.success(`City "${cityName.trim()}" has been added under ${stateName}!`);
+      if (onCityAdded) onCityAdded();
+      onOpenChange(false);
+    } else {
+      toast.error("Failed to create city. Please try again.");
+    }
   };
 
   return (
@@ -99,20 +125,54 @@ export function AddCityModal({ open, onOpenChange, onCityAdded }: AddCityModalPr
 
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="stateSelect">State *</Label>
-            <Select value={selectedStateId} onValueChange={setSelectedStateId}>
+            <Label htmlFor="stateSelect">Select State *</Label>
+            <Select
+              value={selectedStateId}
+              onValueChange={(val) => {
+                setSelectedStateId(val);
+                setSelectedExistingCityId("");
+                loadCitiesForState(val);
+              }}
+            >
               <SelectTrigger id="stateSelect">
-                <SelectValue placeholder="Select state" />
+                <SelectValue placeholder={isLoadingStates ? "Loading states..." : "Select state"} />
               </SelectTrigger>
               <SelectContent>
                 {states.map((st) => (
                   <SelectItem key={st.id} value={st.id}>
-                    {st.name} ({st.code})
+                    {st.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {stateCities.length > 0 && (
+            <div className="grid gap-2">
+              <Label htmlFor="citySelect">Select City (Existing)</Label>
+              <Select
+                value={selectedExistingCityId}
+                onValueChange={(val) => {
+                  setSelectedExistingCityId(val);
+                  const found = stateCities.find((c) => c.id === val);
+                  if (found) {
+                    setCityName(found.name);
+                  }
+                }}
+              >
+                <SelectTrigger id="citySelect">
+                  <SelectValue placeholder={isLoadingCities ? "Loading cities..." : "Select from existing cities"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {stateCities.map((ct) => (
+                    <SelectItem key={ct.id} value={ct.id}>
+                      {ct.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="grid gap-2">
             <Label htmlFor="cityName">City Name *</Label>
@@ -122,35 +182,6 @@ export function AddCityModal({ open, onOpenChange, onCityAdded }: AddCityModalPr
               value={cityName}
               onChange={(e) => setCityName(e.target.value)}
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="cityCode">City Code</Label>
-              <Input
-                id="cityCode"
-                placeholder="e.g. MUM, PNQ"
-                value={cityCode}
-                onChange={(e) => setCityCode(e.target.value.toUpperCase())}
-                maxLength={6}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="category">Category / Tier</Label>
-              <Select value={category} onValueChange={(val) => setCategory(val as typeof category)}>
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Select tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Metro">Metro</SelectItem>
-                  <SelectItem value="Non-Metro">Non-Metro</SelectItem>
-                  <SelectItem value="Tier 1">Tier 1</SelectItem>
-                  <SelectItem value="Tier 2">Tier 2</SelectItem>
-                  <SelectItem value="Tier 3">Tier 3</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           <div className="grid gap-2">
@@ -165,25 +196,22 @@ export function AddCityModal({ open, onOpenChange, onCityAdded }: AddCityModalPr
               </SelectContent>
             </Select>
           </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="Brief description or location notes..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="resize-none"
-              rows={3}
-            />
-          </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Create City</Button>
+          <Button onClick={handleSave} disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Create City"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -34,7 +34,7 @@ interface GenerateOfferModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-import { addOfferLetter } from "../mock/offerLetters";
+import { createOfferLetterApi } from "../services/masterDataService";
 
 export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalProps) {
   const [step, setStep] = useState(1);
@@ -205,18 +205,19 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
       link.click();
       URL.revokeObjectURL(url);
 
-      addOfferLetter({
+      await createOfferLetterApi({
         candidateName,
         candidateEmail,
         designation,
-        departmentId,
-        departmentName: deptName,
+        department: departmentId,
         ctc: calculations.computedCTC,
-        monthlyCtc: Math.round(calculations.computedCTC / 12),
-        status: "Sent",
         salaryComponents: calculations.calculatedComponents.map(c => ({
-          ...c,
-          value: Math.round(c.monthlyVal)
+          id: c.id,
+          name: c.name,
+          type: c.type,
+          calcType: c.calcType,
+          value: Math.round(c.monthlyVal),
+          formulaBaseIds: c.formulaBaseIds || [],
         })),
       });
 

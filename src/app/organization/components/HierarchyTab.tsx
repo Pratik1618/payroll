@@ -7,17 +7,17 @@ import { ArrowDown } from "lucide-react";
 export function HierarchyTab() {
   // Sort employees by hierarchy level
   const sortedEmployees = [...employeesData].sort((a, b) => a.hierarchyLevel - b.hierarchyLevel);
-  
+
   // To simulate a tree structure visually we will just display them in a centered column
   // grouping by level, then drawing arrows between levels.
-  
+
   const levels = Array.from(new Set(sortedEmployees.map(e => e.hierarchyLevel))).sort();
 
   return (
     <div className="mt-4 p-8 flex flex-col items-center bg-muted/20 rounded-md border min-h-[500px]">
       {levels.map((level, index) => {
         const levelEmployees = sortedEmployees.filter(e => e.hierarchyLevel === level);
-        
+
         return (
           <div key={level} className="flex flex-col items-center w-full">
             <div className="flex flex-wrap justify-center gap-6 w-full">
@@ -34,7 +34,7 @@ export function HierarchyTab() {
                 </Card>
               ))}
             </div>
-            
+
             {/* Draw arrow to next level if it's not the last level */}
             {index < levels.length - 1 && (
               <div className="my-4 flex justify-center">

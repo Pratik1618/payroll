@@ -1,14 +1,21 @@
+export type DesignationQuantity = {
+  designation: string;
+  quantity: number;
+};
+
 export type OrganizationNode = {
   id: string;
   name: string;
   children?: OrganizationNode[];
   head?: string;
+  parentId?: string;
   employeeCount?: number;
   monthlyPayroll?: number;
   employerCost?: number;
   activeManagers?: number;
   description?: string;
   coveredZones?: string[];
+  designationQuantities?: DesignationQuantity[];
 };
 
 export const organizationData: OrganizationNode[] = [
@@ -31,6 +38,11 @@ export const organizationData: OrganizationNode[] = [
         employerCost: 220000,
         activeManagers: 5,
         description: "Executive leadership team.",
+        designationQuantities: [
+          { designation: "Managing Director", quantity: 1 },
+          { designation: "VP Operations", quantity: 2 },
+          { designation: "Director HR", quantity: 1 },
+        ],
       },
       {
         id: "cto",
@@ -41,6 +53,12 @@ export const organizationData: OrganizationNode[] = [
         employerCost: 1650000,
         activeManagers: 12,
         description: "Technology and Engineering.",
+        designationQuantities: [
+          { designation: "Software Engineer", quantity: 80 },
+          { designation: "Front-End Developer", quantity: 30 },
+          { designation: "IT Developer", quantity: 20 },
+          { designation: "Team Leader", quantity: 10 },
+        ],
       },
       {
         id: "operations",
@@ -51,6 +69,12 @@ export const organizationData: OrganizationNode[] = [
         employerCost: 1320000,
         activeManagers: 15,
         description: "Core business operations.",
+        designationQuantities: [
+          { designation: "Director Operations", quantity: 1 },
+          { designation: "VP Operations", quantity: 2 },
+          { designation: "Regional Manager", quantity: 5 },
+          { designation: "Operations Executive", quantity: 10 },
+        ],
         children: [
           {
             id: "ops_heads",
@@ -160,6 +184,23 @@ export function updateNodeZones(nodeId: string, zones: string[]) {
   findAndUpdate(organizationData);
 }
 
+export function updateNodeDesignationQuantities(nodeId: string, quantities: DesignationQuantity[]) {
+  const findAndUpdate = (nodes: OrganizationNode[]): boolean => {
+    for (const node of nodes) {
+      if (node.id === nodeId) {
+        node.designationQuantities = quantities;
+        return true;
+      }
+      if (node.children) {
+        if (findAndUpdate(node.children)) return true;
+      }
+    }
+    return false;
+  };
+
+  findAndUpdate(organizationData);
+}
+
 export function addDepartment(newDept: Omit<OrganizationNode, "id">, parentId?: string) {
   const deptId = newDept.name.toLowerCase().replace(/\s+/g, '_') + '_' + Math.random().toString(36).substring(2, 7);
   
@@ -198,4 +239,102 @@ export function addDepartment(newDept: Omit<OrganizationNode, "id">, parentId?: 
   };
 
   findAndAdd(organizationData);
+}
+
+export function deleteDepartment(deptId: string): boolean {
+  if (deptId === "company") return false; // Root company cannot be deleted
+
+  const findAndDelete = (nodes: OrganizationNode[]): boolean => {
+    for (let i = 0; i < nodes.length; i++) {
+      if (nodes[i].id === deptId) {
+        nodes.splice(i, 1);
+        return true;
+      }
+      if (nodes[i].children) {
+        if (findAndDelete(nodes[i].children!)) return true;
+      }
+    }
+    return false;
+  };
+
+  return findAndDelete(organizationData);
+}
+
+export type DepartmentDependencies = {
+  node: OrganizationNode | null;
+  assignedEmployeesCount: number;
+  childDepartmentsCount: number;
+  childDepartmentNames: string[];
+};
+
+export function checkDepartmentDependencies(deptId: string): DepartmentDependencies {
+  const findNode = (nodes: OrganizationNode[]): OrganizationNode | null => {
+    for (const node of nodes) {
+      if (node.id === deptId) return node;
+      if (node.children) {
+        const found = findNode(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const targetNode = findNode(organizationData);
+  if (!targetNode) {
+    return { node: null, assignedEmployeesCount: 0, childDepartmentsCount: 0, childDepartmentNames: [] };
+  }
+
+  const children = targetNode.children || [];
+  return {
+    node: targetNode,
+    assignedEmployeesCount: targetNode.employeeCount || 0,
+    childDepartmentsCount: children.length,
+    childDepartmentNames: children.map((c) => c.name),
+  };
+}
+
+export function safeDeleteDepartment(
+  deptId: string,
+  options: {
+    employeeAction?: "reassign" | "unassign";
+    targetDeptId?: string;
+  }
+): boolean {
+  if (deptId === "company") return false;
+
+  const targetNode = checkDepartmentDependencies(deptId).node;
+  if (targetNode) {
+    const targetDeptNode = options.targetDeptId ? checkDepartmentDependencies(options.targetDeptId).node : null;
+
+    // Update employees department
+    if (options.employeeAction === "reassign" && targetDeptNode) {
+      targetDeptNode.employeeCount = (targetDeptNode.employeeCount || 0) + (targetNode.employeeCount || 0);
+    }
+  }
+
+  const findAndSafeDelete = (nodes: OrganizationNode[], parentNode?: OrganizationNode): boolean => {
+    for (let i = 0; i < nodes.length; i++) {
+      if (nodes[i].id === deptId) {
+        const nodeToDelete = nodes[i];
+        // Move children to parent node to preserve hierarchy integrity
+        if (nodeToDelete.children && nodeToDelete.children.length > 0) {
+          if (parentNode) {
+            parentNode.children = parentNode.children || [];
+            parentNode.children.push(...nodeToDelete.children);
+          } else {
+            organizationData[0].children = organizationData[0].children || [];
+            organizationData[0].children.push(...nodeToDelete.children);
+          }
+        }
+        nodes.splice(i, 1);
+        return true;
+      }
+      if (nodes[i].children) {
+        if (findAndSafeDelete(nodes[i].children!, nodes[i])) return true;
+      }
+    }
+    return false;
+  };
+
+  return findAndSafeDelete(organizationData);
 }
