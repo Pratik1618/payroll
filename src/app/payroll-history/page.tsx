@@ -123,7 +123,7 @@ if (selectedSite !== 'all') {
 
     console.log('API response:', data)
 
-    setPayrollHistory(data.results || [])
+    setPayrollHistory(data.results?.records || [])
 
   } catch (err: any) {
     console.error(err)

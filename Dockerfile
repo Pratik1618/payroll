@@ -10,6 +10,7 @@ RUN npm run build
 FROM node:18-alpine AS production
 WORKDIR /app
 COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 RUN npm ci --only=production

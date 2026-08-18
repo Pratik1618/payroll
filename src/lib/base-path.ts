@@ -1,4 +1,4 @@
-export const BASE_PATH = '/payroll-erp'
+export const BASE_PATH = '/payroll'
 
 const ensureLeadingSlash = (value: string) =>
   value.startsWith('/') ? value : `/${value}`

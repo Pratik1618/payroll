@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 interface OrganizationTreeProps {
   onSelect: (node: OrganizationNode) => void;
   selectedNodeId: string;
+  nodes?: OrganizationNode[];
 }
 
 const getIconForNode = (name: string) => {

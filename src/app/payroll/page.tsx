@@ -987,14 +987,14 @@
                     {(() => {
                       if (selectedBranch) {
                         const sites = getAvailableSites()
-                        const totalEmployees = sites.reduce((sum, s) => sum + (s.employees || 0), 0)
+                        const totalEmployees = sites.reduce((sum, s) => sum + ((s as { employees?: number }).employees || 0), 0)
                         const sitesCount = sites.length
-                        const clientsCount = Array.from(new Set(sites.map((s) => s.clientId))).length
+                        const clientsCount = Array.from(new Set(sites.map((s) => (s as { clientId?: string }).clientId))).length
                         return `${sitesCount} site(s) across ${clientsCount} client(s) selected with ${totalEmployees} total employees`
                       } else {
                         const totalEmployees = getAvailableSites()
                           .filter((site) => selectedSites.includes(site.id))
-                          .reduce((sum, site) => sum + site.employees, 0)
+                          .reduce((sum, site) => sum + ((site as { employees?: number }).employees || 0), 0)
                         return `${selectedSites.length} sites selected with ${totalEmployees} total employees`
                       }
                     })()}
