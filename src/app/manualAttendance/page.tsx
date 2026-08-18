@@ -46,6 +46,7 @@ interface TemporaryAttendanceRecord {
   designation_id: string
   designation_name: string
   new_designation_name?: string
+  grade?: string
   duty_id: string
   duty_name: string
   employee_code: string
@@ -158,6 +159,7 @@ const TEMP_COLUMN_ALIASES: Record<string, string[]> = {
   designation_id: ["designationid", "designation id", "designation_id"],
   designation_name: ["designationname", "designation name", "designation_name"],
   new_designation_name: ["newdesignationname", "new designation name", "new_designation_name", "newdesignation", "new designation"],
+  grade: ["grade", "grade no", "grade_no", "gradeno", "emp grade", "emp_grade", "empgrade"],
   duty_id: ["dutyid", "duty id", "duty_id"],
   duty_name: ["dutyname", "duty name", "duty_name"],
   employee_code: ["empcode", "emp code", "employeecode", "employee code", "emp_code"],
@@ -762,6 +764,7 @@ export default function ManualAttendanceUploadPage() {
       new_site_code: r.new_site_code || null,
       new_emp_code: r.new_emp_code || null,
       new_designation_name: r.new_designation_name || null,
+      grade: r.grade || null,
     }))
     const payload = { clientId: tempClient, month: tempMonth, records: payloadRecords }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
@@ -801,6 +804,7 @@ export default function ManualAttendanceUploadPage() {
       new_site_code: r.new_site_code || null,
       new_emp_code: r.new_emp_code || null,
       new_designation_name: r.new_designation_name || null,
+      grade: r.grade || null,
     }))
 
     setTempLoading(true)
@@ -1371,6 +1375,7 @@ export default function ManualAttendanceUploadPage() {
                           <TableHead>Designation ID</TableHead>
                           <TableHead>Designation Name</TableHead>
                           <TableHead className="font-semibold text-primary">New Designation Name</TableHead>
+                          <TableHead>Grade</TableHead>
                           <TableHead>Duty ID</TableHead>
                           <TableHead>Duty Name</TableHead>
                           <TableHead>Emp Code</TableHead>
@@ -1403,6 +1408,7 @@ export default function ManualAttendanceUploadPage() {
                             <TableCell>{record.designation_id}</TableCell>
                             <TableCell className="max-w-[150px] truncate" title={record.designation_name}>{record.designation_name}</TableCell>
                             <TableCell className="font-medium text-primary max-w-[150px] truncate" title={record.new_designation_name || ""}>{record.new_designation_name || "-"}</TableCell>
+                            <TableCell>{record.grade || "-"}</TableCell>
                             <TableCell>{record.duty_id}</TableCell>
                             <TableCell>{record.duty_name}</TableCell>
                             <TableCell>{record.employee_code}</TableCell>
@@ -1627,6 +1633,7 @@ export default function ManualAttendanceUploadPage() {
                               <TableHead>Employee Name</TableHead>
                               <TableHead>Designation</TableHead>
                               <TableHead>New Designation Name</TableHead>
+                              <TableHead>Grade</TableHead>
                               <TableHead>Duty</TableHead>
                               <TableHead>Month</TableHead>
                               <TableHead className="text-right">Salary</TableHead>
@@ -1662,6 +1669,7 @@ export default function ManualAttendanceUploadPage() {
                                   <TableCell className="font-semibold text-foreground">{record.employee_name || "-"}</TableCell>
                                   <TableCell>{record.designation_name || "-"}</TableCell>
                                   <TableCell className="font-medium">{record.new_designation_name || "-"}</TableCell>
+                                  <TableCell>{record.grade || "-"}</TableCell>
                                   <TableCell>{record.duty_name || "-"}</TableCell>
                                   <TableCell>{record.month_name} {record.year_name}</TableCell>
                                   <TableCell className="text-right font-medium">{formatCurrency(record.salary)}</TableCell>
@@ -1727,6 +1735,7 @@ export default function ManualAttendanceUploadPage() {
                                   <TableHead>Employee Name</TableHead>
                                   <TableHead>Designation</TableHead>
                                   <TableHead>New Designation Name</TableHead>
+                                  <TableHead>Grade</TableHead>
                                   <TableHead>Duty</TableHead>
                                   <TableHead>Month</TableHead>
                                   <TableHead className="text-right">Salary</TableHead>
@@ -1755,6 +1764,7 @@ export default function ManualAttendanceUploadPage() {
                                     <TableCell className="font-semibold text-foreground">{record.employee_name || "-"}</TableCell>
                                     <TableCell>{record.designation_name || "-"}</TableCell>
                                     <TableCell className="font-medium">{record.new_designation_name || "-"}</TableCell>
+                                    <TableCell>{record.grade || "-"}</TableCell>
                                     <TableCell>{record.duty_name || "-"}</TableCell>
                                     <TableCell>{record.month_name} {record.year_name}</TableCell>
                                     <TableCell className="text-right font-medium">{formatCurrency(record.salary)}</TableCell>
@@ -1892,6 +1902,7 @@ function mapTemporaryAttendanceRow(
     designation_id: designationId,
     designation_name: designationName,
     new_designation_name: newDesignationName,
+    grade: getCellValue(headers, row, TEMP_COLUMN_ALIASES.grade),
     duty_id: dutyId,
     duty_name: dutyName,
     employee_code: employeeCode,
