@@ -62,16 +62,6 @@
     { id: "branch-4", name: "Tamil Nadu" },
   ]
 
-  // 1. Add basicSalary to each employee in mockAttendanceData
-  //  Add two overtime types: clientOvertime and ismartOvertime
-  const mockAttendanceData = [
-    { empId: "EMP001", name: "John Doe", designation: "housekeeper", daysPresent: 22, totalDays: 26, leaves: 2, lop: 2, clientOvertime: 5, ismartOvertime: 3, basicSalary: 28000, advanceRemaining: 1000 },
-    { empId: "EMP002", name: "Jane Smith", designation: "Receptionist", daysPresent: 24, totalDays: 26, leaves: 1, lop: 1, clientOvertime: 8, ismartOvertime: 4, basicSalary: 32000, advanceRemaining: 500 },
-    { empId: "EMP003", name: "Mike Johnson", designation: "housekeeper", daysPresent: 26, totalDays: 26, leaves: 0, lop: 0, clientOvertime: 10, ismartOvertime: 5, basicSalary: 25000, advanceRemaining: 0 },
-    { empId: "EMP004", name: "Sarah Wilson", designation: "chambermaid", daysPresent: 20, totalDays: 26, leaves: 3, lop: 3, clientOvertime: 2, ismartOvertime: 1, basicSalary: 22000, advanceRemaining: 700 },
-    { empId: "EMP005", name: "David Brown", designation: "supervisor", daysPresent: 25, totalDays: 26, leaves: 1, lop: 0, clientOvertime: 6, ismartOvertime: 4, basicSalary: 35000, advanceRemaining: 0 },
-  ]
-
   const payrollMonthOptions = generateMonthOptions(2025, 2027)
 
   // add an initial payroll-data constant for easy reset
@@ -127,6 +117,10 @@
     const [mergedData, setMergedData] = useState<any[]>([]);
     const [finalSalary, setFinalSalary] = useState<any[]>([])
     const [payrollCalculations, setPayrollCalculations] = useState<any[]>([])
+
+    // Real payroll-run wizard state (POST /api/payroll/run -> calculate -> review -> lock)
+    const [payrollRunId, setPayrollRunId] = useState<string>("")
+    const [runSummary, setRunSummary] = useState<any>(null)
 
     // use the shared initialPayrollData
     const [payrollData, setPayrollData] = useState(initialPayrollData)
@@ -255,8 +249,8 @@
 
       try {
         switch (currentStep) {
-          case 1:
-            // If branch selected -> bulk import across all clients/sites in branch.
+          case 1: {
+            // If branch selected -> bulk run across all sites in that branch.
             if (!selectedBranch && (!selectedClient || selectedSites.length === 0)) {
               toast("Selection Required", {
                 description: "Please select a client and at least one site, or select a branch for bulk import.",
@@ -269,276 +263,114 @@
               return
             }
 
-            // Bulk import when branch selected
-            const totalOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.clientOvertime || 0) + (emp.ismartOvertime || 0), 0)
-            const totalClientOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.clientOvertime || 0), 0)
-            const totalIsmartOT = mockAttendanceData.reduce((sum, emp) => sum + (emp.ismartOvertime || 0), 0)
-            if (selectedBranch) {
-              // Sites in branch, optionally filtered by selectedClients (if any)
-              let sitesInBranch = mockSites.filter((s) => s.branchId === selectedBranch)
-              if (selectedClients.length > 0) {
-                sitesInBranch = sitesInBranch.filter((s) => selectedClients.includes(s.clientId))
-              }
-              const totalEmployees = sitesInBranch.reduce((sum, s) => sum + (s.employees || 0), 0)
-              const sitesCount = sitesInBranch.length
-              const clientsCount = Array.from(new Set(sitesInBranch.map((s) => s.clientId))).length
+            const runBody = selectedBranch
+              ? { month: selectedPayrollMonth, scopeType: "BRANCH", branchId: selectedBranch }
+              : { month: selectedPayrollMonth, scopeType: "SITE", clientId: selectedClient, siteIds: selectedSites }
 
-              setAttendanceData(mockAttendanceData)
-              setPayrollData((prev) => ({
-                ...prev,
-                onHold: 2,
-                attendanceImported: true,
-                // totalEmployees,
-                clientOt: totalClientOT,
-                ismartOt: totalIsmartOT,
-                overtimeHours: totalOT,
-              }))
-
-              toast("Branch Bulk Attendance Imported", {
-                description: `Imported attendance for ${totalEmployees} employees across ${sitesCount} site(s) and ${clientsCount} client(s) in the selected branch.`,
-                action: {
-                  label: "OK",
-                  onClick: () => console.log("ok"),
-                },
-              })
-            } else {
-              // Generate attendance data for selected sites
-              const totalEmployees = selectedSites.reduce((sum, siteId) => {
-                const site = mockSites.find((s) => s.id === siteId)
-                return sum + (site?.employees || 0)
-              }, 0)
-
-              setAttendanceData(mockAttendanceData)
-              setPayrollData((prev) => ({
-                ...prev,
-                onHold: 2,
-                attendanceImported: true,
-                // totalEmployees,
-                overtimeHours: totalOT,
-              }))
-
-              toast("Attendance Imported", {
-                description: `Successfully imported attendance data for ${totalEmployees} employees from ${selectedSites.length} sites.`,
-                action: {
-                  label: "OK",
-                  onClick: () => console.log("ok"),
-                },
-              })
-            }
-            break
-
-          case 2:
-            await new Promise((resolve) => setTimeout(resolve, 3000))
-
-            // Calculate all salary components with LOP adjustment
-            // separate rates for overtime types
-            const clientOtRate = 200 // per hour for client OT
-            const ismartOtRate = 150 // per hour for ismart OT
-
-            const calculations = attendanceData.map((emp) => {
-              const paidDays = emp.totalDays - emp.lop
-              const dayRatio = paidDays / emp.totalDays
-
-              // Actual earned (pro-rata) components
-
-              //fixed component
-              const earnedBasic = emp.basicSalary * dayRatio
-              const da = earnedBasic * 0.15
-              const hra = earnedBasic * 0.20
-              const conveyance = 0
-              const washingAllowance = 0
-              const otherAllowance = 0
-              const leaveWithWages = 0
-              const cca = 1000 * dayRatio
-
-              const educationalAllowance = 0
-              const medicalAllowance = 0
-              const specialAllowance = 0
-              const bonus = 0
-              const meal = 0
-              const siteAllowance = 0
-              const performanceAllowance = 0
-              const food = 0
-              const metroCityAllowance = 0
-              const stipend = 0
-
-
-
-
-              //non fixed components
-              const convy = 0
-              const reimbursement = 0
-              const cashRiskAllowance = 0
-              const incentive = 0
-
-
-
-
-
-              // Given (full) components for reference
-              const givenBasic = emp.basicSalary
-              const givenDa = givenBasic * 0.15
-              const givenHra = givenBasic * 0.20
-              const givenConveyance = 0
-              const givenWashingAllowance = 0
-              const givenOtherAllowance = 0
-              const givenLeaveWithWages = 0
-              const givenCca = 1000
-              const givenEducationalAllowance = 0
-              const givenMedicalAllowance = 0
-              const givenSpecialAllowance = 0
-              const givenBonus = 0
-              const givenMeal = 0
-              const givenSiteAllowance = 0
-              const givenPerformanceAllowance = 0
-              const givenFood = 0
-              const givenMetroCityAllowance = 0
-              const givenStipend = 0
-
-
-
-
-
-
-              // compute OT breakdown & pay
-              const clientOvertime = emp.clientOvertime || 0
-              const ismartOvertime = emp.ismartOvertime || 0
-              const totalOvertime = clientOvertime + ismartOvertime
-              const overtimePay = Math.round(clientOvertime * clientOtRate + ismartOvertime * ismartOtRate)
-
-              // Gross salary
-              const grossSalary = Math.round(
-                earnedBasic + da + hra + conveyance + convy + cca + washingAllowance + educationalAllowance +
-                medicalAllowance + siteAllowance + performanceAllowance + cashRiskAllowance +
-                incentive + food + metroCityAllowance + stipend + specialAllowance +
-                reimbursement + bonus + meal + otherAllowance + leaveWithWages + overtimePay
-              )
-              const givenGrossSalary = Math.round(
-                givenBasic + givenBonus + givenCca + givenCca + givenConveyance +
-                givenDa + givenEducationalAllowance + givenFood + givenHra +
-                givenLeaveWithWages + givenMeal + givenMedicalAllowance + givenMetroCityAllowance + givenOtherAllowance +
-                givenPerformanceAllowance + givenSiteAllowance +
-                givenSpecialAllowance + givenStipend + givenWashingAllowance
-              )
-
-              const pf = earnedBasic > 15000 ? 1800 : earnedBasic * 0.12
-              const esi = grossSalary > 21000 ? 0 : grossSalary * 0.0175
-              const pt = 200
-              const lwf = 50
-              const uniform = 0
-              const otherDeduction = 0
-              const messDeduction = 0
-              const uniformDeduction = 0
-              const hraDeduction = 0
-              const staffWelfareFund = 50
-              const backgroundVerification = 0
-              const lopDeduction = (givenBasic + givenDa + givenHra + givenCca) - (earnedBasic + da + hra + cca)
-              const totalDeductions = Math.round(
-                pf + esi + pt + lwf + uniform + + otherDeduction +
-                messDeduction + uniformDeduction + hraDeduction + staffWelfareFund +
-                backgroundVerification
-              )
-              const netSalary = grossSalary - totalDeductions
-              const inHandSalary = netSalary - emp.advanceRemaining
-              const advanceRemaining = emp.advanceRemaining
-
-              return {
-                ...emp,
-                paidDays,
-                clientOvertime,
-                ismartOvertime,
-                overtime: totalOvertime,
-                overtimePay: Math.round(overtimePay),
-                // Actual earned
-                earnedBasic: Math.round(earnedBasic),
-                da: Math.round(da),
-                hra: Math.round(hra),
-                conveyance: Math.round(conveyance),
-                washingAllowance: Math.round(washingAllowance),
-                otherAllowance: Math.round(otherAllowance),
-                leaveWithWages: Math.round(leaveWithWages),
-                cca: Math.round(cca),
-                educationalAllowance: Math.round(educationalAllowance),
-                medicalAllowance: Math.round(medicalAllowance),
-                specialAllowance: Math.round(specialAllowance),
-                bonus: Math.round(bonus),
-                meal: Math.round(meal),
-                siteAllowance: Math.round(siteAllowance),
-                performanceAllowance: Math.round(performanceAllowance),
-                food: Math.round(food),
-                metroCityAllowance: Math.round(metroCityAllowance),
-                stipend: Math.round(stipend),
-                convy: Math.round(convy),
-                reimbursement: Math.round(reimbursement),
-                cashRiskAllowance: Math.round(cashRiskAllowance),
-                incentive: Math.round(incentive),
-                grossSalary: Math.round(grossSalary),
-                pf: Math.round(pf),
-                esi: Math.round(esi),
-                pt: Math.round(pt),
-                lwf: Math.round(lwf),
-                uniform: Math.round(uniform),
-                otherDeduction: Math.round(otherDeduction),
-                messDeduction: Math.round(messDeduction),
-                uniformDeduction: Math.round(uniformDeduction),
-                hraDeduction: Math.round(hraDeduction),
-                staffWelfareFund: Math.round(staffWelfareFund),
-                backgroundVerification: Math.round(backgroundVerification),
-                lopDeduction: Math.round(lopDeduction),
-                totalDeductions: Math.round(totalDeductions),
-                netSalary: Math.round(netSalary),
-                advanceRemaining: Math.round(advanceRemaining),
-                inHandSalary: Math.round(inHandSalary),
-                // Given (full) components
-                givenBasic: Math.round(givenBasic),
-                givenDa: Math.round(givenDa),
-                givenHra: Math.round(givenHra),
-                givenConveyance: Math.round(givenConveyance),
-                givenWashingAllowance: Math.round(givenWashingAllowance),
-                givenOtherAllowance: Math.round(givenOtherAllowance),
-                givenLeaveWithWages: Math.round(givenLeaveWithWages),
-                givenCca: Math.round(givenCca),
-                givenEducationalAllowance: Math.round(givenEducationalAllowance),
-                givenMedicalAllowance: Math.round(givenMedicalAllowance),
-                givenSpecialAllowance: Math.round(givenSpecialAllowance),
-                givenBonus: Math.round(givenBonus),
-                givenMeal: Math.round(givenMeal),
-                givenSiteAllowance: Math.round(givenSiteAllowance),
-                givenPerformanceAllowance: Math.round(givenPerformanceAllowance),
-                givenFood: Math.round(givenFood),
-                givenMetroCityAllowance: Math.round(givenMetroCityAllowance),
-                givenStipend: Math.round(givenStipend),
-                givenGrossSalary: Math.round(givenGrossSalary),
-
-              }
+            const runRes = await fetch(withBasePath("/api/payroll/run"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify(runBody),
             })
+            const runJson = await runRes.json()
 
-            setPayrollCalculations(calculations)
-            const totalGross = finalSalary.reduce(
-              (sum, emp) => sum + (emp.grossPayable || 0),
-              0
-            );
-            const totalOtHours = calculations.reduce((sum, emp) => sum + (emp.overtime || 0), 0)
+            if (!runRes.ok) {
+              toast.error("Could Not Create Payroll Run", {
+                description: runJson?.errors?.[0]?.errorMessage || runJson?.message || `Failed with status ${runRes.status}`,
+              })
+              setIsProcessing(false)
+              return
+            }
 
+            const runId = runJson?.results?.runId
+            setPayrollRunId(runId)
             setPayrollData((prev) => ({
               ...prev,
-              payrollCalculated: true,
-              grossPayroll: totalGross,
-              overtimeHours: totalOtHours,
+              attendanceImported: true,
             }))
 
-            toast("Payroll Calculated", {
-              description: `Salary calculations completed for ${calculations.length} employees. Total gross: ₹${(totalGross / 100000).toFixed(1)}L`,
+            toast("Payroll Run Created", {
+              description: selectedBranch
+                ? `Run ${runId} created for the selected branch, ${formatMonthLabel(selectedPayrollMonth)}.`
+                : `Run ${runId} created for ${selectedSites.length} site(s), ${formatMonthLabel(selectedPayrollMonth)}.`,
               action: {
                 label: "OK",
                 onClick: () => console.log("ok"),
               },
             })
             break
+          }
 
-          case 3:
-            // Review & Approve
-            await new Promise((resolve) => setTimeout(resolve, 1500))
+          case 2: {
+            if (!payrollRunId) {
+              toast.error("No Payroll Run", { description: "Create a payroll run first." })
+              setIsProcessing(false)
+              return
+            }
+
+            const calcRes = await fetch(withBasePath(`/api/payroll/run/${payrollRunId}/calculate`), {
+              method: "POST",
+              credentials: "include",
+            })
+            const calcJson = await calcRes.json()
+
+            if (!calcRes.ok) {
+              toast.error("Calculation Failed", {
+                description: calcJson?.errors?.[0]?.errorMessage || calcJson?.message || `Failed with status ${calcRes.status}`,
+              })
+              setIsProcessing(false)
+              return
+            }
+
+            const calcResults = calcJson?.results || {}
+            const employees = calcResults.employees || []
+            const summary = calcResults.summary || {}
+
+            setPayrollCalculations(employees)
+            setRunSummary(summary)
+            setAttendanceData(employees)
+            setPayrollData((prev) => ({
+              ...prev,
+              payrollCalculated: true,
+              grossPayroll: summary.totalGross || 0,
+              overtimeHours: summary.totalOTHours || 0,
+            }))
+
+            toast("Payroll Calculated", {
+              description: `Salary calculations completed for ${employees.length} employees. Total gross: ₹${((summary.totalGross || 0) / 100000).toFixed(1)}L`,
+              action: {
+                label: "OK",
+                onClick: () => console.log("ok"),
+              },
+            })
+            break
+          }
+
+          case 3: {
+            if (!payrollRunId) {
+              toast.error("No Payroll Run", { description: "Create and calculate a payroll run first." })
+              setIsProcessing(false)
+              return
+            }
+
+            const reviewRes = await fetch(withBasePath(`/api/payroll/run/${payrollRunId}/review`), {
+              method: "GET",
+              credentials: "include",
+            })
+            const reviewJson = await reviewRes.json()
+
+            if (!reviewRes.ok) {
+              toast.error("Review Failed", {
+                description: reviewJson?.errors?.[0]?.errorMessage || reviewJson?.message || `Failed with status ${reviewRes.status}`,
+              })
+              setIsProcessing(false)
+              return
+            }
+
+            const reviewResults = reviewJson?.results || {}
+            setPayrollCalculations(reviewResults.employees || [])
+            setRunSummary(reviewResults.summary || {})
             setPayrollData((prev) => ({ ...prev, reviewCompleted: true }))
             toast("Review Completed", {
               description: "Payroll data has been reviewed and approved.",
@@ -548,10 +380,31 @@
               },
             })
             break
+          }
 
-          case 4:
-            // Lock Payroll
-            await new Promise((resolve) => setTimeout(resolve, 2000))
+          case 4: {
+            if (!payrollRunId) {
+              toast.error("No Payroll Run", { description: "Create, calculate and review a payroll run first." })
+              setIsProcessing(false)
+              return
+            }
+
+            const lockRes = await fetch(withBasePath(`/api/payroll/run/${payrollRunId}/lock`), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ confirmed: true }),
+            })
+            const lockJson = await lockRes.json()
+
+            if (!lockRes.ok) {
+              toast.error("Lock Failed", {
+                description: lockJson?.errors?.[0]?.errorMessage || lockJson?.message || `Failed with status ${lockRes.status}`,
+              })
+              setIsProcessing(false)
+              return
+            }
+
             setPayrollData((prev) => ({ ...prev, payrollLocked: true }))
             toast("Payroll Locked", {
               description: "Payroll has been finalized and locked for processing.",
@@ -561,6 +414,7 @@
               },
             })
             break
+          }
         }
 
         if (currentStep < payrollSteps.length) {
@@ -1014,29 +868,34 @@
                 </p>
               </div>
 
+              {payrollData.attendanceImported && attendanceData.length === 0 && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center text-sm text-blue-800 dark:text-blue-200">
+                  Payroll run {payrollRunId} created. Click Calculate to process real attendance and wage data.
+                </div>
+              )}
+
               {payrollData.attendanceImported && attendanceData.length > 0 && (
                 <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                   <h4 className="font-medium text-green-800 dark:text-green-200 mb-3">Attendance Summary</h4>
                   <div className="grid gap-4 md:grid-cols-3">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-700 dark:text-green-300">
-                        {attendanceData.reduce((sum, emp) => sum + emp.daysPresent, 0)}
+                        {attendanceData.reduce((sum, emp) => sum + (emp.attendance?.presentDays || 0), 0)}
                       </div>
                       <div className="text-sm text-green-600 dark:text-green-400">Total Present Days</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">
-                        {attendanceData.reduce((sum, emp) => sum + emp.lop, 0)}
+                        {attendanceData.reduce((sum, emp) => sum + (emp.attendance?.lopDays || 0), 0)}
                       </div>
                       <div className="text-sm text-orange-600 dark:text-orange-400">LOP Days</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                        {/* show combined OT hours and breakdown in tooltip-like text */}
                         {payrollData.overtimeHours}
                       </div>
                       <div className="text-sm text-blue-600 dark:text-blue-400">
-                        Total OT (client + ismart)
+                        Total OT Hours
                       </div>
                     </div>
                   </div>
@@ -1047,6 +906,61 @@
         case 3:
           return (
             <div className="space-y-6">
+              {runSummary && (
+                <div className="bg-muted p-4 rounded-lg">
+                  <h4 className="font-medium mb-3">Payroll Run Summary ({payrollRunId})</h4>
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{runSummary.employeesProcessed ?? payrollCalculations.length}</div>
+                      <div className="text-sm text-muted-foreground">Employees</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">₹{(runSummary.totalGross || 0).toLocaleString("en-IN")}</div>
+                      <div className="text-sm text-muted-foreground">Total Gross</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">₹{(runSummary.totalDeductions || 0).toLocaleString("en-IN")}</div>
+                      <div className="text-sm text-muted-foreground">Total Deductions</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">₹{(runSummary.totalInHand || 0).toLocaleString("en-IN")}</div>
+                      <div className="text-sm text-muted-foreground">Total In-Hand</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {payrollCalculations.length > 0 && (
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="text-left p-2">Emp ID</th>
+                        <th className="text-left p-2">Name</th>
+                        <th className="text-left p-2">Designation</th>
+                        <th className="text-right p-2">Gross</th>
+                        <th className="text-right p-2">Deductions</th>
+                        <th className="text-right p-2">Net</th>
+                        <th className="text-right p-2">In-Hand</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payrollCalculations.map((emp, index) => (
+                        <tr key={emp.empId || index} className="border-t">
+                          <td className="p-2">{emp.empId}</td>
+                          <td className="p-2">{emp.name}</td>
+                          <td className="p-2">{emp.designation}</td>
+                          <td className="p-2 text-right">₹{(emp.totals?.grossSalary || 0).toLocaleString("en-IN")}</td>
+                          <td className="p-2 text-right">₹{(emp.totals?.totalDeductions || 0).toLocaleString("en-IN")}</td>
+                          <td className="p-2 text-right">₹{(emp.totals?.netSalary || 0).toLocaleString("en-IN")}</td>
+                          <td className="p-2 text-right">₹{(emp.totals?.inHandSalary || 0).toLocaleString("en-IN")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
               <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
@@ -1220,44 +1134,10 @@
       setSelectedClient("")
       setSelectedSites([])
       setPayrollData(initialPayrollData)
+      setPayrollRunId("")
+      setRunSummary(null)
       setCurrentStep(1)
     }
-
-    useEffect(() => {
-      if (currentStep === 4 && payrollCalculations.length > 0) {
-        const earnedData = payrollCalculations.map(emp => ({
-          empId: emp.empId,
-          name: emp.name,
-          designation: emp.designation,
-          totalDays: emp.totalDays,
-          daysPresent: emp.daysPresent,
-          leaves: emp.leaves,
-          lop: emp.lop,
-          pf: emp.pf,
-          pt: emp.pt,
-          esic: emp.esi,
-          lwf: emp.lwf,
-          wf: emp.staffWelfareFund,
-          earnedBasic: emp.earnedBasic,
-          da: emp.da,
-          hra: emp.hra,
-          cca: emp.cca,
-          overtimePay: emp.overtimePay,
-          clientOvertime: emp.clientOvertime,
-          ismartOvertime: emp.ismartOvertime,
-          grossSalary: emp.grossSalary,  // earned gross
-          totalDeductions: emp.totalDeductions,
-          netSalary: emp.netSalary,
-          inHandSalary: emp.inHandSalary,
-          advanceRemaining: emp.advanceRemaining,
-          lopDeduction: emp.lopDeduction,
-          otHours: emp.overtime
-        }));
-
-
-
-      }
-    }, [currentStep, payrollCalculations]);
 
     // when branch selected -> clear client/site selections (branch triggers bulk import)
     useEffect(() => {
