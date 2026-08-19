@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Tabs, TabsContent, TabsList, TabsTrigger
 } from "@/components/ui/tabs"
@@ -15,27 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { AlertCircle, CheckCircle2, Upload, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
-
-/* ================= MOCK DATA ================= */
-
-// Upload file generated from payroll → uploaded on ESIC portal
-const ESIC_UPLOAD_DATA = [
-  { challanType: "Consolidated", month: "Nov-25", employees: 320, uploadAmount: 948003 },
-  { challanType: "Vadodara", month: "Nov-25", employees: 45, uploadAmount: 122500 },
-]
-
-// Dummy challan parse (from ESIC portal)
-const MOCK_ESIC_CHALLAN = {
-  paidAmount: 948003,
-  challanNo: "ESIC-CHLN-998877",
-}
-
-// Dummy ECR parse (employee-wise)
-const MOCK_ESIC_ECR = [
-  { ip: "IP10001", name: "Rahul Sharma", upload: 410, ecr: 410, days: 26 },
-  { ip: "IP10002", name: "Amit Singh", upload: 390, ecr: 390, days: 26 },
-  { ip: "IP10003", name: "Neha Verma", upload: 420, ecr: 400, days: 24 },
-]
+import { toast } from "sonner"
+import { withBasePath } from "@/lib/base-path"
 
 /* ================= COMPONENT ================= */
 
@@ -47,11 +28,15 @@ export default function ESICReconciliationModule() {
   const [selectedMonth, setSelectedMonth] = useState("")
   const [esicData, setEsicData] = useState<any | null>(null)
   const [challanUploaded, setChallanUploaded] = useState(false)
+  const [challanId, setChallanId] = useState<string | null>(null)
+  const [challanPaidAmount, setChallanPaidAmount] = useState<number>(0)
   const [reconRow, setReconRow] = useState<any | null>(null)
+  const challanInputRef = useRef<HTMLInputElement>(null)
 
   /* ---------- EMPLOYEE STATES ---------- */
   const [ecrUploaded, setEcrUploaded] = useState(false)
   const [employeeRecon, setEmployeeRecon] = useState<any[]>([])
+  const ecrInputRef = useRef<HTMLInputElement>(null)
 
   /* ================= AUTO FETCH UPLOAD DATA ================= */
   useEffect(() => {
@@ -59,46 +44,121 @@ export default function ESICReconciliationModule() {
       setEsicData(null)
       setReconRow(null)
       setChallanUploaded(false)
+      setChallanId(null)
       return
     }
 
-    const data = ESIC_UPLOAD_DATA.find(
-      (d) => d.challanType === selectedType && d.month === selectedMonth
-    )
+    const load = async () => {
+      try {
+        const res = await fetch(
+          withBasePath(
+            `/api/statutory/esic/upload-data?type=${encodeURIComponent(selectedType)}&month=${encodeURIComponent(selectedMonth)}`
+          ),
+          { credentials: "include", cache: "no-store" }
+        )
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.message || "Failed to load ESIC upload data")
+        const results = data?.results ?? {}
+        setEsicData({
+          challanType: results.establishmentType ?? selectedType,
+          month: results.month ?? selectedMonth,
+          employees: results.employees ?? 0,
+          uploadAmount: results.uploadAmount ?? 0,
+        })
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to load ESIC upload data")
+        setEsicData(null)
+      }
+    }
 
-    setEsicData(data || null)
     setReconRow(null)
     setChallanUploaded(false)
+    setChallanId(null)
+    void load()
   }, [selectedType, selectedMonth])
 
-  /* ================= RECONCILE ================= */
-  const handleReconcile = () => {
-    if (!esicData || !challanUploaded) return
+  /* ================= CHALLAN UPLOAD ================= */
+  const handleChallanFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
 
-    setReconRow({
-      challanType: esicData.challanType,
-      month: esicData.month,
-      employees: esicData.employees,
-      uploadAmount: esicData.uploadAmount,
-      paidAmount: MOCK_ESIC_CHALLAN.paidAmount,
-      challanNo: MOCK_ESIC_CHALLAN.challanNo,
-    })
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch(
+        withBasePath(`/api/statutory/esic/challan?month=${encodeURIComponent(selectedMonth)}`),
+        { method: "POST", body: formData, credentials: "include" }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to upload challan")
+      const results = data?.results ?? {}
+      setChallanId(results.challanId ?? null)
+      setChallanPaidAmount(results.paidAmount ?? 0)
+      setChallanUploaded(true)
+      toast.success("Challan uploaded")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload challan")
+    }
   }
 
-  /* ================= ECR LOAD ================= */
-  useEffect(() => {
-    if (ecrUploaded) {
-      setEmployeeRecon(
-        MOCK_ESIC_ECR.map((e) => ({
-          ...e,
-          diff: e.upload - e.ecr,
-          status: e.upload === e.ecr ? "MATCHED" : "MISMATCH",
-        }))
-      )
-    } else {
-      setEmployeeRecon([])
+  /* ================= RECONCILE ================= */
+  const handleReconcile = async () => {
+    if (!esicData || !challanUploaded || !challanId) return
+
+    try {
+      const res = await fetch(withBasePath("/api/statutory/esic/reconcile"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          establishmentType: esicData.challanType,
+          month: esicData.month,
+          uploadAmount: esicData.uploadAmount,
+          paidAmount: challanPaidAmount,
+          challanId,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to reconcile")
+
+      setReconRow({
+        challanType: esicData.challanType,
+        month: esicData.month,
+        employees: esicData.employees,
+        uploadAmount: esicData.uploadAmount,
+        paidAmount: challanPaidAmount,
+        challanNo: challanId,
+      })
+      toast.success("Reconciled")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to reconcile")
     }
-  }, [ecrUploaded])
+  }
+
+  /* ================= ECR UPLOAD ================= */
+  const handleEcrFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch(
+        withBasePath(`/api/statutory/esic/ecr?month=${encodeURIComponent(selectedMonth)}`),
+        { method: "POST", body: formData, credentials: "include" }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to upload ECR")
+      const results = data?.results ?? {}
+      setEmployeeRecon(results.data ?? [])
+      setEcrUploaded(true)
+      toast.success("ECR uploaded")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload ECR")
+    }
+  }
 
   /* ================= STATUS ENGINE ================= */
   const getEstStatus = (upload: number, paid: number) => {
@@ -154,10 +214,11 @@ export default function ESICReconciliationModule() {
                 </SelectContent>
               </Select>
 
+              <input ref={challanInputRef} type="file" className="hidden" onChange={handleChallanFile} accept=".pdf" />
               <Button
                 variant="outline"
                 disabled={!esicData}
-                onClick={() => setChallanUploaded(true)}
+                onClick={() => challanInputRef.current?.click()}
               >
                 <Upload className="h-4 w-4 mr-1" />
                 Upload Challan
@@ -272,7 +333,8 @@ export default function ESICReconciliationModule() {
                   </SelectContent>
                 </Select>
 
-                <Button variant="outline" onClick={() => setEcrUploaded(true)}>
+                <input ref={ecrInputRef} type="file" className="hidden" onChange={handleEcrFile} accept=".txt,.csv" />
+                <Button variant="outline" onClick={() => ecrInputRef.current?.click()}>
                   <Upload className="h-4 w-4 mr-1" />
                   Upload ECR
                 </Button>

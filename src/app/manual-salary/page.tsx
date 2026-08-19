@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { withBasePath } from "@/lib/base-path"
 import { getMonthDays } from "@/utils/date-utility"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,91 +25,18 @@ import {
 import { toast } from "sonner"
 import { Eye, Download } from "lucide-react"
 
-// Mock employee master data with salary structure
-const employeeMasterData: Record<
-  string,
-  {
-    name: string
-    designation: string
-    branch: string
-    client: string
-    site: string
-    doj: string
-    lwd?: string
-    status: "Active" | "Left"
-    salaryStructure: {
-      basic: number
-      da: number
-      hra: number
-      conveyance: number
-      otherAllowances: number
-      pf: number
-      esic: number
-      pt: number
-      otherDeductions: number
-    }
+// Best-effort read of the logged-in user's identity from the JWT stored in
+// the `token` cookie (matches the backend's `sub` claim).
+function getCurrentUserIdentity(): string {
+  if (typeof document === "undefined") return ""
+  const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)
+  if (!match) return ""
+  try {
+    const payload = JSON.parse(atob(match[1].split(".")[1]))
+    return payload.sub || ""
+  } catch {
+    return ""
   }
-> = {
-  EMP001: {
-    name: "John Doe",
-    designation: "Software Engineer",
-    branch: "Mumbai",
-    client: "Acme Corp",
-    site: "Mumbai - Site A",
-    doj: "2020-01-15",
-    status: "Active",
-    salaryStructure: {
-      basic: 30000,
-      da: 6000,
-      hra: 9000,
-      conveyance: 2000,
-      otherAllowances: 3000,
-      pf: 3600,
-      esic: 450,
-      pt: 200,
-      otherDeductions: 500,
-    },
-  },
-  EMP002: {
-    name: "Jane Smith",
-    designation: "Product Manager",
-    branch: "Bangalore",
-    client: "Tech Solutions",
-    site: "Bangalore - Site B",
-    doj: "2019-06-01",
-    status: "Active",
-    salaryStructure: {
-      basic: 50000,
-      da: 10000,
-      hra: 15000,
-      conveyance: 2000,
-      otherAllowances: 5000,
-      pf: 6000,
-      esic: 0, // Exempt
-      pt: 300,
-      otherDeductions: 1000,
-    },
-  },
-  EMP003: {
-    name: "Raj Kumar",
-    designation: "Data Analyst",
-    branch: "Delhi",
-    client: "Analytics Pro",
-    site: "Delhi - Site C",
-    doj: "2021-03-20",
-    status: "Active",
-    salaryStructure: {
-      basic: 35000,
-      da: 7000,
-      hra: 10500,
-      conveyance: 2000,
-      otherAllowances: 3500,
-      pf: 4200,
-      esic: 525,
-      pt: 250,
-      otherDeductions: 750,
-    },
-  },
 }
 
 interface ManualSalaryEntry {
@@ -135,6 +63,7 @@ interface ManualSalaryEntry {
 
 export default function ManualSalaryProcessing() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("")
+  const [employeeName, setEmployeeName] = useState<string>("")
   const [salaryMonth, setSalaryMonth] = useState<string>("")
 
   const [remarks, setRemarks] = useState<string>("")
@@ -142,62 +71,125 @@ export default function ManualSalaryProcessing() {
   const [isProcessing, setIsProcessing] = useState(false)
 
   const [manualSalaryLog, setManualSalaryLog] = useState<ManualSalaryEntry[]>([])
+  const [logLoading, setLogLoading] = useState(true)
   const [selectedEntry, setSelectedEntry] = useState<ManualSalaryEntry | null>(null)
   const [selectedEntries, setSelectedEntries] = useState<string[]>([])
   const [weeklyOff, setWeeklyOff] = useState<string>("")
   const [plAvailed, setPlAvailed] = useState<string>("")
   const [absentDays, setAbsentDays] = useState<string>("")
+  const [duplicateExists, setDuplicateExists] = useState(false)
 
-  const employee = employeeMasterData[selectedEmployee]
+  const [calcResult, setCalcResult] = useState<{
+    monthDays: number
+    payableDays: number
+    earnings: Record<string, number>
+    deductions: Record<string, number>
+    gross: number
+    totalDeductions: number
+    netPay: number
+  } | null>(null)
+  const [calcLoading, setCalcLoading] = useState(false)
+
   const monthDays = getMonthDays(salaryMonth)
-  const woNum = Number.parseInt(weeklyOff) || 0   // Paid
-  const plNum = Number.parseInt(plAvailed) || 0   // Paid
-  const absentNum = Number.parseInt(absentDays) || 0 // LOP
+  const absentNum = Number.parseInt(absentDays) || 0
+  const payableDaysNum = monthDays > 0 ? Math.max(monthDays - absentNum, 0) : 0
 
-  const payableDaysNum =
-    monthDays > 0
-      ? Math.max(monthDays - absentNum, 0)
-      : 0
-
-
-  const calculateEarned = (amount: number) => {
-    if (payableDaysNum <= 0 || payableDaysNum > monthDays) return 0
-    return (amount / monthDays) * payableDaysNum
+  const loadLog = async () => {
+    setLogLoading(true)
+    try {
+      const res = await fetch(withBasePath("/api/manual-salary/log"), {
+        credentials: "include",
+        cache: "no-store",
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to load manual salary log")
+      setManualSalaryLog(data?.results?.data ?? data?.data ?? [])
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load manual salary log")
+    } finally {
+      setLogLoading(false)
+    }
   }
 
+  useEffect(() => {
+    void loadLog()
+  }, [])
 
-  const earningComponents: Record<string, number> = employee
-    ? {
-      Basic: calculateEarned(employee.salaryStructure.basic),
-      DA: calculateEarned(employee.salaryStructure.da),
-      HRA: calculateEarned(employee.salaryStructure.hra),
-      Conveyance: calculateEarned(employee.salaryStructure.conveyance),
-      "Other Allowances": calculateEarned(employee.salaryStructure.otherAllowances),
+  // Check for a duplicate entry whenever employee+month change.
+  useEffect(() => {
+    if (!selectedEmployee || !salaryMonth) {
+      setDuplicateExists(false)
+      return
     }
-    : {}
-
-  const deductionComponents: Record<string, number> = employee
-    ? {
-      PF: calculateEarned(employee.salaryStructure.pf),
-      ESIC: calculateEarned(employee.salaryStructure.esic),
-      PT: calculateEarned(employee.salaryStructure.pt),
-      "Other Deductions": calculateEarned(employee.salaryStructure.otherDeductions),
+    let cancelled = false
+    fetch(
+      withBasePath(
+        `/api/manual-salary/validate?empCode=${encodeURIComponent(selectedEmployee)}&month=${encodeURIComponent(salaryMonth)}`
+      ),
+      { credentials: "include", cache: "no-store" }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setDuplicateExists(!!(data?.results?.exists ?? data?.exists))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
     }
-    : {}
+  }, [selectedEmployee, salaryMonth])
 
-  const grossEarnings = Object.values(earningComponents).reduce((a, b) => a + b, 0)
-  const totalDeductions = Object.values(deductionComponents).reduce((a, b) => a + b, 0)
-  const netPayable = grossEarnings - totalDeductions
+  // Fetch a real calculation preview whenever the relevant inputs change.
+  useEffect(() => {
+    if (!selectedEmployee || !salaryMonth || payableDaysNum <= 0 || payableDaysNum > monthDays) {
+      setCalcResult(null)
+      return
+    }
+    let cancelled = false
+    setCalcLoading(true)
+    fetch(withBasePath("/api/manual-salary/calculate"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        empCode: selectedEmployee,
+        salaryMonth,
+        weeklyOff: Number.parseInt(weeklyOff) || 0,
+        plAvailed: Number.parseInt(plAvailed) || 0,
+        absentDays: absentNum,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) {
+          if (data?.results?.data || data?.data) {
+            setCalcResult(data?.results?.data ?? data?.data)
+          } else {
+            setCalcResult(null)
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCalcResult(null)
+      })
+      .finally(() => {
+        if (!cancelled) setCalcLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEmployee, salaryMonth, weeklyOff, plAvailed, absentDays])
 
   const isValid =
-    selectedEmployee &&
-    salaryMonth &&
+    !!selectedEmployee &&
+    !!employeeName.trim() &&
+    !!salaryMonth &&
     payableDaysNum > 0 &&
     payableDaysNum <= monthDays &&
-    employee?.status === "Active" &&
-    !manualSalaryLog.some((e) => e.employeeCode === selectedEmployee && e.salaryMonth === salaryMonth)
+    !duplicateExists &&
+    !!calcResult
 
-  const handleProcess = () => {
+  const handleProcess = async () => {
     if (!isValid) {
       toast.error("Please fill all required fields correctly")
       return
@@ -209,67 +201,84 @@ export default function ManualSalaryProcessing() {
     }
 
     setIsProcessing(true)
-    setTimeout(() => {
-      const entryId = `MAN-${selectedEmployee}-${salaryMonth.replace("-", "")}-${Date.now()}`
+    try {
+      const res = await fetch(withBasePath("/api/manual-salary/process"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          empCode: selectedEmployee,
+          empName: employeeName.trim(),
+          salaryMonth,
+          attendance: {
+            weeklyOff: Number.parseInt(weeklyOff) || 0,
+            plAvailed: Number.parseInt(plAvailed) || 0,
+            absentDays: absentNum,
+          },
+          remarks: remarks || undefined,
+          confirmed: true,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to process manual salary")
+      const result = data?.results ?? data
 
-      const newEntry: ManualSalaryEntry = {
-        entryId,
-        employeeCode: selectedEmployee,
-        employeeName: employee!.name,
-        branch: employee!.branch,
-        client: employee!.client,
-        site: employee!.site,
-        designation: employee!.designation,
-        salaryMonth,
-        payableDays: payableDaysNum,
-        earningsBreakup: earningComponents,
-        deductionsBreakup: deductionComponents,
-        grossEarnings,
-        totalDeductions,
-        netPay: netPayable,
-        remarks,
-        salaryStatus: "Processed",
-        paymentStatus: "Pending",
-        createdBy: "Current User",
-        createdAt: new Date().toISOString(),
-      }
-
-      setManualSalaryLog([...manualSalaryLog, newEntry])
-
-      toast.success(`Manual salary processed successfully`, {
-        description: `Entry ID: ${entryId}\nEmployee: ${employee?.name}\nMonth: ${salaryMonth}\nNet Pay: ₹${netPayable.toFixed(2)}`,
+      toast.success("Manual salary processed successfully", {
+        description: `Entry ID: ${result.entryId}\nEmployee: ${employeeName}\nMonth: ${salaryMonth}${calcResult ? `\nNet Pay: ₹${calcResult.netPay.toFixed(2)}` : ""}`,
       })
 
       setSelectedEmployee("")
+      setEmployeeName("")
       setSalaryMonth("")
-
       setRemarks("")
       setConfirmed(false)
-      setIsProcessing(false)
       setWeeklyOff("")
       setPlAvailed("")
       setAbsentDays("")
-
-    }, 1000)
+      setCalcResult(null)
+      await loadLog()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to process manual salary")
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
-  const handleGeneratePayment = (entry: ManualSalaryEntry) => {
-    const updatedLog = manualSalaryLog.map((e) =>
-      e.entryId === entry.entryId ? { ...e, paymentStatus: "Sent to Accounts" as const } : e,
-    )
-    setManualSalaryLog(updatedLog)
-    toast.success(`Payment instruction sent to Accounts`, {
-      description: `Entry: ${entry.entryId}\nAmount: ₹${entry.netPay.toFixed(2)}`,
-    })
+  const handleGeneratePayment = async (entry: ManualSalaryEntry) => {
+    try {
+      const res = await fetch(withBasePath("/api/manual-salary/payment"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ entryId: entry.entryId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to generate payment instruction")
+      toast.success("Payment instruction sent to Accounts", {
+        description: `Entry: ${entry.entryId}\nAmount: ₹${entry.netPay.toFixed(2)}`,
+      })
+      await loadLog()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to generate payment instruction")
+    }
   }
 
-  const handleBulkPayment = () => {
-    const updatedLog = manualSalaryLog.map((e) =>
-      selectedEntries.includes(e.entryId) ? { ...e, paymentStatus: "Sent to Accounts" as const } : e,
-    )
-    setManualSalaryLog(updatedLog)
-    toast.success(`Payment instructions sent to Accounts for ${selectedEntries.length} entries`)
-    setSelectedEntries([])
+  const handleBulkPayment = async () => {
+    try {
+      const res = await fetch(withBasePath("/api/manual-salary/payment/bulk"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ entryIds: selectedEntries }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to generate bulk payment instructions")
+      toast.success(`Payment instructions sent to Accounts for ${selectedEntries.length} entries`)
+      setSelectedEntries([])
+      await loadLog()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to generate bulk payment instructions")
+    }
   }
 
   return (
@@ -305,46 +314,31 @@ export default function ManualSalaryProcessing() {
                   <EmployeeAutocomplete value={selectedEmployee} onChange={setSelectedEmployee} />
                 </div>
 
-                {/* Auto-loaded Employee Details */}
-                {employee && (
-                  <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg border">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Employee Name</Label>
-                      <p className="font-medium">{employee.name}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Designation</Label>
-                      <p className="font-medium">{employee.designation}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Branch</Label>
-                      <p className="font-medium">{employee.branch}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Client</Label>
-                      <p className="font-medium">{employee.client}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Site</Label>
-                      <p className="font-medium">{employee.site}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">DOJ</Label>
-                      <p className="font-medium">{employee.doj}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Salary Status</Label>
-                      <p className={`font-medium ${employee.status === "Active" ? "text-green-600" : "text-red-600"}`}>
-                        {employee.status}
-                      </p>
-                    </div>
+                {selectedEmployee && (
+                  <div className="space-y-2">
+                    <Label htmlFor="employeeName" className="text-base font-medium">
+                      Employee Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="employeeName"
+                      value={employeeName}
+                      onChange={(e) => setEmployeeName(e.target.value)}
+                      placeholder="Enter employee name"
+                    />
+                  </div>
+                )}
+                {duplicateExists && (
+                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <p className="text-sm text-yellow-700">
+                      This employee already has a manual salary entry for this month
+                    </p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Salary Month & Days */}
-            {employee && (
+            {selectedEmployee && (
               <Card>
                 <CardHeader>
                   <CardTitle>Salary Month & Days</CardTitle>
@@ -423,98 +417,81 @@ export default function ManualSalaryProcessing() {
                     </div>
                   )}
 
-                  {salaryMonth &&
-                    manualSalaryLog.some(
-                      (e) => e.employeeCode === selectedEmployee && e.salaryMonth === salaryMonth,
-                    ) && (
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                        <p className="text-sm text-yellow-700">
-                          This employee already has a manual salary entry for this month
-                        </p>
-                      </div>
-                    )}
                 </CardContent>
               </Card>
             )}
 
             {/* Salary Calculation Preview */}
-            {employee && payableDaysNum > 0 && payableDaysNum <= monthDays && (
+            {selectedEmployee && payableDaysNum > 0 && payableDaysNum <= monthDays && (
               <Card>
                 <CardHeader>
                   <CardTitle>Salary Calculation (Read-only)</CardTitle>
-                  <CardDescription>Auto-calculated based on salary structure and payable days</CardDescription>
+                  <CardDescription>Calculated by the payroll engine based on payable days</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted hover:bg-muted">
-                        <TableHead>Component</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right">Fixed Amount</TableHead>
-                        <TableHead className="text-right">Earned Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {Object.entries(earningComponents).map(([component, amount]) => (
-                        <TableRow key={component}>
-                          <TableCell className="font-medium">{component}</TableCell>
-                          <TableCell>
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Earning</span>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            ₹
-                            {employee.salaryStructure[
-                              component.toLowerCase().replace(" ", "") as keyof typeof employee.salaryStructure
-                            ]?.toFixed(2) || "0.00"}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">₹{amount.toFixed(2)}</TableCell>
+                  {calcLoading && !calcResult ? (
+                    <p className="text-sm text-muted-foreground">Calculating...</p>
+                  ) : calcResult ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted hover:bg-muted">
+                          <TableHead>Component</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
                         </TableRow>
-                      ))}
-                      {Object.entries(deductionComponents).map(([component, amount]) => (
-                        <TableRow key={component}>
-                          <TableCell className="font-medium">{component}</TableCell>
-                          <TableCell>
-                            <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Deduction</span>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.entries(calcResult.earnings).map(([component, amount]) => (
+                          <TableRow key={component}>
+                            <TableCell className="font-medium capitalize">{component}</TableCell>
+                            <TableCell>
+                              <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">Earning</span>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">₹{Number(amount).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                        {Object.entries(calcResult.deductions).map(([component, amount]) => (
+                          <TableRow key={component}>
+                            <TableCell className="font-medium capitalize">{component}</TableCell>
+                            <TableCell>
+                              <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full">Deduction</span>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">₹{Number(amount).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                      <TableFooter className="bg-muted hover:bg-muted">
+                        <TableRow>
+                          <TableCell colSpan={2} className="font-bold">
+                            Gross Earnings
                           </TableCell>
-                          <TableCell className="text-right font-medium">
-                            ₹
-                            {employee.salaryStructure[
-                              component.toLowerCase().replace(" ", "") as keyof typeof employee.salaryStructure
-                            ]?.toFixed(2) || "0.00"}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">₹{amount.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-bold">₹{calcResult.gross.toFixed(2)}</TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter className="bg-muted hover:bg-muted">
-                      <TableRow>
-                        <TableCell colSpan={3} className="font-bold">
-                          Gross Earnings
-                        </TableCell>
-                        <TableCell className="text-right font-bold">₹{grossEarnings.toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={3} className="font-bold">
-                          Total Deductions
-                        </TableCell>
-                        <TableCell className="text-right font-bold">₹{totalDeductions.toFixed(2)}</TableCell>
-                      </TableRow>
-                      <TableRow className="bg-primary hover:bg-primary">
-                        <TableCell colSpan={3} className="font-bold text-primary-foreground">
-                          Net Payable
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-primary-foreground">
-                          ₹{netPayable.toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
+                        <TableRow>
+                          <TableCell colSpan={2} className="font-bold">
+                            Total Deductions
+                          </TableCell>
+                          <TableCell className="text-right font-bold">₹{calcResult.totalDeductions.toFixed(2)}</TableCell>
+                        </TableRow>
+                        <TableRow className="bg-primary hover:bg-primary">
+                          <TableCell colSpan={2} className="font-bold text-primary-foreground">
+                            Net Payable
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-primary-foreground">
+                            ₹{calcResult.netPay.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Unable to calculate — check the wage rules for this employee.</p>
+                  )}
                 </CardContent>
               </Card>
             )}
 
             {/* Confirmation & Remarks */}
-            {employee && payableDaysNum > 0 && payableDaysNum <= monthDays && (
+            {selectedEmployee && payableDaysNum > 0 && payableDaysNum <= monthDays && (
               <Card>
                 <CardHeader>
                   <CardTitle>Confirmation & Remarks</CardTitle>
@@ -574,7 +551,11 @@ export default function ManualSalaryProcessing() {
                     </Button>
                   </div>
                 )}
-                {manualSalaryLog.length === 0 ? (
+                {logLoading ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Loading manual salary log...</p>
+                  </div>
+                ) : manualSalaryLog.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <p>No manual salary entries yet. Process a salary in the first tab to view it here.</p>
                   </div>

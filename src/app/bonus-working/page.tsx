@@ -16,6 +16,7 @@ import { AlertTriangle, Lock, ChevronDown } from "lucide-react"
 import { generateMonthOptions, formatMonthLabel } from "@/utils/month-utility"
 import { toast } from "sonner"
 import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
+import { withBasePath } from "@/lib/base-path"
 
 const initialSteps = [
   {
@@ -58,16 +59,19 @@ const fallbackSites = [
   { id: "site-b", name: "Manufacturing Unit", clientId: "client-1" },
 ]
 
-const mockEmployees = [
-  { id: "emp-1", name: "John Doe", site: "site-a", monthlyBonus: false, salaryStatus: "active" },
-  { id: "emp-2", name: "Jane Smith", site: "site-a", monthlyBonus: false, salaryStatus: "active" },
-  { id: "emp-3", name: "Mike Johnson", site: "site-b", monthlyBonus: true, salaryStatus: "active" },
-  { id: "emp-4", name: "Sarah Wilson", site: "site-b", monthlyBonus: false, salaryStatus: "inactive" },
-  { id: "emp-5", name: "David Brown", site: "site-a", monthlyBonus: false, salaryStatus: "active" },
-]
-
-const BONUS_CEILING = 21000
 const monthOptions = generateMonthOptions(2023, 2026)
+
+function getCurrentUser(): { userId: string; role: string } {
+  if (typeof document === "undefined") return { userId: "unknown", role: "unknown" }
+  const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)
+  if (!match) return { userId: "unknown", role: "unknown" }
+  try {
+    const payload = JSON.parse(atob(match[1].split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+    return { userId: payload.user_id || payload.sub || "unknown", role: payload.role || "unknown" }
+  } catch {
+    return { userId: "unknown", role: "unknown" }
+  }
+}
 type EmployeeStatusFilter = "active" | "inactive" | "both"
 type BonusTrackerItem = {
   id: string
@@ -131,101 +135,144 @@ export default function BonusWorkingPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const getFilteredEmployees = (site = selectedSite, status = employeeStatusFilter) => {
-    return mockEmployees
-      .filter((emp) => {
-        const statusMatch = status === "both" || emp.salaryStatus === status
-        return !emp.monthlyBonus && statusMatch && emp.site === site
-      })
-      .map((emp) => ({ ...emp, selected: true }))
-  }
+  // Step 1 (Context) result
+  const [contextId, setContextId] = useState<string | null>(null)
 
   // Step 2: Employee Selection
-  const [employeeList, setEmployeeList] = useState(getFilteredEmployees)
+  const [employeeList, setEmployeeList] = useState<any[]>([])
 
   // Step 3: Bonus Calculation
   const [bonusCalculation, setBonusCalculation] = useState<any[]>([])
   const [expandedEmployee, setExpandedEmployee] = useState<string | null>(null)
   const [bonusTracker, setBonusTracker] = useState<BonusTrackerItem[]>([])
 
-  const handleContextNext = () => {
+  const loadTracker = async () => {
+    try {
+      const res = await fetch(
+        withBasePath(`/api/bonus/tracker?financialYear=${encodeURIComponent(financialYear)}`),
+        { credentials: "include", cache: "no-store" }
+      )
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.message || `Failed to load tracker (${res.status})`)
+      const rows = json?.results ?? []
+      setBonusTracker(
+        (Array.isArray(rows) ? rows : []).map((r: any) => ({
+          id: r.contextId,
+          client: r.client,
+          site: r.site,
+          financialYear: r.financialYear,
+          payoutMonth: r.payoutMonth,
+          employees: r.employees,
+          totalBonus: r.totalBonus,
+          locked: r.locked,
+          paymentsGenerated: r.paymentsGenerated,
+        }))
+      )
+    } catch (error: any) {
+      console.error(error)
+    }
+  }
+
+  useEffect(() => {
+    loadTracker()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleContextNext = async () => {
     if (!selectedClient || !selectedSite || !financialYear || !bonusPercentage || !payoutMonth) {
-      toast.error("Missing Fields",{
-    
-        description: "Please fill all required fields",
-    
-      })
+      toast.error("Missing Fields", { description: "Please fill all required fields" })
       return
     }
 
-    setEmployeeList(getFilteredEmployees())
-    updateStep(1, true)
-    setCurrentStep(2)
+    try {
+      const res = await fetch(withBasePath("/api/bonus/context"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          clientId: selectedClient,
+          siteId: selectedSite,
+          financialYear,
+          bonusPercentage: Number(bonusPercentage),
+          payoutMonth,
+          employeeStatus: employeeStatusFilter,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.errors?.[0]?.errorMessage || json?.message || `Failed (${res.status})`)
+      }
+      const newContextId = json?.results?.contextId
+      setContextId(newContextId)
+
+      const empRes = await fetch(
+        withBasePath(`/api/bonus/employees?contextId=${encodeURIComponent(newContextId)}`),
+        { credentials: "include", cache: "no-store" }
+      )
+      const empJson = await empRes.json()
+      if (!empRes.ok) {
+        throw new Error(empJson?.message || `Failed to load employees (${empRes.status})`)
+      }
+      const rows = empJson?.results ?? []
+      setEmployeeList(
+        (Array.isArray(rows) ? rows : []).map((emp: any) => ({
+          id: emp.empId,
+          name: emp.name,
+          site: emp.siteId,
+          monthlyBonus: emp.monthlyBonus,
+          salaryStatus: emp.salaryStatus,
+          selected: true,
+        }))
+      )
+
+      updateStep(1, true)
+      setCurrentStep(2)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create bonus context")
+    }
   }
 
-  const handleEmployeeNext = () => {
+  const handleEmployeeNext = async () => {
     const selected = employeeList.filter((emp) => emp.selected)
     if (selected.length === 0) {
-      toast.error(  "No Employees Selected",{
-     
-        description: "Please select at least one employee",
-   
-      })
+      toast.error("No Employees Selected", { description: "Please select at least one employee" })
       return
     }
+    if (!contextId) return
 
-    calculateBonus(selected)
-    updateStep(2, true)
-    setCurrentStep(3)
-  }
-
-  const calculateBonus = (employees: any[]) => {
-    const fy = financialYear.split("-")[0] // e.g., "2025"
-    const fyMonths = [
-      `${fy}-04`,
-      `${fy}-05`,
-      `${fy}-06`,
-      `${fy}-07`,
-      `${fy}-08`,
-      `${fy}-09`,
-      `${fy}-10`,
-      `${fy}-11`,
-      `${fy}-12`,
-      `${Number(fy) + 1}-01`,
-      `${Number(fy) + 1}-02`,
-      `${Number(fy) + 1}-03`,
-    ]
-
-    const calculations = employees.map((emp) => {
-      const monthBreakdown = fyMonths.map((month) => {
-        const basicDA = 18000
-        const eligibleSalary = Math.min(basicDA, BONUS_CEILING)
-        const payableDays = 26
-        const totalDays = 26
-        const monthlyBonus = ((eligibleSalary * Number(bonusPercentage)) / 100) * (payableDays / totalDays)
-
-        return {
-          month: formatMonthLabel(month),
-          monthValue: month,
-          basicDA,
-          ceilingApplied: eligibleSalary,
-          payableDays,
-          totalDays,
-          monthlyBonus: Math.round(monthlyBonus),
-        }
+    try {
+      const res = await fetch(withBasePath("/api/bonus/calculate"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ contextId, employees: selected.map((e) => e.id) }),
       })
-
-      const totalBonus = monthBreakdown.reduce((sum, m) => sum + m.monthlyBonus, 0)
-
-      return {
-        empId: emp.id,
-        empName: emp.name,
-        site: emp.site,
-        monthBreakdown,
-        totalBonus,
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.errors?.[0]?.errorMessage || json?.message || `Failed (${res.status})`)
       }
-    })
-    setBonusCalculation(calculations)
+      const calculations = json?.results?.calculations ?? []
+      setBonusCalculation(
+        calculations.map((c: any) => ({
+          empId: c.empId,
+          empName: c.empName,
+          totalBonus: c.totalBonus,
+          monthBreakdown: (c.monthBreakdown || []).map((m: any) => ({
+            month: formatMonthLabel(m.month),
+            basicDA: m.basicDA,
+            ceilingApplied: m.ceilingApplied,
+            payableDays: m.payableDays,
+            totalDays: m.totalDays,
+            monthlyBonus: m.monthlyBonus,
+          })),
+        }))
+      )
+
+      updateStep(2, true)
+      setCurrentStep(3)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to calculate bonus")
+    }
   }
 
   const handleCalculationNext = () => {
@@ -233,52 +280,33 @@ export default function BonusWorkingPage() {
     setCurrentStep(4)
   }
 
-  const handleReviewConfirm = () => {
-    const trackerId = `${financialYear}-${payoutMonth}`
-    const selectedCount = employeeList.filter((emp) => emp.selected).length
-    const currentClient = clients.find((client) => client.id === selectedClient)?.name ?? selectedClient
-    const currentSite =
-      clientSites.find((site) => site.id === selectedSite)?.name ??
-      selectedSite
-    setBonusTracker((prev) => {
-      const existing = prev.find((item) => item.id === trackerId)
-      if (existing) {
-        return prev.map((item) =>
-          item.id === trackerId
-            ? {
-                ...item,
-                client: currentClient,
-                site: currentSite,
-                employees: selectedCount,
-                totalBonus,
-                locked: true,
-                paymentsGenerated: false,
-              }
-            : item,
-        )
+  const handleReviewConfirm = async () => {
+    if (!contextId) return
+    try {
+      const res = await fetch(withBasePath("/api/bonus/lock"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ contextId, confirmedBy: getCurrentUser().userId }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.errors?.[0]?.errorMessage || json?.message || `Failed (${res.status})`)
       }
-      return [
-        ...prev,
-        {
-          id: trackerId,
-          client: currentClient,
-          site: currentSite,
-          financialYear,
-          payoutMonth,
-          employees: selectedCount,
-          totalBonus,
-          locked: true,
-          paymentsGenerated: false,
-        },
-      ]
-    })
 
-    toast.success("Bonus Locked", {
-      description: "Bonus period is locked. Generate payments from Tracker tab.",
-    })
-    updateStep(4, true)
-    setSteps(initialSteps)
-    setCurrentStep(1)
+      toast.success("Bonus Locked", {
+        description: "Bonus period is locked. Generate payments from Tracker tab.",
+      })
+      await loadTracker()
+      updateStep(4, true)
+      setSteps(initialSteps)
+      setCurrentStep(1)
+      setContextId(null)
+      setEmployeeList([])
+      setBonusCalculation([])
+    } catch (error: any) {
+      toast.error(error.message || "Failed to lock bonus context")
+    }
   }
 
   const updateStep = (stepIndex: number, completed: boolean) => {
@@ -286,17 +314,43 @@ export default function BonusWorkingPage() {
   }
 
   const totalBonus = bonusCalculation.reduce((sum, emp) => sum + emp.totalBonus, 0)
-  const handleToggleBonusLock = (id: string) => {
-    setBonusTracker((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, locked: !item.locked } : item)),
-    )
+
+  const handleToggleBonusLock = async (id: string) => {
+    const item = bonusTracker.find((t) => t.id === id)
+    if (!item) return
+    try {
+      const res = await fetch(withBasePath("/api/bonus/lock-status"), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ contextId: id, locked: !item.locked }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.message || `Failed (${res.status})`)
+      await loadTracker()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to toggle lock status")
+    }
   }
 
-  const handleGenerateBonusPayment = (id: string) => {
-    setBonusTracker((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, paymentsGenerated: true } : item)),
-    )
-    toast.success("Payment Generated", { description: "Tracker updated successfully" })
+  const handleGenerateBonusPayment = async (id: string) => {
+    try {
+      const res = await fetch(withBasePath("/api/bonus/generate-payment"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        // The bonus module doesn't expose a salary-component picker anywhere
+        // in this UI yet - "Bonus" is the conventional component name used
+        // elsewhere in this codebase for statutory bonus payouts.
+        body: JSON.stringify({ contextId: id, earningComponent: "Bonus" }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.message || `Failed (${res.status})`)
+      toast.success("Payment Generated", { description: "Tracker updated successfully" })
+      await loadTracker()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to generate payment")
+    }
   }
 
   return (

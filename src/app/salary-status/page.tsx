@@ -523,31 +523,59 @@ const processedEmployees = sites.reduce((sum, s) => {
     setIsDialogOpen(true)
   }
 
-  function handleUnlock(clientRecord: ClientRecord) {
+  async function handleUnlock(clientRecord: ClientRecord) {
     const confirmed = window.confirm(
       `Unlocking will allow salary re-processing for all ${clientRecord.totalSites} sites under ${clientRecord.name}. Are you sure?`
     )
     if (!confirmed) return
 
-    // simulate backend success
-    setUnlockedClients((prev) => ({
-      ...prev,
-      [clientRecord.id]: true,
-    }))
+    const reason = window.prompt("Reason for unlocking (required):")
+    if (!reason || !reason.trim()) return
+
+    try {
+      const res = await fetch(
+        withBasePath(`/api/salary-status/${encodeURIComponent(clientRecord.id)}/unlock`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ reason: reason.trim() }),
+        }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to unlock")
+
+      setUnlockedClients((prev) => ({
+        ...prev,
+        [clientRecord.id]: true,
+      }))
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to unlock")
+    }
   }
 
-  function handleLock(clientRecord: ClientRecord) {
+  async function handleLock(clientRecord: ClientRecord) {
     const confirmed = window.confirm(
       `Locking will prevent further salary modifications for all ${clientRecord.totalSites} sites under ${clientRecord.name}. Are you sure?`
     )
     if (!confirmed) return
 
-    // simulate backend success
-    setUnlockedClients((prev) => {
-      const newState = { ...prev }
-      delete newState[clientRecord.id]
-      return newState
-    })
+    try {
+      const res = await fetch(
+        withBasePath(`/api/salary-status/${encodeURIComponent(clientRecord.id)}/lock`),
+        { method: "POST", credentials: "include" }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to lock")
+
+      setUnlockedClients((prev) => {
+        const newState = { ...prev }
+        delete newState[clientRecord.id]
+        return newState
+      })
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Failed to lock")
+    }
   }
 
   function getStatusLabel(status: SalaryStatus) {

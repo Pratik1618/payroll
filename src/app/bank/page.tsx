@@ -9,8 +9,17 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Calendar, Download, Upload, AlertTriangle, CheckCircle, Clock, DollarSign, Users } from "lucide-react"
-import { BankFilePreview } from "@/components/ui/payroll/bank-file-preview" 
+import { BankFilePreview } from "@/components/ui/payroll/bank-file-preview"
 
+// NOTE (demo-data audit): the real backend (POST /api/payroll/run/{run_id}/bank-file,
+// app/payroll/processing/service.py generate_bank_file) only generates ONE consolidated
+// NEFT file for a single already-LOCKED payroll run - it has no listing/query endpoint
+// for a per-employee, per-site disbursement dashboard or a separate FnF-payout list the
+// way this page's UI is modeled (checkbox-selectable rows, site/month filters). There is
+// no real backend capability matching this page's data model, so the tables below remain
+// local mock data - flagged here rather than force-fitting an incorrect mapping. Wiring
+// this for real would need a run-id-driven "generate + download" flow instead of a list
+// dashboard, which is a bigger UI change than a data-source swap.
 const mockDisbursementData = [
   {
     id: 1,

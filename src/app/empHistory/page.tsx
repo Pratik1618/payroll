@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { withBasePath } from "@/lib/base-path"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -24,7 +25,7 @@ type SalaryRecord = {
   netSalary: number
   earnings: SalaryComponent[]
   deductionsList: SalaryComponent[]
-  status: "Paid" | "Pending" | "Hold"
+  status: string
   client: string
   site: string
 }
@@ -35,145 +36,114 @@ type Employee = {
   empId: string
   designation: string
   joiningDate: string
+  salaryRecordCount: number
   salaryHistory: SalaryRecord[]
 }
 
-// Mock data
-const mockEmployees: Employee[] = [
-  {
-    id: "1",
-    name: "Rajesh Kumar",
-    empId: "EMP001",
-    designation: "Senior Developer",
-    joiningDate: "2023-01-15",
-    salaryHistory: [
-      {
-        id: "s1",
-        month: "January",
-        year: 2024,
-        grossSalary: 75000,
-        deductions: 8500,
-        netSalary: 66500,
-        earnings: [
-          { name: "Basic", amount: 35000 },
-          { name: "HRA", amount: 17500 },
-          { name: "DA", amount: 10500 },
-          { name: "Special Allowance", amount: 12000 },
-        ],
-        deductionsList: [
-          { name: "PF", amount: 4200 },
-          { name: "ESIC", amount: 1500 },
-          { name: "PT", amount: 200 },
-          { name: "TDS", amount: 2600 },
-        ],
-        status: "Paid",
-        client: "ABC Corp",
-        site: "Mumbai",
-      },
-      {
-        id: "s2",
-        month: "February",
-        year: 2024,
-        grossSalary: 75000,
-        deductions: 8500,
-        netSalary: 66500,
-        earnings: [
-          { name: "Basic", amount: 35000 },
-          { name: "HRA", amount: 17500 },
-          { name: "DA", amount: 10500 },
-          { name: "Special Allowance", amount: 12000 },
-        ],
-        deductionsList: [
-          { name: "PF", amount: 4200 },
-          { name: "ESIC", amount: 1500 },
-          { name: "PT", amount: 200 },
-          { name: "TDS", amount: 2600 },
-        ],
-        status: "Paid",
-        client: "ABC Corp",
-        site: "Mumbai",
-      },
-      {
-        id: "s3",
-        month: "March",
-        year: 2024,
-        grossSalary: 80000,
-        deductions: 9000,
-        netSalary: 71000,
-        earnings: [
-          { name: "Basic", amount: 37000 },
-          { name: "HRA", amount: 18500 },
-          { name: "DA", amount: 11500 },
-          { name: "Special Allowance", amount: 13000 },
-        ],
-        deductionsList: [
-          { name: "PF", amount: 4440 },
-          { name: "ESIC", amount: 1600 },
-          { name: "PT", amount: 200 },
-          { name: "TDS", amount: 2760 },
-        ],
-        status: "Paid",
-        client: "XYZ Ltd",
-        site: "Delhi",
-      },
-    ],
-  },
-  {
-    id: "2",
-    name: "Priya Sharma",
-    empId: "EMP002",
-    designation: "HR Manager",
-    joiningDate: "2022-06-01",
-    salaryHistory: [
-      {
-        id: "s4",
-        month: "January",
-        year: 2024,
-        grossSalary: 65000,
-        deductions: 7500,
-        netSalary: 57500,
-        earnings: [
-          { name: "Basic", amount: 30000 },
-          { name: "HRA", amount: 15000 },
-          { name: "DA", amount: 9000 },
-          { name: "Special Allowance", amount: 11000 },
-        ],
-        deductionsList: [
-          { name: "PF", amount: 3600 },
-          { name: "ESIC", amount: 1300 },
-          { name: "PT", amount: 200 },
-          { name: "TDS", amount: 2400 },
-        ],
-        status: "Paid",
-        client: "DEF Inc",
-        site: "Bangalore",
-      },
-    ],
-  },
-]
-
 export default function EmployeeHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("")
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [selectedSalary, setSelectedSalary] = useState<SalaryRecord | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  useEffect(() => {
+    fetch(withBasePath("/api/employees"), { credentials: "include", cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        const rows = json?.results?.data ?? []
+        setAllEmployees(
+          (Array.isArray(rows) ? rows : []).map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            empId: r.empId,
+            designation: r.designation || "",
+            joiningDate: r.joiningDate || "",
+            salaryRecordCount: r.salaryRecordCount || 0,
+            salaryHistory: [],
+          }))
+        )
+      })
+      .catch((error) => {
+        console.error("Failed to load employees:", error)
+        toast.error("Failed to load employees")
+      })
+  }, [])
+
   const filteredEmployees = searchTerm
-    ? mockEmployees.filter(
+    ? allEmployees.filter(
         (emp) =>
           emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           emp.empId.toLowerCase().includes(searchTerm.toLowerCase()),
       )
-    : mockEmployees
+    : allEmployees
 
-  const handleSelectEmployee = (employee: Employee) => {
+  const handleSelectEmployee = async (employee: Employee) => {
     setSelectedEmployee(employee)
     toast.success(`Selected employee: ${employee.name}`)
+
+    try {
+      const res = await fetch(
+        withBasePath(`/api/employees/${encodeURIComponent(employee.empId)}/salary-history`),
+        { credentials: "include", cache: "no-store" }
+      )
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.message || `Failed to load salary history (${res.status})`)
+      }
+      const history = json?.results?.history ?? []
+      setSelectedEmployee({
+        ...employee,
+        salaryHistory: history.map((h: any) => ({
+          id: h.id,
+          month: h.month,
+          year: h.year,
+          grossSalary: h.grossSalary,
+          deductions: h.deductions,
+          netSalary: h.netSalary,
+          earnings: [],
+          deductionsList: [],
+          status: h.status,
+          client: h.client,
+          site: h.site,
+        })),
+      })
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load salary history")
+    }
   }
 
-  const handleViewDetails = (salary: SalaryRecord) => {
-    setSelectedSalary(salary)
-    setDialogOpen(true)
+  const handleViewDetails = async (salary: SalaryRecord) => {
+    if (!selectedEmployee) return
+    try {
+      const res = await fetch(
+        withBasePath(
+          `/api/employees/${encodeURIComponent(selectedEmployee.empId)}/salary-history/${encodeURIComponent(salary.id)}`
+        ),
+        { credentials: "include", cache: "no-store" }
+      )
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.message || `Failed to load salary detail (${res.status})`)
+      }
+      const detail = json?.results
+      setSelectedSalary({
+        id: detail.salaryId,
+        month: detail.month,
+        year: detail.year,
+        grossSalary: detail.grossSalary,
+        deductions: detail.deductions,
+        netSalary: detail.netSalary,
+        earnings: detail.earnings || [],
+        deductionsList: detail.deductionsList || [],
+        status: salary.status,
+        client: detail.client,
+        site: detail.site,
+      })
+      setDialogOpen(true)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load salary detail")
+    }
   }
 
   return (
@@ -238,7 +208,7 @@ export default function EmployeeHistoryPage() {
                           <span>Joined: {employee.joiningDate}</span>
                         </div>
                       </div>
-                      <Badge variant="outline">{employee.salaryHistory.length} salary records</Badge>
+                      <Badge variant="outline">{employee.salaryRecordCount} salary records</Badge>
                     </div>
                   </div>
                 ))}
@@ -305,15 +275,7 @@ export default function EmployeeHistoryPage() {
                             <h3 className="font-semibold text-lg">
                               {salary.month} {salary.year}
                             </h3>
-                            <Badge
-                              variant={
-                                salary.status === "Paid"
-                                  ? "default"
-                                  : salary.status === "Pending"
-                                    ? "secondary"
-                                    : "destructive"
-                              }
-                            >
+                            <Badge variant="outline">
                               {salary.status}
                             </Badge>
                           </div>

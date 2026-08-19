@@ -61,6 +61,15 @@ interface EmployeeHoldData {
 
 // ------------------------------------------------------------
 // MOCK EMPLOYEES
+// NOTE (demo-data audit): the real backend's hold/unhold actions below
+// (holdSalary/unholdSalary -> /api/salary-hold/hold|unhold, already real)
+// have no corresponding GET/list endpoint (checked app/payroll/salary_hold/
+// router.py - only POST /hold, /unhold, /bulk-upload exist), so there is no
+// way to source a real "current hold status per employee" grid. Left as
+// mock rather than half-wiring just the employee names next to a status
+// grid that would still be entirely fabricated - would be more misleading,
+// not less. Needs a real list endpoint added to salary_hold/router.py
+// before this can be fully wired.
 // ------------------------------------------------------------
 
 const mockEmployees = [

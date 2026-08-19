@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,14 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { MapPin, Plus, Trash2 } from "lucide-react"
+import { withBasePath } from "@/lib/base-path"
 
-const mockCycles = [
-  { id: "1", name: "7 to 7", startDate: "7", endDate: "7" },
-  { id: "2", name: "10 to 10", startDate: "10", endDate: "10" },
-  { id: "3", name: "15 to 15", startDate: "15", endDate: "15" },
-  { id: "4", name: "1 to 30", startDate: "1", endDate: "30" },
-]
-
+// NOTE: the backend has no "list all sites across all clients" endpoint yet
+// (only client-scoped GET /api/clients/{id}/sites) - this static list is a
+// placeholder for the site picker until that endpoint exists. The mapping
+// CRUD below (cycles, create/list/delete) is fully wired to the real API.
 const mockSites = [
   { id: "1", name: "Site A", client: "Acme Corp" },
   { id: "2", name: "Site B", client: "Acme Corp" },
@@ -26,6 +24,7 @@ const mockSites = [
 
 export default function CycleMappingPage() {
   const [mappingMode, setMappingMode] = useState<"predefined" | "custom">("predefined")
+  const [cycles, setCycles] = useState<Array<{ id: string; name: string; fromDay: number; toDay: number }>>([])
   const [selectedCycle, setSelectedCycle] = useState<string>("")
   const [fromDate, setFromDate] = useState<number>(0)
   const [toDate, setToDate] = useState<number>(0)
@@ -33,16 +32,45 @@ export default function CycleMappingPage() {
   const [mappedSites, setMappedSites] = useState<string[]>([])
   const [mappings, setMappings] = useState<
     Array<{ id: string; cycleId: string; cycleName: string; fromDate: number; toDate: number; sites: string[] }>
-  >([
-    {
-      id: "map-1",
-      cycleId: "1",
-      cycleName: "7 to 7",
-      fromDate: 7,
-      toDate: 7,
-      sites: ["1", "2", "5"],
-    },
-  ])
+  >([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+
+  const loadCyclesAndMappings = async () => {
+    setLoading(true)
+    try {
+      const [cyclesRes, mappingsRes] = await Promise.all([
+        fetch(withBasePath("/api/salary-cycles"), { credentials: "include", cache: "no-store" }),
+        fetch(withBasePath("/api/salary-cycle-mapping/active"), { credentials: "include", cache: "no-store" }),
+      ])
+      const cyclesData = await cyclesRes.json()
+      if (!cyclesRes.ok) throw new Error(cyclesData?.message || "Failed to load salary cycles")
+      const rawCycles = cyclesData?.results?.cycles ?? cyclesData?.cycles ?? []
+      setCycles(rawCycles.map((c: any) => ({ id: c.cycleId, name: c.name, fromDay: c.fromDay, toDay: c.toDay })))
+
+      const mappingsData = await mappingsRes.json()
+      if (!mappingsRes.ok) throw new Error(mappingsData?.message || "Failed to load cycle mappings")
+      const rawMappings = mappingsData?.results?.data ?? mappingsData?.data ?? []
+      setMappings(
+        rawMappings.map((m: any) => ({
+          id: m.mappingId,
+          cycleId: "",
+          cycleName: m.cycleName,
+          fromDate: m.fromDay,
+          toDate: m.toDay,
+          sites: m.sites || [],
+        }))
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to load cycle mapping data")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadCyclesAndMappings()
+  }, [])
 
   const handleFromDateSelect = (day: number) => {
     setFromDate(day)
@@ -65,7 +93,7 @@ export default function CycleMappingPage() {
     setMappedSites(updatedSites)
   }
 
-  const handleCreateMapping = () => {
+  const handleCreateMapping = async () => {
     if (mappingMode === "predefined") {
       if (!selectedCycle) {
         toast.error("Please select a salary cycle")
@@ -83,38 +111,55 @@ export default function CycleMappingPage() {
       return
     }
 
-    let cycleId = selectedCycle
-    let cycleName = ""
-    let finalFromDate = fromDate
-    let finalToDate = toDate
+    const siteNames = mappedSites.map((id) => mockSites.find((s) => s.id === id)?.name).join(", ")
+    const cycleName =
+      mappingMode === "predefined"
+        ? cycles.find((c) => c.id === selectedCycle)?.name || ""
+        : `Day ${fromDate} to Day ${toDate}`
 
-    if (mappingMode === "predefined") {
-      const cycle = mockCycles.find((c) => c.id === selectedCycle)
-      cycleId = cycle?.id || ""
-      cycleName = cycle?.name || ""
-      finalFromDate = Number.parseInt(cycle?.startDate || "0")
-      finalToDate = Number.parseInt(cycle?.endDate || "0")
-    } else {
-      cycleName = `Day ${fromDate} to Day ${toDate}`
+    setCreating(true)
+    try {
+      const body =
+        mappingMode === "predefined"
+          ? { mode: "predefined", cycleId: selectedCycle, sites: mappedSites }
+          : { mode: "custom", period: { fromDay: fromDate, toDay: toDate }, sites: mappedSites }
+
+      const res = await fetch(withBasePath("/api/salary-cycle-mapping/create"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to create cycle mapping")
+
+      setSelectedCycle("")
+      setFromDate(0)
+      setToDate(0)
+      setMappedSites([])
+      setSiteSearchQuery("")
+      toast.success(`Mapping created: ${siteNames} mapped to ${cycleName}`)
+      await loadCyclesAndMappings()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create cycle mapping")
+    } finally {
+      setCreating(false)
     }
+  }
 
-    const newMapping = {
-      id: `map-${Date.now()}`,
-      cycleId: cycleId,
-      cycleName: cycleName,
-      fromDate: finalFromDate,
-      toDate: finalToDate,
-      sites: [...mappedSites],
+  const handleDeleteMapping = async (mappingId: string) => {
+    try {
+      const res = await fetch(withBasePath(`/api/salary-cycle-mapping/${encodeURIComponent(mappingId)}`), {
+        method: "DELETE",
+        credentials: "include",
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to delete mapping")
+      toast.success("Mapping deleted")
+      await loadCyclesAndMappings()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete mapping")
     }
-
-    setMappings([...mappings, newMapping])
-    setSelectedCycle("")
-    setFromDate(0)
-    setToDate(0)
-    setMappedSites([])
-    setSiteSearchQuery("")
-    const siteNames = [...mappedSites].map((id) => mockSites.find((s) => s.id === id)?.name).join(", ")
-    toast.success(`Mapping created: ${siteNames} mapped to ${cycleName}`)
   }
 
   const getSiteNamesWithClient = (siteIds: string[]) => {
@@ -177,7 +222,7 @@ export default function CycleMappingPage() {
                     <SelectValue placeholder="Choose a cycle..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockCycles.map((cycle) => (
+                    {cycles.map((cycle) => (
                       <SelectItem key={cycle.id} value={cycle.id}>
                         {cycle.name}
                       </SelectItem>
@@ -291,12 +336,13 @@ export default function CycleMappingPage() {
               onClick={handleCreateMapping}
               className="w-full"
               disabled={
+                creating ||
                 mappedSites.length === 0 ||
                 (mappingMode === "predefined" ? !selectedCycle : fromDate === 0 || toDate === 0)
               }
             >
               <Plus className="h-4 w-4 mr-2" />
-              Create Mapping
+              {creating ? "Creating..." : "Create Mapping"}
             </Button>
           </CardContent>
         </Card>
@@ -304,7 +350,13 @@ export default function CycleMappingPage() {
         {/* Existing Mappings */}
         <div className="space-y-3">
           <h2 className="text-lg font-semibold text-foreground">Active Mappings</h2>
-          {mappings.length === 0 ? (
+          {loading ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Loading mappings...
+              </CardContent>
+            </Card>
+          ) : mappings.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
                 No cycle mappings created yet
@@ -342,10 +394,7 @@ export default function CycleMappingPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
-                          setMappings(mappings.filter((m) => m.id !== mapping.id))
-                          toast.success("Mapping deleted")
-                        }}
+                        onClick={() => handleDeleteMapping(mapping.id)}
                         className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4" />

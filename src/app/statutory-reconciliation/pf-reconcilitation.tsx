@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import {
   Tabs, TabsContent, TabsList, TabsTrigger
 } from "@/components/ui/tabs"
@@ -16,39 +16,31 @@ import { ClientsDropdown } from "@/components/ui/clients-dropdown"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, CheckCircle2, Upload, Users } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { MainLayout } from "@/components/ui/layout/main-layout"
-
-/* ================= MOCK DATA ================= */
-
-const PF_UPLOAD_DATA = [
-  { clientId: "C1", clientName: "ABC Ltd", month: "Jan-26", employees: 120, pfAmount: 425000 },
-  { clientId: "C2", clientName: "XYZ Pvt Ltd", month: "Jan-26", employees: 86, pfAmount: 210000 },
-]
-
-// Dummy TRRN parse result
-const MOCK_TRRN_CASES = {
-  PAID: { totalPaid: 635000 },      // exact match
-  PARTIAL: { totalPaid: 425000 },   // less than PF
-  OVERPAID: { totalPaid: 700000 },  // more than PF
-}
-
+import { toast } from "sonner"
+import { withBasePath } from "@/lib/base-path"
+import { useClients } from "@/hooks/use-shared-master-data"
 
 /* ================= COMPONENT ================= */
 
 export default function PFReconciliationModule() {
   const [activeTab, setActiveTab] = useState("client")
-  const [mockCase, setMockCase] = useState<"PAID" | "PARTIAL" | "OVERPAID">("PARTIAL")
+  const { clients: clientOptions } = useClients([])
 
   /* ---------- CLIENT STATES ---------- */
   const [selectedClients, setSelectedClients] = useState<string[]>([])
   const [selectedMonth, setSelectedMonth] = useState("")
   const [pfData, setPfData] = useState<any[]>([])
+  const [pfLoading, setPfLoading] = useState(false)
   const [trrnUploaded, setTrrnUploaded] = useState(false)
+  const [trrnId, setTrrnId] = useState<string | null>(null)
+  const [trrnPaidAmount, setTrrnPaidAmount] = useState<number>(0)
   const [reconRows, setReconRows] = useState<any[]>([])
+  const trrnInputRef = useRef<HTMLInputElement>(null)
 
   /* ---------- EMPLOYEE STATES ---------- */
   const [ecrUploaded, setEcrUploaded] = useState(false)
   const [employeeRecon, setEmployeeRecon] = useState<any[]>([])
+  const ecrInputRef = useRef<HTMLInputElement>(null)
 
   /* ================= CLIENT AUTO FETCH ================= */
   useEffect(() => {
@@ -56,76 +48,132 @@ export default function PFReconciliationModule() {
       setPfData([])
       setReconRows([])
       setTrrnUploaded(false)
+      setTrrnId(null)
       return
     }
 
-    const data = PF_UPLOAD_DATA.filter(
-      (d) => selectedClients.includes(d.clientId) && d.month === selectedMonth
-    )
+    const load = async () => {
+      setPfLoading(true)
+      try {
+        const res = await fetch(withBasePath("/api/statutory/pf/payable"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ clientIds: selectedClients, month: selectedMonth }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.message || "Failed to load PF payable data")
+        const results = data?.results ?? {}
+        setPfData(results.clients ?? [])
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Failed to load PF payable data")
+        setPfData([])
+      } finally {
+        setPfLoading(false)
+      }
+    }
 
-    setPfData(data)
     setReconRows([])
     setTrrnUploaded(false)
+    setTrrnId(null)
+    void load()
   }, [selectedClients, selectedMonth])
 
-  /* ================= CLIENT RECONCILE ================= */
-  const handleReconcile = () => {
-    if (pfData.length === 0 || !trrnUploaded) return
+  /* ================= TRRN UPLOAD ================= */
+  const handleTrrnFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
 
-    const paidAmount = MOCK_TRRN_CASES[mockCase].totalPaid
-
-    const totalPF = pfData.reduce((sum, c) => sum + c.pfAmount, 0)
-    const totalEmployees = pfData.reduce((sum, c) => sum + c.employees, 0)
-    const clientNames = pfData.map(c => c.clientName).join(", ")
-
-    const newReconRows = [
-      {
-        clientName: clientNames,
-        month: selectedMonth,
-        employees: totalEmployees,
-        pfAmount: totalPF,
-        paidAmount: paidAmount,
-      }
-    ]
-
-    setReconRows(newReconRows)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch(
+        withBasePath(`/api/statutory/pf/trrn?month=${encodeURIComponent(selectedMonth)}`),
+        { method: "POST", body: formData, credentials: "include" }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to upload TRRN")
+      const results = data?.results ?? {}
+      setTrrnId(results.trrnId ?? null)
+      setTrrnPaidAmount(results.parsedAmount ?? 0)
+      setTrrnUploaded(true)
+      toast.success("TRRN uploaded")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload TRRN")
+    }
   }
 
+  /* ================= CLIENT RECONCILE ================= */
+  const handleReconcile = async () => {
+    if (pfData.length === 0 || !trrnUploaded || !trrnId) return
 
+    try {
+      const totalPF = pfData.reduce((sum, c) => sum + c.pfAmount, 0)
+      const res = await fetch(withBasePath("/api/statutory/pf/reconcile"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          clientIds: selectedClients,
+          month: selectedMonth,
+          totalPfAmount: totalPF,
+          paidAmount: trrnPaidAmount,
+          trrnId,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to reconcile")
 
-  /* ================= EMPLOYEE AUTO LOAD (DUMMY) ================= */
-  useEffect(() => {
-    if (ecrUploaded) {
-      setEmployeeRecon([
+      const totalEmployees = pfData.reduce((sum, c) => sum + c.employees, 0)
+      const clientNames = pfData.map((c) => c.clientName).join(", ")
+      setReconRows([
         {
-          uan: "100200300400",
-          name: "John Doe",
-          ecrEPF: 1800,
-          ecrEPS: 1250,
-          ncp: 0,
-          status: "MATCHED",
-        },
-        {
-          uan: "200300400500",
-          name: "Asha Devi",
-          ecrEPF: 2160,
-          ecrEPS: 1250,
-          ncp: 1,
-          status: "MATCHED",
-        },
-        {
-          uan: "300400500600",
-          name: "Ravi Kumar",
-          ecrEPF: 1500,
-          ecrEPS: 1000,
-          ncp: 2,
-          status: "MISMATCH",
+          clientName: clientNames,
+          month: selectedMonth,
+          employees: totalEmployees,
+          pfAmount: totalPF,
+          paidAmount: trrnPaidAmount,
         },
       ])
-    } else {
-      setEmployeeRecon([])
+      toast.success("Reconciled")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to reconcile")
     }
-  }, [ecrUploaded])
+  }
+
+  /* ================= EMPLOYEE ECR UPLOAD ================= */
+  const handleEcrFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch(
+        withBasePath(`/api/statutory/pf/ecr?month=${encodeURIComponent(selectedMonth)}`),
+        { method: "POST", body: formData, credentials: "include" }
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to upload ECR")
+      const results = data?.results ?? {}
+      setEmployeeRecon(
+        (results.data ?? []).map((row: any) => ({
+          uan: row.uan,
+          name: row.name,
+          ecrEPF: row.epf,
+          ecrEPS: row.eps,
+          ncp: row.ncp,
+          status: row.status,
+        }))
+      )
+      setEcrUploaded(true)
+      toast.success("ECR uploaded")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload ECR")
+    }
+  }
 
   /* ================= STATUS ENGINE ================= */
   const getStatus = (pf: number, paid: number) => {
@@ -148,19 +196,8 @@ export default function PFReconciliationModule() {
     }
   }
 
-  const clientOptions = PF_UPLOAD_DATA.map(client => ({
-    id: client.clientId,
-    name: client.clientName,
-    employees: client.employees
-  }))
-
   return (
-
-
-
     <div className=" space-y-6">
-
-
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-2 w-full">
           <TabsTrigger value="client">Client-wise</TabsTrigger>
@@ -189,10 +226,11 @@ export default function PFReconciliationModule() {
                 </SelectContent>
               </Select>
 
+              <input ref={trrnInputRef} type="file" className="hidden" onChange={handleTrrnFile} accept=".pdf" />
               <Button
                 variant="outline"
                 disabled={pfData.length === 0}
-                onClick={() => setTrrnUploaded(true)}
+                onClick={() => trrnInputRef.current?.click()}
               >
                 <Upload className="h-4 w-4 mr-1" />
                 Upload TRRN
@@ -207,11 +245,15 @@ export default function PFReconciliationModule() {
             </CardContent>
           </Card>
 
+          {pfLoading && (
+            <p className="text-sm text-muted-foreground">Loading PF payable data...</p>
+          )}
+
           {pfData.length > 0 && (
             <Card className="bg-slate-50">
               <CardContent className="p-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                  {pfData.map((client, index) => (
+                  {pfData.map((client) => (
                     <div key={client.clientId} className="space-y-2">
                       <h4 className="font-medium">{client.clientName}</h4>
                       <div className="space-y-1">
@@ -336,7 +378,8 @@ export default function PFReconciliationModule() {
                   </SelectContent>
                 </Select>
 
-                <Button variant="outline" onClick={() => setEcrUploaded(true)}>
+                <input ref={ecrInputRef} type="file" className="hidden" onChange={handleEcrFile} accept=".txt,.csv" />
+                <Button variant="outline" onClick={() => ecrInputRef.current?.click()}>
                   <Upload className="h-4 w-4 mr-1" />
                   Upload ECR
                 </Button>

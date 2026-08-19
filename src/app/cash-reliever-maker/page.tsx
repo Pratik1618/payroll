@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash } from "lucide-react";
 import { toast } from "sonner";
+import { withBasePath } from "@/lib/base-path";
+import { useClients, useClientSites } from "@/hooks/use-shared-master-data";
 
 interface RelieverRow {
   id: number;
@@ -42,6 +44,8 @@ interface RelieverRow {
 export default function CashRelieverMakerPage() {
   const [client, setClient] = useState("");
   const [site, setSite] = useState("");
+  const { clients } = useClients([]);
+  const { sites } = useClientSites(client, []);
 
   const [rows, setRows] = useState<RelieverRow[]>([
     {
@@ -55,29 +59,27 @@ export default function CashRelieverMakerPage() {
     },
   ]);
 
-  // 🔥 dummy rate master
-  const dummyRateMaster: any = {
-    HDFC: {
-      Nagpur: {
-        "Security Guard": 750,
-        Housekeeping: 500,
-      },
-      Pune: {
-        "Security Guard": 800,
-        Housekeeping: 550,
-      },
-    },
-    TCS: {
-      Mumbai: {
-        "Security Guard": 900,
-        Housekeeping: 600,
-      },
-    },
-  };
-
-  // get rate
-  const getDummyRate = (client: string, site: string, designation: string) => {
-    return dummyRateMaster?.[client]?.[site]?.[designation] || 0;
+  // Real reliever rate, looked up from the backend by client/site/designation
+  const fetchRelieverRate = async (
+    clientId: string,
+    siteId: string,
+    designation: string
+  ): Promise<number> => {
+    if (!clientId || !siteId || !designation) return 0;
+    try {
+      const res = await fetch(
+        withBasePath(
+          `/api/reliever-rate?clientId=${encodeURIComponent(clientId)}&siteId=${encodeURIComponent(siteId)}&designation=${encodeURIComponent(designation)}`
+        ),
+        { credentials: "include", cache: "no-store" }
+      );
+      const json = await res.json();
+      if (!res.ok) return 0;
+      return Number(json?.results?.rate ?? json?.results ?? 0) || 0;
+    } catch (error) {
+      console.error("Failed to fetch reliever rate:", error);
+      return 0;
+    }
   };
 
   // add row
@@ -107,14 +109,8 @@ export default function CashRelieverMakerPage() {
       if (row.id === id) {
         const newRow: any = { ...row, [field]: value };
 
-        // auto fetch rate
-        if (field === "designation") {
-          const rate = getDummyRate(client, site, value);
-          newRow.rate = rate;
-        }
-
-        // total calc
-        if (field === "days" || field === "designation") {
+        // total calc (rate itself is refreshed async below when designation changes)
+        if (field === "days") {
           newRow.total = Number(newRow.days) * Number(newRow.rate);
         }
 
@@ -124,10 +120,20 @@ export default function CashRelieverMakerPage() {
     });
 
     setRows(updated);
+
+    if (field === "designation") {
+      fetchRelieverRate(client, site, value).then((rate) => {
+        setRows((prev) =>
+          prev.map((row) =>
+            row.id === id ? { ...row, rate, total: Number(row.days) * rate } : row
+          )
+        );
+      });
+    }
   };
 
   // submit
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!client || !site) {
       toast.error("Select client and site");
       return;
@@ -138,11 +144,37 @@ export default function CashRelieverMakerPage() {
       return;
     }
 
-    console.log("Submit data:", { client, site, rows });
-    toast.success("Sent to checker for approval 🚀");
+    try {
+      const res = await fetch(withBasePath("/api/cash-reliever"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          clientId: client,
+          clientName: clients.find((c) => c.id === client)?.name || client,
+          siteId: site,
+          siteName: sites.find((s) => s.id === site)?.name || site,
+          relievers: rows.map((r) => ({
+            name: r.name,
+            phone: r.phone,
+            designation: r.designation,
+            days: r.days,
+            rate: r.rate,
+            total: r.total,
+          })),
+          grandTotal,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.message || `Failed to submit (${res.status})`);
+      }
 
-    // reset
-    setRows([]);
+      toast.success("Sent to checker for approval");
+      setRows([]);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit entry");
+    }
   };
 
   const grandTotal = rows.reduce((sum, r) => sum + r.total, 0);
@@ -168,27 +200,38 @@ export default function CashRelieverMakerPage() {
           <CardContent className="grid grid-cols-3 gap-4">
             <div>
               <Label>Client</Label>
-              <Select onValueChange={setClient}>
+              <Select
+                value={client}
+                onValueChange={(value) => {
+                  setClient(value);
+                  setSite("");
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="HDFC">HDFC</SelectItem>
-                  <SelectItem value="TCS">TCS</SelectItem>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
               <Label>Site</Label>
-              <Select onValueChange={setSite}>
+              <Select value={site} onValueChange={setSite}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select site" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Nagpur">Nagpur</SelectItem>
-                  <SelectItem value="Pune">Pune</SelectItem>
-                  <SelectItem value="Mumbai">Mumbai</SelectItem>
+                  {sites.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

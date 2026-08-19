@@ -1,7 +1,8 @@
 // Fnfpage.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { withBasePath } from "@/lib/base-path";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,159 +43,69 @@ interface Employee {
     ifsc?: string; // optional
 }
 
-const dummyFNF: Employee[] = [
-    {
-        empId: "EMP001",
-        name: "John Doe",
-        designation: "HK",
-        department: "Housekeeping",
-        lastWorkingDay: "2025-09-30",
-        netSalary: 32381,
-        reasonForLeaving: "Resigned",
-        status: "done",
-        clientSite: "Site A",
-        basicSalary: 25000,
-        allowances: 8000,
-        deductions: 1500,
-        leaveEncashment: 1881,
-        noticePeriodRecovery: 0,
-        clearanceItems: [
-            { item: "Laptop/Equipment", cleared: true },
-            { item: "ID Card", cleared: true },
-            { item: "Access Card", cleared: true },
-            { item: "Pending Loans", cleared: true }
-        ],
-        documents: ["Resignation Letter.pdf", "Clearance Form.pdf"],
-        approvals: [
-            { stage: "HR", approver: "Sarah HR", status: "approved", date: "2025-09-28" },
-            { stage: "Finance", approver: "Mike Finance", status: "approved", date: "2025-09-29" },
-            { stage: "Final Settlement", approver: "Admin", status: "approved", date: "2025-09-30" }
-        ],
-        notes: ["All clearances completed", "Payment processed"]
-    },
-    {
-        empId: "EMP002",
-        name: "Jane Smith",
-        designation: "Supervisor",
-        department: "Management",
-        lastWorkingDay: "2025-09-28",
-        netSalary: 45000,
-        reasonForLeaving: "Terminated",
-        status: "pending",
-        clientSite: "Site B",
-        basicSalary: 38000,
-        allowances: 12000,
-        deductions: 2000,
+
+function mapFnfListItem(item: any): Employee {
+    return {
+        empId: item.empId,
+        name: item.name,
+        designation: item.designation || "",
+        department: "",
+        lastWorkingDay: item.lastWorkingDay,
+        netSalary: item.netSalary,
+        reasonForLeaving: item.reasonForLeaving || "",
+        status: (item.status || "pending").toLowerCase(),
+        clientSite: item.clientSite,
+        // Not tracked by the backend F&F module - no source to wire these to.
+        basicSalary: 0,
+        allowances: 0,
+        deductions: 0,
         leaveEncashment: 0,
-        noticePeriodRecovery: 3000,
-        clearanceItems: [
-            { item: "Laptop/Equipment", cleared: true },
-            { item: "ID Card", cleared: false },
-            { item: "Access Card", cleared: true },
-            { item: "Pending Loans", cleared: true }
-        ],
-        documents: ["Termination Letter.pdf"],
-        approvals: [
-            { stage: "HR", approver: "Sarah HR", status: "approved", date: "2025-09-26" },
-            { stage: "Finance", approver: "Mike Finance", status: "pending" },
-            { stage: "Final Settlement", approver: "Admin", status: "pending" }
-        ],
-        notes: ["ID card not returned yet"]
-    },
-    {
-        empId: "EMP003",
-        name: "Mike Johnson",
-        designation: "Janitor",
-        department: "Housekeeping",
-        lastWorkingDay: "2025-09-25",
-        netSalary: 28000,
-        reasonForLeaving: "Resigned",
-        status: "approved",
-        clientSite: "Site A",
-        basicSalary: 22000,
-        allowances: 6500,
-        deductions: 1200,
-        leaveEncashment: 1700,
         noticePeriodRecovery: 0,
-        clearanceItems: [
-            { item: "Laptop/Equipment", cleared: true },
-            { item: "ID Card", cleared: true },
-            { item: "Access Card", cleared: true },
-            { item: "Pending Loans", cleared: true }
-        ],
-        documents: ["Resignation Letter.pdf", "Clearance Form.pdf"],
-        approvals: [
-            { stage: "HR", approver: "Sarah HR", status: "approved", date: "2025-09-23" },
-            { stage: "Finance", approver: "Mike Finance", status: "approved", date: "2025-09-24" },
-            { stage: "Final Settlement", approver: "Admin", status: "pending" }
-        ],
-        notes: []
-    },
-    {
-        empId: "EMP004",
-        name: "Sarah Williams",
-        designation: "Cleaner",
-        department: "Housekeeping",
-        lastWorkingDay: "2025-09-20",
-        netSalary: 26500,
-        reasonForLeaving: "Personal Reasons",
-        status: "pending",
-        clientSite: "Site C",
-        basicSalary: 21000,
-        allowances: 6000,
-        deductions: 1000,
-        leaveEncashment: 1500,
-        noticePeriodRecovery: 1000,
-        clearanceItems: [
-            { item: "Laptop/Equipment", cleared: false },
-            { item: "ID Card", cleared: false },
-            { item: "Access Card", cleared: false },
-            { item: "Pending Loans", cleared: true }
-        ],
-        documents: ["Resignation Letter.pdf"],
-        approvals: [
-            { stage: "HR", approver: "Sarah HR", status: "pending" },
-            { stage: "Finance", approver: "Mike Finance", status: "pending" },
-            { stage: "Final Settlement", approver: "Admin", status: "pending" }
-        ],
-        notes: ["Need to collect equipment"]
-    },
-    {
-        empId: "EMP005",
-        name: "David Brown",
-        designation: "Manager",
-        department: "Management",
-        lastWorkingDay: "2025-09-15",
-        netSalary: 55000,
-        reasonForLeaving: "Better Opportunity",
-        status: "done",
-        clientSite: "Site B",
-        basicSalary: 45000,
-        allowances: 15000,
-        deductions: 2500,
-        leaveEncashment: 2500,
-        noticePeriodRecovery: 0,
-        clearanceItems: [
-            { item: "Laptop/Equipment", cleared: true },
-            { item: "ID Card", cleared: true },
-            { item: "Access Card", cleared: true },
-            { item: "Pending Loans", cleared: true }
-        ],
-        documents: ["Resignation Letter.pdf", "Clearance Form.pdf", "Experience Letter.pdf"],
-        approvals: [
-            { stage: "HR", approver: "Sarah HR", status: "approved", date: "2025-09-12" },
-            { stage: "Finance", approver: "Mike Finance", status: "approved", date: "2025-09-13" },
-            { stage: "Final Settlement", approver: "Admin", status: "approved", date: "2025-09-14" }
-        ],
-        notes: ["All documents provided", "Payment done on time"]
-    },
-];
+        clearanceItems: [],
+        documents: [],
+        approvals: [],
+        notes: [],
+    };
+}
+
+function getCurrentUser(): { userId: string; role: string } {
+    if (typeof document === "undefined") return { userId: "unknown", role: "unknown" };
+    const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+    if (!match) return { userId: "unknown", role: "unknown" };
+    try {
+        const payload = JSON.parse(atob(match[1].split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        return { userId: payload.user_id || payload.sub || "unknown", role: payload.role || "unknown" };
+    } catch {
+        return { userId: "unknown", role: "unknown" };
+    }
+}
 
 export default function Fnfpage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedSite, setSelectedSite] = useState("all");
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-    const [employees, setEmployees] = useState(dummyFNF);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+
+    const loadEmployees = async () => {
+        try {
+            const res = await fetch(withBasePath("/api/fnf/list"), {
+                credentials: "include",
+                cache: "no-store",
+            });
+            const json = await res.json();
+            if (!res.ok) {
+                throw new Error(json?.message || `Failed to load F&F list (${res.status})`);
+            }
+            const rows = json?.results ?? [];
+            setEmployees((Array.isArray(rows) ? rows : []).map(mapFnfListItem));
+        } catch (error: any) {
+            console.error(error);
+        }
+    };
+
+    useEffect(() => {
+        loadEmployees();
+    }, []);
 
     // Calculate stats
     const lastMonthEmployees = employees.filter(emp => {
@@ -233,12 +144,33 @@ export default function Fnfpage() {
         }
     };
 
-    const handleUpdateStatus = (empId: string, newStatus: Employee["status"]) => {
-        setEmployees(employees.map(emp =>
-            emp.empId === empId ? { ...emp, status: newStatus } : emp
-        ));
-        if (selectedEmployee?.empId === empId) {
-            setSelectedEmployee({ ...selectedEmployee, status: newStatus });
+    const handleUpdateStatus = async (empId: string, newStatus: Employee["status"]) => {
+        if (newStatus !== "approved") {
+            // "done" transitions go through handleGeneratePayments (real
+            // /payments/generate + /status/update calls); nothing else to do here.
+            return;
+        }
+        try {
+            const user = getCurrentUser();
+            const res = await fetch(withBasePath("/api/fnf/approve"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ empId, approvedBy: user.userId, role: user.role }),
+            });
+            const json = await res.json();
+            if (!res.ok) {
+                throw new Error(json?.message || `Failed to approve (${res.status})`);
+            }
+            setEmployees(employees.map(emp =>
+                emp.empId === empId ? { ...emp, status: newStatus } : emp
+            ));
+            if (selectedEmployee?.empId === empId) {
+                setSelectedEmployee({ ...selectedEmployee, status: newStatus });
+            }
+        } catch (error: any) {
+            console.error(error);
+            alert(error.message || "Failed to approve settlement");
         }
     };
 
@@ -294,7 +226,7 @@ export default function Fnfpage() {
     const [ifscDefault, setIfscDefault] = useState("HDFC0001234");
     const [filenamePrefix, setFilenamePrefix] = useState("fnf_payments");
 
-    const handleGeneratePayments = () => {
+    const handleGeneratePayments = async () => {
         const approved = employees.filter(e => e.status === "approved");
 
         if (approved.length === 0) {
@@ -302,46 +234,88 @@ export default function Fnfpage() {
             return;
         }
 
-        // Change status to done for approved employees
-        setEmployees(employees.map(emp =>
-            emp.status === "approved" ? { ...emp, status: "done" } : emp
-        ));
-
-        const header = "TYPE,DEBIT BANK A/C NO,DEBIT AMT,CUR,BENEFICIARY A/C NO,IFSC CODE,NARRATION/NAME (NOT MORE THAN 20)";
-        const rows = approved.map(emp => {
-            const beneficiaryAcct = emp.bankAccount && emp.bankAccount.trim().length >= 6
-                ? emp.bankAccount.replace(/\D/g, "").slice(-12).padStart(12, "0")
-                : randomAccountNumber(12);
-
-            const ifsc = emp.ifsc?.trim() || ifscDefault;
-            const amount = Math.round(emp.netSalary || 0);
-            const narration = (emp.name || emp.empId || "").substring(0, 20).replace(/,/g, ""); // remove commas
-
-            return [
-                "NEFT",
-                debitAccount,
-                amount.toString(),
-                "INR",
-                beneficiaryAcct,
-                ifsc,
-                narration,
-            ].join(",");
-        });
-
-        const csvContent = [header, ...rows].join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute(
-            "download",
-            `${filenamePrefix}_${new Date().toISOString().split("T")[0]}.csv`
+        // The backend's F&F module doesn't store a per-employee bank account/IFSC
+        // (FnfListItem/FnfDetailResponse have no such fields) - there's nothing
+        // real to source these from. Rather than fabricate account numbers for a
+        // real NEFT payment file, skip employees missing real bank details and
+        // tell the operator, instead of the previous behavior of generating a
+        // random 12-digit account number.
+        const payable = approved.filter(
+            emp => emp.bankAccount && emp.bankAccount.trim().length >= 6
         );
-        link.style.visibility = "hidden";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        const skipped = approved.length - payable.length;
+        if (skipped > 0) {
+            alert(
+                `${skipped} approved employee(s) have no bank account on file and will be skipped. ` +
+                `Bank account capture isn't available in F&F settlement yet.`
+            );
+        }
+        if (payable.length === 0) {
+            return;
+        }
+
+        const batchId = `FNF_${Date.now()}`;
+
+        try {
+            const genRes = await fetch(withBasePath("/api/fnf/payments/generate"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    batchId,
+                    records: payable.map(emp => ({
+                        empId: emp.empId,
+                        amount: Math.round(emp.netSalary || 0),
+                        bankAccount: emp.bankAccount!.replace(/\D/g, "").slice(-12).padStart(12, "0"),
+                        ifsc: emp.ifsc?.trim() || ifscDefault,
+                    })),
+                }),
+            });
+            const genJson = await genRes.json();
+            if (!genRes.ok) {
+                throw new Error(genJson?.message || `Failed to generate payments (${genRes.status})`);
+            }
+
+            const statusRes = await fetch(withBasePath("/api/fnf/status/update"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ batchId }),
+            });
+            const statusJson = await statusRes.json();
+            if (!statusRes.ok) {
+                throw new Error(statusJson?.message || `Failed to mark batch done (${statusRes.status})`);
+            }
+
+            await loadEmployees();
+
+            const header = "TYPE,DEBIT BANK A/C NO,DEBIT AMT,CUR,BENEFICIARY A/C NO,IFSC CODE,NARRATION/NAME (NOT MORE THAN 20)";
+            const rows = payable.map(emp => {
+                const beneficiaryAcct = emp.bankAccount!.replace(/\D/g, "").slice(-12).padStart(12, "0");
+                const ifsc = emp.ifsc?.trim() || ifscDefault;
+                const amount = Math.round(emp.netSalary || 0);
+                const narration = (emp.name || emp.empId || "").substring(0, 20).replace(/,/g, "");
+                return ["NEFT", debitAccount, amount.toString(), "INR", beneficiaryAcct, ifsc, narration].join(",");
+            });
+
+            const csvContent = [header, ...rows].join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute(
+                "download",
+                `${filenamePrefix}_${new Date().toISOString().split("T")[0]}.csv`
+            );
+            link.style.visibility = "hidden";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        } catch (error: any) {
+            console.error(error);
+            alert(error.message || "Failed to generate payments");
+        }
     };
 
     return (
@@ -502,6 +476,3 @@ export default function Fnfpage() {
         </MainLayout>
     );
 }
-
-const randomAccountNumber = (length = 12) =>
-    Array.from({ length }, () => Math.floor(Math.random() * 10)).join("");

@@ -1,7 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { MainLayout } from "@/components/ui/layout/main-layout"
+import { withBasePath } from "@/lib/base-path"
+import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
+import { generateMonthOptions } from "@/utils/month-utility"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,77 +41,112 @@ type EcrRow = {
   isClientEmployee: boolean
 }
 
-/* -------------------------------------------------------------------------- */
-/* MOCK MASTER DATA (replace with API)                                        */
-/* -------------------------------------------------------------------------- */
-
-const SITES = [
-  { id: "site-1", name: "Mumbai Site" },
-  { id: "site-2", name: "Pune Site" },
-]
-
-const EMPLOYEES: Employee[] = [
-  { id: "e1", name: "Rahul Patil", uan: "100200300400", siteId: "site-1" },
-  { id: "e2", name: "Amit Shah", uan: "100200300402", siteId: "site-2" },
-]
+const monthOptions = generateMonthOptions(2024, 2026)
 
 /* -------------------------------------------------------------------------- */
 /* PAGE                                                                       */
 /* -------------------------------------------------------------------------- */
 
 export default function PfEsicReconciliationPage() {
+  const { clients } = useClients([])
   const [client, setClient] = useState("")
+  const { sites } = useClientSites(client, [])
   const [month, setMonth] = useState("")
   const [site, setSite] = useState("")
+  const [employeesForFilter, setEmployeesForFilter] = useState<Employee[]>([])
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([])
   const [rows, setRows] = useState<EcrRow[]>([])
   const [uploading, setUploading] = useState(false)
+  const [highlightFileId, setHighlightFileId] = useState<string | null>(null)
   const [statutoryType, setStatutoryType] = useState<"PF" | "ESIC" | "">("")
 
+  const canUpload = Boolean(client && month && statutoryType)
 
-const canUpload = Boolean(client && month && statutoryType)
+  /* ---------------- LOAD CLIENT EMPLOYEES FOR FILTER ---------------- */
 
+  useEffect(() => {
+    if (!client) {
+      setEmployeesForFilter([])
+      return
+    }
+    let cancelled = false
+    const params = new URLSearchParams({ clientId: client })
+    if (site) params.set("siteId", site)
+    fetch(withBasePath(`/api/statutory-highlight/client-employees?${params.toString()}`), {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return
+        const items = data?.results?.data ?? data?.data ?? []
+        setEmployeesForFilter(
+          items.map((e: any) => ({ id: e.empId, name: e.name, uan: e.uan, siteId: e.siteId }))
+        )
+      })
+      .catch(() => {
+        if (!cancelled) setEmployeesForFilter([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [client, site])
 
-  /* ---------------- FILTERED EMPLOYEES ---------------- */
-
-  const employeesForFilter = site
-    ? EMPLOYEES.filter(e => e.siteId === site)
-    : EMPLOYEES
-
-  /* ---------------- MOCK PARSE & MATCH ---------------- */
+  /* ---------------- REAL UPLOAD & MATCH ---------------- */
 
   const handleUpload = async (files: FileList | null) => {
-    if (!files) return
+    if (!files || !files.length) return
     setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", files[0])
+      formData.append("clientId", client)
+      formData.append("month", month)
+      formData.append("statutoryType", statutoryType)
+      if (site) formData.append("siteId", site)
+      if (selectedEmployees.length) formData.append("employeeIds", selectedEmployees.join(","))
 
-    // 🔴 MOCK ECR DATA
-    const ecrUans = ["100200300400", "100200300401", "100200300402"]
-
-    setTimeout(() => {
-      const matched = ecrUans.map(uan => {
-        const emp = EMPLOYEES.find(e => e.uan === uan)
-
-        const siteMatch = site ? emp?.siteId === site : true
-        const employeeMatch = selectedEmployees.length
-          ? selectedEmployees.includes(emp?.id || "")
-          : true
-
-        const isClientEmployee = Boolean(emp && siteMatch && employeeMatch)
-
-        return {
-          uan,
-          name: emp?.name,
-          isClientEmployee,
-        }
+      const res = await fetch(withBasePath("/api/statutory-highlight/ecr/upload"), {
+        method: "POST",
+        credentials: "include",
+        body: formData,
       })
-
-      setRows(matched)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Failed to process ECR upload")
+      const result = data?.results ?? data
+      setRows(result.preview || [])
+      setHighlightFileId(result.highlightFileId || null)
+      toast.success(
+        `Matched ${result.summary?.matchedEmployees ?? 0} of ${result.summary?.totalEcrRows ?? 0} ECR rows`
+      )
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to process ECR upload")
+    } finally {
       setUploading(false)
-    }, 1000)
+    }
   }
 
-  const handleDownload = () => {
-    console.log("DOWNLOAD HIGHLIGHTED ECR WITH FILTERS")
+  const handleDownload = async () => {
+    if (!highlightFileId) return
+    try {
+      const res = await fetch(
+        withBasePath(`/api/statutory-highlight/ecr/download/${encodeURIComponent(highlightFileId)}`),
+        { credentials: "include" }
+      )
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.message || "Failed to download highlighted ECR")
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "highlighted-ecr.pdf"
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to download highlighted ECR")
+    }
   }
 
   /* -------------------------------------------------------------------------- */
@@ -163,8 +202,11 @@ const canUpload = Boolean(client && month && statutoryType)
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="client-a">Client A</SelectItem>
-                  <SelectItem value="client-b">Client B</SelectItem>
+                  {clients.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -177,8 +219,11 @@ const canUpload = Boolean(client && month && statutoryType)
                   <SelectValue placeholder="Select month" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2024-01">Jan 2024</SelectItem>
-                  <SelectItem value="2024-02">Feb 2024</SelectItem>
+                  {monthOptions.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -188,13 +233,13 @@ const canUpload = Boolean(client && month && statutoryType)
               <label className="text-sm font-medium">Site (Optional)</label>
               <Select value={site} onValueChange={(value) => {
     setSite(value)
-    setSelectedEmployees([]) // 🔥 RESET employees
+    setSelectedEmployees([]) // reset employees when the site filter changes
   }} >
                 <SelectTrigger>
                   <SelectValue placeholder="All sites" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SITES.map(s => (
+                  {sites.map(s => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}
                     </SelectItem>

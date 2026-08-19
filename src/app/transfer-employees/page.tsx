@@ -108,6 +108,13 @@ export default function TransferEmployeesPage() {
       return
     }
 
+    // NOTE: the real backend transfer endpoint (POST /api/organization/employees/{id}/transfer,
+    // proxied at src/app/api/organization/employees/[id]/transfer/route.ts) models transfers
+    // between org-tree departments (targetDepartmentId/targetSubDepartmentId/targetZone), not
+    // between commercial site/client pairs the way this page's UI is built (newSite/newClient).
+    // There's no real backend concept matching this page's site/client transfer model, so this
+    // still only records local history rather than calling the real endpoint - flagged as a
+    // known gap rather than guessing an incorrect field mapping.
     setTransferHistory((prev) => [
       {
         date: format(effectiveDate, "yyyy-MM-dd"),

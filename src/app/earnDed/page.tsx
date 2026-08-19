@@ -13,6 +13,19 @@ import { toast } from "sonner"
 import { Trash2, Plus, ChevronDown } from "lucide-react"
 import { EmployeeAutocomplete } from "@/components/ui/payroll/employee-autocomplete"
 import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
+import { withBasePath } from "@/lib/base-path"
+
+function getCurrentUser(): { userId: string; role: string } {
+  if (typeof document === "undefined") return { userId: "unknown", role: "unknown" }
+  const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)
+  if (!match) return { userId: "unknown", role: "unknown" }
+  try {
+    const payload = JSON.parse(atob(match[1].split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))
+    return { userId: payload.user_id || payload.sub || "unknown", role: payload.role || "unknown" }
+  } catch {
+    return { userId: "unknown", role: "unknown" }
+  }
+}
 
 interface ScheduledEntry {
   id: string
@@ -79,15 +92,74 @@ export default function EarningDeductionPage() {
   const [amount, setAmount] = useState("")
   const [reference, setReference] = useState("")
   const [scheduledEntries, setScheduledEntries] = useState<ScheduledEntry[]>([])
+  const [employees, setEmployees] = useState<
+    { code: string; name: string; designation: string; site: string }[]
+  >([])
+  const [entriesLoading, setEntriesLoading] = useState(false)
 
-  // Mock employee data for context filtering
-  const mockEmployees = [
-    { code: "EMP001", name: "John Doe", designation: "Software Engineer", site: "Mumbai" },
-    { code: "EMP002", name: "Jane Smith", designation: "Product Manager", site: "Bangalore" },
-    { code: "EMP003", name: "Raj Kumar", designation: "Data Analyst", site: "Delhi" },
-    { code: "EMP004", name: "Priya Patel", designation: "Designer", site: "Mumbai" },
-    { code: "EMP005", name: "Amit Singh", designation: "QA Engineer", site: "Hyderabad" },
-  ]
+  useEffect(() => {
+    fetch(withBasePath("/api/employees/search?query="), { credentials: "include", cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        const rows = json?.results?.data ?? json?.results ?? []
+        setEmployees(
+          (Array.isArray(rows) ? rows : []).map((r: any) => ({
+            code: r.empCode,
+            name: r.empName,
+            designation: r.designation,
+            site: r.site,
+          }))
+        )
+      })
+      .catch((error) => {
+        console.error("Failed to load employees:", error)
+        toast.error("Failed to load employees")
+      })
+  }, [])
+
+  const loadScheduledEntries = async (empCode: string) => {
+    if (!empCode) {
+      setScheduledEntries([])
+      return
+    }
+    setEntriesLoading(true)
+    try {
+      const res = await fetch(withBasePath(`/api/earning-deduction/employee/${encodeURIComponent(empCode)}`), {
+        credentials: "include",
+        cache: "no-store",
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.message || `Failed to load entries (${res.status})`)
+      }
+      const rows = json?.results?.entries ?? []
+      setScheduledEntries(
+        rows.map((r: any) => ({
+          id: r.id,
+          empCode,
+          empName: employees.find((e) => e.code === empCode)?.name || "Unknown",
+          branch: selectedBranch,
+          client: selectedClient,
+          site: selectedSite,
+          month: r.month,
+          type: r.type,
+          component: r.component,
+          amount: r.amount,
+          reference: r.reference || "",
+          status: r.status,
+        }))
+      )
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load scheduled entries")
+    } finally {
+      setEntriesLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadScheduledEntries(employeeCode)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeCode])
 
   const filteredClients = clients.filter((client) =>
     client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
@@ -123,15 +195,15 @@ export default function EarningDeductionPage() {
     }
   }, [clientSites, selectedClient, selectedSite])
 
-  const selectedEmployee = mockEmployees.find((emp) => emp.code === employeeCode)
+  const selectedEmployee = employees.find((emp) => emp.code === employeeCode)
     ? {
-        name: mockEmployees.find((emp) => emp.code === employeeCode)?.name || "Unknown",
-        designation: mockEmployees.find((emp) => emp.code === employeeCode)?.designation || "N/A",
-        site: mockEmployees.find((emp) => emp.code === employeeCode)?.site || "N/A",
+        name: employees.find((emp) => emp.code === employeeCode)?.name || "Unknown",
+        designation: employees.find((emp) => emp.code === employeeCode)?.designation || "N/A",
+        site: employees.find((emp) => emp.code === employeeCode)?.site || "N/A",
       }
     : null
 
-  const handleAddEntry = () => {
+  const handleAddEntry = async () => {
     if (!employeeCode) {
       toast.error("Please select an employee first")
       return
@@ -157,42 +229,53 @@ export default function EarningDeductionPage() {
     }
 
     // Prevent duplicate component for same employee & month
-const exists = scheduledEntries.some(
-  e =>
-    e.empCode === employeeCode &&
-    e.month === selectedMonth &&
-    e.component === selectedComponent &&
-    e.type === entryType
-)
+    const exists = scheduledEntries.some(
+      (e) =>
+        e.empCode === employeeCode &&
+        e.month === selectedMonth &&
+        e.component === selectedComponent &&
+        e.type === entryType
+    )
 
-if (exists) {
-  toast.error("This component is already scheduled for this employee for this month")
-  return
-}
-
-    const newEntry: ScheduledEntry = {
-      id: Math.random().toString(),
-      empCode: employeeCode,
-      empName: selectedEmployee?.name || "Unknown",
-      branch: selectedBranch,
-      client: selectedClient,
-      site: selectedSite,
-      month: selectedMonth,
-      type: entryType,
-      component: selectedComponent,
-      amount: amountNum,
-      reference,
-      status: "Scheduled",
+    if (exists) {
+      toast.error("This component is already scheduled for this employee for this month")
+      return
     }
 
-    setScheduledEntries([...scheduledEntries, newEntry])
-    toast.success(`${entryType} added successfully`)
+    try {
+      const res = await fetch(withBasePath("/api/earning-deduction/add"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          employeeId: employeeCode,
+          branch: selectedBranch,
+          client: selectedClient,
+          site: selectedSite,
+          month: selectedMonth,
+          type: entryType,
+          component: selectedComponent,
+          amount: amountNum,
+          reference: reference || undefined,
+          createdBy: getCurrentUser(),
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.errors?.[0]?.errorMessage || json?.message || `Failed (${res.status})`)
+      }
 
-    // Reset form
-    setSelectedComponent("")
-    setSelectedMonth("")
-    setAmount("")
-    setReference("")
+      toast.success(`${entryType} added successfully`)
+      await loadScheduledEntries(employeeCode)
+
+      // Reset form
+      setSelectedComponent("")
+      setSelectedMonth("")
+      setAmount("")
+      setReference("")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add entry")
+    }
   }
 
   const handleReset = () => {
@@ -202,9 +285,21 @@ if (exists) {
     setReference("")
   }
 
-  const handleDelete = (id: string) => {
-    setScheduledEntries(scheduledEntries.filter((entry) => entry.id !== id))
-    toast.success("Entry removed")
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(withBasePath(`/api/earning-deduction/${encodeURIComponent(id)}`), {
+        method: "DELETE",
+        credentials: "include",
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        throw new Error(json?.message || `Failed (${res.status})`)
+      }
+      toast.success("Entry removed")
+      await loadScheduledEntries(employeeCode)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to remove entry")
+    }
   }
 
   const components = entryType === "Earning" ? earningComponents : deductionComponents
@@ -370,7 +465,7 @@ if (exists) {
                 <EmployeeAutocomplete
                   value={employeeCode}
                   onChange={setEmployeeCode}
-                  employees={mockEmployees}
+                  employees={employees}
                   placeholder="Search by code or name..."
                 />
               </div>

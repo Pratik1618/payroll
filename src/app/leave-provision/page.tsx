@@ -15,6 +15,7 @@ import { toast } from "sonner"
 import { AlertTriangle, ChevronDown, Lock } from "lucide-react"
 import { generateMonthOptions, formatMonthLabel } from "@/utils/month-utility"
 import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
+import { withBasePath } from "@/lib/base-path"
 
 const initialSteps = [
     {
@@ -62,50 +63,21 @@ const mockSites = [
     { id: "site-b", name: "Manufacturing Unit", clientId: "client-1" },
 ]
 
-const mockEmployees = [
-    {
-        id: "emp-1",
-        name: "John Doe",
-        code: "EMP001",
-        site: "site-a",
-        fixedGross: 15000,
-        lwwPolicy: false,
-        paidLeaveEligible: true,
-        salaryStatus: "active",
-    },
-    {
-        id: "emp-2",
-        name: "Jane Smith",
-        code: "EMP002",
-        site: "site-a",
-        fixedGross: 18000,
-        lwwPolicy: false,
-        paidLeaveEligible: true,
-        salaryStatus: "active",
-    },
-    {
-        id: "emp-3",
-        name: "Mike Johnson",
-        code: "EMP003",
-        site: "site-b",
-        fixedGross: 20000,
-        lwwPolicy: true, // LWW - will be excluded
-        paidLeaveEligible: true,
-        salaryStatus: "active",
-    },
-    {
-        id: "emp-4",
-        name: "Sarah Wilson",
-        code: "EMP004",
-        site: "site-b",
-        fixedGross: 16000,
-        lwwPolicy: false,
-        paidLeaveEligible: true,
-        salaryStatus: "inactive",
-    },
-]
-
 const monthOptions = generateMonthOptions(2024, 2026)
+
+// Best-effort read of the logged-in user's identity from the JWT stored in
+// the `token` cookie (matches the backend's `sub` claim).
+function getCurrentUserIdentity(): string {
+    if (typeof document === "undefined") return ""
+    const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/)
+    if (!match) return ""
+    try {
+        const payload = JSON.parse(atob(match[1].split(".")[1]))
+        return payload.sub || ""
+    } catch {
+        return ""
+    }
+}
 type EmployeeStatusFilter = "active" | "inactive" | "both"
 type LeaveTrackerItem = {
     id: string
@@ -177,17 +149,10 @@ export default function LeaveProvisionPage() {
         }
     }, [clientSites, selectedClient, selectedSite])
 
-    const getFilteredEmployees = (site = selectedSite, status = employeeStatusFilter) => {
-        return mockEmployees
-            .filter((emp) => {
-                const statusMatch = status === "both" || emp.salaryStatus === status
-                return !emp.lwwPolicy && emp.paidLeaveEligible && statusMatch && emp.site === site
-            })
-            .map((emp) => ({ ...emp, selected: true }))
-    }
-
     // Step 2: Employee Selection
-    const [employeeList, setEmployeeList] = useState(getFilteredEmployees)
+    const [employeeList, setEmployeeList] = useState<any[]>([])
+    const [contextId, setContextId] = useState<string | null>(null)
+    const [isProcessing, setIsProcessing] = useState(false)
 
     // Step 3: Leave Provision Calculation
     const [provisions, setProvisions] = useState<any[]>([])
@@ -198,7 +163,39 @@ export default function LeaveProvisionPage() {
         setSteps(steps.map((step) => (step.id === stepId ? { ...step, completed } : step)))
     }
 
-    const handleContextNext = () => {
+    const loadTracker = async () => {
+        try {
+            const res = await fetch(withBasePath("/api/leave-provision/tracker"), {
+                credentials: "include",
+                cache: "no-store",
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data?.message || "Failed to load tracker")
+            const rows = data?.results ?? data?.data ?? []
+            setLeaveTracker(
+                rows.map((r: any) => ({
+                    id: r.contextId,
+                    periodFrom: r.periodFrom,
+                    periodTo: r.periodTo,
+                    client: r.client,
+                    site: r.site,
+                    employees: r.employees,
+                    totalLeaveToPay: r.totalLeaveToPay,
+                    locked: r.locked,
+                    paymentsGenerated: r.paymentsGenerated,
+                }))
+            )
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to load tracker")
+        }
+    }
+
+    useEffect(() => {
+        void loadTracker()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    const handleContextNext = async () => {
         if (!selectedBranch || !selectedClient || !selectedSite || !fromMonth || !toMonth) {
             toast.error("Missing Fields", { description: "Please fill all required fields" })
             return
@@ -209,76 +206,79 @@ export default function LeaveProvisionPage() {
             return
         }
 
-        setEmployeeList(getFilteredEmployees())
-        updateStep(1, true)
-        setCurrentStep(2)
+        setIsProcessing(true)
+        try {
+            const ctxRes = await fetch(withBasePath("/api/leave-provision/context"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    branchId: selectedBranch,
+                    clientId: selectedClient,
+                    siteId: selectedSite,
+                    fromMonth,
+                    toMonth,
+                    employeeStatus: employeeStatusFilter,
+                }),
+            })
+            const ctxData = await ctxRes.json()
+            if (!ctxRes.ok) throw new Error(ctxData?.message || "Failed to create context")
+            const newContextId = ctxData?.results?.contextId ?? ctxData?.contextId
+            setContextId(newContextId)
+
+            const empRes = await fetch(
+                withBasePath(`/api/leave-provision/employees?contextId=${encodeURIComponent(newContextId)}&status=${encodeURIComponent(employeeStatusFilter)}`),
+                { credentials: "include", cache: "no-store" }
+            )
+            const empData = await empRes.json()
+            if (!empRes.ok) throw new Error(empData?.message || "Failed to load eligible employees")
+            const employees = empData?.results?.data ?? empData?.data ?? []
+            setEmployeeList(
+                employees.map((e: any) => ({
+                    id: e.employeeId,
+                    code: e.employeeCode,
+                    name: e.employeeName,
+                    fixedGross: e.fixedGross,
+                    salaryStatus: e.salaryStatus,
+                    site: selectedSite,
+                    selected: true,
+                }))
+            )
+            updateStep(1, true)
+            setCurrentStep(2)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to create leave provision context")
+        } finally {
+            setIsProcessing(false)
+        }
     }
 
-    const handleEmployeeNext = () => {
+    const handleEmployeeNext = async () => {
         const selected = employeeList.filter((emp) => emp.selected)
         if (selected.length === 0) {
             toast.error("No Employees Selected", { description: "Please select at least one employee" })
             return
         }
+        if (!contextId) return
 
-        calculateLeaveProvision(selected)
-        updateStep(2, true)
-        setCurrentStep(3)
-    }
-
-    const calculateLeaveProvision = (employees: any[]) => {
-        const monthlyData: any[] = []
-
-        // Generate all months in range
-        const startDate = new Date(fromMonth)
-        const endDate = new Date(toMonth)
-
-        for (let d = new Date(startDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
-            const month = d.toISOString().substring(0, 7)
-
-            employees.forEach((emp) => {
-                // Mock payroll data - in real system, fetch from payroll database
-                const fixedGross = emp.fixedGross
-                const earnedGross = emp.fixedGross * 0.95 // mock deduction
-                const monthDays = 26 // payroll days
-                const calendarDays = 30 // for this month
-                const presentDays = 24 // mock attendance data
-                const plAvailed = Math.random() > 0.7 ? 1 : 0 // mock: 30% chance of leave availed
-
-                // CRITICAL CALCULATION PER SPEC
-                // A) Leave Amount = (Fixed Gross / Month Days) × Monthly Leave Credit
-                const monthlyLeaveCredit = 1.75 // typical (21 days / 12 months)
-                const leaveAmount = (fixedGross / monthDays) * monthlyLeaveCredit
-
-                // B) Leave Paid in Salary - Fixed formula: (Fixed Gross / Month Days) × PL_AVAILED
-                let leavePaidInSalary = 0
-                if (plAvailed > 0) {
-                    leavePaidInSalary = (fixedGross / monthDays) * plAvailed
-                }
-
-                // C) Leave To Pay (net liability)
-                const leaveToPay = Math.max(0, leaveAmount - leavePaidInSalary)
-
-                monthlyData.push({
-                    month,
-                    employeeId: emp.id,
-                    employeeCode: emp.code,
-                    employeeName: emp.name,
-                    fixedGross,
-                    earnedGross: Number.parseFloat(earnedGross.toFixed(2)),
-                    monthDays,
-                    calendarDays,
-                    presentDays,
-                    plAvailed,
-                    monthlyLeaveCredit,
-                    leaveAmount: Number.parseFloat(leaveAmount.toFixed(2)),
-                    leavePaidInSalary: Number.parseFloat(leavePaidInSalary.toFixed(2)),
-                    leaveToPay: Number.parseFloat(leaveToPay.toFixed(2)),
-                })
+        setIsProcessing(true)
+        try {
+            const calcRes = await fetch(withBasePath("/api/leave-provision/calculate"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ contextId, employees: selected.map((e) => e.code) }),
             })
+            const calcData = await calcRes.json()
+            if (!calcRes.ok) throw new Error(calcData?.message || "Failed to calculate leave provision")
+            setProvisions(calcData?.results?.data ?? calcData?.data ?? [])
+            updateStep(2, true)
+            setCurrentStep(3)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to calculate leave provision")
+        } finally {
+            setIsProcessing(false)
         }
-
-        setProvisions(monthlyData)
     }
 
     const handleReviewNext = () => {
@@ -318,17 +318,39 @@ export default function LeaveProvisionPage() {
         (sum: number, agg: any) => sum + agg.totalLeaveToPay,
         0,
     )
-    const handleToggleLeaveLock = (id: string) => {
-        setLeaveTracker((prev) =>
-            prev.map((item) => (item.id === id ? { ...item, locked: !item.locked } : item)),
-        )
+    const handleToggleLeaveLock = async (id: string) => {
+        const item = leaveTracker.find((i) => i.id === id)
+        if (!item) return
+        try {
+            const res = await fetch(withBasePath("/api/leave-provision/lock-status"), {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ contextId: id, locked: !item.locked }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data?.message || "Failed to update lock status")
+            await loadTracker()
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to update lock status")
+        }
     }
 
-    const handleGenerateLeavePayment = (id: string) => {
-        setLeaveTracker((prev) =>
-            prev.map((item) => (item.id === id ? { ...item, paymentsGenerated: true } : item)),
-        )
-        toast.success("Payment Generated", { description: "Tracker updated successfully" })
+    const handleGenerateLeavePayment = async (id: string) => {
+        try {
+            const res = await fetch(withBasePath("/api/leave-provision/tracker/generate-payment"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ contextId: id }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data?.message || "Failed to generate payment")
+            toast.success("Payment Generated", { description: "Tracker updated successfully" })
+            await loadTracker()
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to generate payment")
+        }
     }
 
     return (
@@ -811,53 +833,36 @@ export default function LeaveProvisionPage() {
                                     Back to Edit
                                 </Button>
                                 <Button
-                                    onClick={() => {
-                                        const trackerId = `${selectedSite}-${fromMonth}-${toMonth}`
-                                        const currentClientName = clients.find((c) => c.id === selectedClient)?.name ?? selectedClient
-                                        const currentSiteName = clientSites.find((s) => s.id === selectedSite)?.name ?? selectedSite
-                                        const employeeCount = Object.keys(employeeAggregates).length
-                                        setLeaveTracker((prev) => {
-                                            const existing = prev.find((item) => item.id === trackerId)
-                                            if (existing) {
-                                                return prev.map((item) =>
-                                                    item.id === trackerId
-                                                        ? {
-                                                              ...item,
-                                                              client: currentClientName,
-                                                              site: currentSiteName,
-                                                              employees: employeeCount,
-                                                              totalLeaveToPay: totalLeaveToPayGrand,
-                                                              locked: true,
-                                                              paymentsGenerated: false,
-                                                          }
-                                                        : item,
-                                                )
-                                            }
-                                            return [
-                                                ...prev,
-                                                {
-                                                    id: trackerId,
-                                                    periodFrom: fromMonth,
-                                                    periodTo: toMonth,
-                                                    client: currentClientName,
-                                                    site: currentSiteName,
-                                                    employees: employeeCount,
-                                                    totalLeaveToPay: totalLeaveToPayGrand,
-                                                    locked: true,
-                                                    paymentsGenerated: false,
-                                                },
-                                            ]
-                                        })
-                                        toast.success("Provision Locked", {
-                                            description: "Period locked. Generate payments from Tracker tab.",
-                                        })
-                                        updateStep(4, true)
-                                        setSteps(initialSteps)
-                                        setCurrentStep(1)
+                                    disabled={isProcessing}
+                                    onClick={async () => {
+                                        if (!contextId) return
+                                        setIsProcessing(true)
+                                        try {
+                                            const res = await fetch(withBasePath("/api/leave-provision/lock"), {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                credentials: "include",
+                                                body: JSON.stringify({ contextId, lockedBy: getCurrentUserIdentity() }),
+                                            })
+                                            const data = await res.json()
+                                            if (!res.ok) throw new Error(data?.message || "Failed to lock leave provision")
+                                            toast.success("Provision Locked", {
+                                                description: "Period locked. Generate payments from Tracker tab.",
+                                            })
+                                            updateStep(4, true)
+                                            setSteps(initialSteps)
+                                            setCurrentStep(1)
+                                            setContextId(null)
+                                            await loadTracker()
+                                        } catch (error) {
+                                            toast.error(error instanceof Error ? error.message : "Failed to lock leave provision")
+                                        } finally {
+                                            setIsProcessing(false)
+                                        }
                                     }}
                                 >
                                     <Lock className="h-4 w-4 mr-2" />
-                                    Lock & Confirm
+                                    {isProcessing ? "Locking..." : "Lock & Confirm"}
                                 </Button>
                             </div>
                         </CardContent>
