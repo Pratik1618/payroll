@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendUrl } from '@/lib/base-path';
-import { updateNodeZones } from '@/app/organization/mock/organization';
 
 export async function PUT(
   req: NextRequest,
@@ -19,37 +18,14 @@ export async function PUT(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(body),
-      });
+    const res = await fetch(backendUrl, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body),
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for PUT covered zones, using fallback mock handler:', err);
-    }
-
-    // Fallback mock update
-    if (body.coveredZones) {
-      updateNodeZones(id, body.coveredZones);
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Covered zones updated successfully.',
-        data: {
-          departmentId: id,
-          coveredZones: body.coveredZones || [],
-        },
-      },
-      { status: 200 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error updating covered zones:', error);
     return NextResponse.json(

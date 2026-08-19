@@ -15,36 +15,23 @@ export async function GET(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'GET',
-        headers,
-      });
+    const res = await fetch(backendUrl, {
+      method: 'GET',
+      headers,
+    });
 
-      if (res.ok) {
-        const blob = await res.arrayBuffer();
-        const contentType = res.headers.get('content-type') || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-        return new NextResponse(blob, {
-          status: 200,
-          headers: {
-            'Content-Type': contentType,
-            'Content-Disposition': `attachment; filename="offer_template_${id}.docx"`,
-          },
-        });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for GET offer-template file, using fallback sample file:', err);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({ message: `Backend returned ${res.status}` }));
+      return NextResponse.json(data, { status: res.status });
     }
 
-    // Fallback sample file response
-    const dummyText = `Offer Letter Template Content for Template ID: ${id}\n\nDear {{CandidateName}},\nWe are pleased to offer you employment...`;
-    const buffer = Buffer.from(dummyText, 'utf-8');
-
-    return new NextResponse(buffer, {
+    const blob = await res.arrayBuffer();
+    const contentType = res.headers.get('content-type') || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    return new NextResponse(blob, {
       status: 200,
       headers: {
-        'Content-Type': 'text/plain',
-        'Content-Disposition': `attachment; filename="offer_template_${id}.txt"`,
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="offer_template_${id}.docx"`,
       },
     });
   } catch (error: any) {

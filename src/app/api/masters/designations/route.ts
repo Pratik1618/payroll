@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendUrl } from '@/lib/base-path';
-import { designations } from '@/app/organization/mock/designations';
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,29 +13,14 @@ export async function GET(req: NextRequest) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'GET',
-        headers,
-        cache: 'no-store',
-      });
+    const res = await fetch(backendUrl, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for /api/masters/designations, using fallback mock data:', err);
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        results: designations,
-        data: designations,
-      },
-      { status: 200 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error fetching designations:', error);
     return NextResponse.json(
@@ -59,36 +43,14 @@ export async function POST(req: NextRequest) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      });
+    const res = await fetch(backendUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: res.status });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for POST /api/masters/designations, using fallback mock creator:', err);
-    }
-
-    const title = body.title || body.name || '';
-    if (title && !designations.includes(title)) {
-      designations.push(title);
-      designations.sort((a, b) => a.localeCompare(b));
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: `Designation '${title}' added successfully.`,
-        data: { title, status: 'Active' },
-        results: [title],
-      },
-      { status: 201 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error adding designation:', error);
     return NextResponse.json(

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendUrl } from '@/lib/base-path';
-import { updateNodeDesignationQuantities } from '@/app/organization/mock/organization';
 
 export async function PUT(
   req: NextRequest,
@@ -19,37 +18,14 @@ export async function PUT(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(body),
-      });
+    const res = await fetch(backendUrl, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body),
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for PUT designation quantities, using fallback mock handler:', err);
-    }
-
-    // Fallback mock update
-    if (body.designationQuantities) {
-      updateNodeDesignationQuantities(id, body.designationQuantities);
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Designation quantities updated for department.',
-        data: {
-          departmentId: id,
-          designationQuantities: body.designationQuantities || [],
-        },
-      },
-      { status: 200 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error updating designation quantities:', error);
     return NextResponse.json(

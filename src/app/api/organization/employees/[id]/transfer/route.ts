@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendUrl } from '@/lib/base-path';
-import { transferEmployee } from '@/app/organization/mock/employees';
 
 export async function POST(
   req: NextRequest,
@@ -19,36 +18,14 @@ export async function POST(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      });
+    const res = await fetch(backendUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for POST transfer employee, using fallback mock handler:', err);
-    }
-
-    // Fallback mock transfer
-    const targetNodeId = body.targetZone || body.targetSubDepartmentId || body.targetDepartmentId || 'company';
-    transferEmployee(id, targetNodeId, body.targetDepartmentId || 'Department');
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Employee transferred successfully.',
-        data: {
-          employeeId: id,
-          ...body,
-        },
-      },
-      { status: 200 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error transferring employee:', error);
     return NextResponse.json(

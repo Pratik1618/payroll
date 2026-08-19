@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendUrl } from '@/lib/base-path';
-import { removeEmployee } from '@/app/organization/mock/employees';
 
 export async function POST(
   req: NextRequest,
@@ -18,31 +17,13 @@ export async function POST(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'POST',
-        headers,
-      });
+    const res = await fetch(backendUrl, {
+      method: 'POST',
+      headers,
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for POST unassign employee, using fallback mock handler:', err);
-    }
-
-    // Fallback mock unassign
-    removeEmployee(id);
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Employee moved to unassigned pool successfully.',
-        data: { employeeId: id },
-      },
-      { status: 200 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error unassigning employee:', error);
     return NextResponse.json(

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getBackendUrl } from '@/lib/base-path';
-import { employeesData, Employee } from '@/app/organization/mock/employees';
 
 export async function GET(req: NextRequest) {
   try {
@@ -23,37 +22,14 @@ export async function GET(req: NextRequest) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'GET',
-        headers,
-        cache: 'no-store',
-      });
+    const res = await fetch(backendUrl, {
+      method: 'GET',
+      headers,
+      cache: 'no-store',
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for /api/organization/employees, using fallback mock data:', err);
-    }
-
-    let items: Employee[] = employeesData;
-    if (nodeId && nodeId !== 'company') {
-      items = items.filter((e) => e.nodeId === nodeId || e.department.toLowerCase().includes(nodeId.toLowerCase()));
-    }
-    if (status) {
-      items = items.filter((e) => e.status.toLowerCase() === status.toLowerCase());
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        results: items,
-        data: items,
-      },
-      { status: 200 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error fetching employees:', error);
     return NextResponse.json(

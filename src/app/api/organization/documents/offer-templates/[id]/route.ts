@@ -18,32 +18,14 @@ export async function PUT(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(body),
-      });
+    const res = await fetch(backendUrl, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(body),
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for PUT offer-template, using fallback mock handler:', err);
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: `Offer template '${id}' metadata updated successfully.`,
-        data: {
-          id,
-          ...body,
-        },
-      },
-      { status: 200 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error updating offer template:', error);
     return NextResponse.json(
@@ -67,28 +49,13 @@ export async function DELETE(
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    try {
-      const res = await fetch(backendUrl, {
-        method: 'DELETE',
-        headers,
-      });
+    const res = await fetch(backendUrl, {
+      method: 'DELETE',
+      headers,
+    });
 
-      if (res.ok) {
-        const data = await res.json();
-        return NextResponse.json(data, { status: 200 });
-      }
-    } catch (err) {
-      console.warn('Backend server fetch failed for DELETE offer-template, using fallback mock handler:', err);
-    }
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: `Offer template '${id}' deleted successfully.`,
-        data: { deletedTemplateId: id },
-      },
-      { status: 200 }
-    );
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error: any) {
     console.error('Error deleting offer template:', error);
     return NextResponse.json(
