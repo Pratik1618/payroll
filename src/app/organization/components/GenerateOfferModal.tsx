@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { organizationData } from "../mock/organization";
-import { designations } from "../mock/designations";
+import { OrganizationNode } from "../mock/organization";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Document, Page, Text, View, pdf } from '@react-pdf/renderer';
@@ -34,7 +33,7 @@ interface GenerateOfferModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-import { createOfferLetterApi } from "../services/masterDataService";
+import { createOfferLetterApi, fetchOrgTree, fetchDesignations } from "../services/masterDataService";
 
 export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalProps) {
   const [step, setStep] = useState(1);
@@ -48,6 +47,8 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
   const [components, setComponents] = useState<SalaryComp[]>(DEFAULT_COMPONENTS);
 
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [departments, setDepartments] = useState<OrganizationNode[]>([]);
+  const [designations, setDesignations] = useState<string[]>([]);
 
   // Reset form
   useEffect(() => {
@@ -58,10 +59,11 @@ export function GenerateOfferModal({ open, onOpenChange }: GenerateOfferModalPro
       setDesignation("");
       setDepartmentId("");
       setComponents(DEFAULT_COMPONENTS);
+      void fetchOrgTree().then((tree) => setDepartments(tree[0]?.children || []));
+      void fetchDesignations().then(setDesignations);
     }
   }, [open]);
 
-  const departments = useMemo(() => organizationData[0]?.children || [], []);
   const deptName = departments.find(d => d.id === departmentId)?.name || "TBD";
 
   // Calculations Engine

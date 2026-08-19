@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { fetchOfferTemplatesApi, uploadOfferTemplateApi } from "../services/masterDataService";
 import { useEffect } from "react";
-import { getOfferTemplates, OfferTemplate, addOfferTemplate } from "../mock/offerTemplates";
+import { OfferTemplate } from "../mock/offerTemplates";
 import { toast } from "sonner";
 
 interface OfferTemplatesModalProps {
@@ -56,7 +56,7 @@ export function OfferTemplatesModal({
   onOpenChange,
   onSelectTemplate,
 }: OfferTemplatesModalProps) {
-  const [templates, setTemplates] = useState<OfferTemplate[]>(() => getOfferTemplates());
+  const [templates, setTemplates] = useState<OfferTemplate[]>([]);
   const [selectedTpl, setSelectedTpl] = useState<OfferTemplate | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -68,11 +68,7 @@ export function OfferTemplatesModal({
 
   const loadTemplates = async () => {
     const data = await fetchOfferTemplatesApi();
-    if (data && data.length > 0) {
-      setTemplates(data);
-    } else {
-      setTemplates(getOfferTemplates());
-    }
+    setTemplates(data ?? []);
   };
 
   // New Template Form State
@@ -81,10 +77,6 @@ export function OfferTemplatesModal({
   const [description, setDescription] = useState("");
   const [noticePeriod, setNoticePeriod] = useState("30");
   const [validity, setValidity] = useState("15");
-
-  const refreshTemplates = () => {
-    setTemplates([...getOfferTemplates()]);
-  };
 
   const handleSelect = (tpl: OfferTemplate) => {
     toast.success(`Selected template: "${tpl.name}"`);

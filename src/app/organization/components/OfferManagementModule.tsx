@@ -61,9 +61,6 @@ import {
   Filter,
 } from "lucide-react";
 import {
-  getOfferLetters,
-  updateOfferStatus,
-  deleteOfferLetter,
   OfferLetter,
   OfferStatus,
 } from "../mock/offerLetters";
@@ -74,7 +71,7 @@ import { fetchOfferLettersApi, updateOfferStatusApi, deleteOfferLetterApi } from
 import { useEffect } from "react";
 
 export function OfferManagementModule() {
-  const [offers, setOffers] = useState<OfferLetter[]>(() => getOfferLetters());
+  const [offers, setOffers] = useState<OfferLetter[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [deptFilter, setDeptFilter] = useState<string>("ALL");
@@ -91,11 +88,7 @@ export function OfferManagementModule() {
 
   const refreshOffers = async () => {
     const list = await fetchOfferLettersApi(statusFilter, deptFilter);
-    if (list && list.length > 0) {
-      setOffers(list);
-    } else {
-      setOffers([...getOfferLetters()]);
-    }
+    setOffers(list ?? []);
   };
 
   const filteredOffers = useMemo(() => {
@@ -135,7 +128,6 @@ export function OfferManagementModule() {
   const handleStatusChange = async (id: string, newStatus: OfferStatus) => {
     const success = await updateOfferStatusApi(id, newStatus);
     if (success) {
-      updateOfferStatus(id, newStatus);
       refreshOffers();
       toast.success(`Offer ${id} status updated to "${newStatus}"`);
     } else {
@@ -146,7 +138,6 @@ export function OfferManagementModule() {
   const handleDelete = async (id: string) => {
     const success = await deleteOfferLetterApi(id);
     if (success) {
-      deleteOfferLetter(id);
       refreshOffers();
       toast.success(`Offer letter ${id} has been removed.`);
     } else {

@@ -18,10 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchUnassignedEmployeesApi, assignEmployeeApi, UnassignedEmployeeItem } from "../services/masterDataService";
-import { assignEmployee } from "../mock/employees";
-import { organizationData } from "../mock/organization";
-import { designations } from "../mock/designations";
+import { fetchUnassignedEmployeesApi, assignEmployeeApi, fetchOrgTree, UnassignedEmployeeItem } from "../services/masterDataService";
+import { OrganizationNode } from "../mock/organization";
 import { toast } from "sonner";
 
 interface AddEmployeeModalProps {
@@ -36,6 +34,7 @@ export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: Add
   const [subDepartmentId, setSubDepartmentId] = useState("");
   const [zoneId, setZoneId] = useState("");
   const [unassignedList, setUnassignedList] = useState<UnassignedEmployeeItem[]>([]);
+  const [departments, setDepartments] = useState<OrganizationNode[]>([]);
 
   // Reset form when opened
   useEffect(() => {
@@ -45,6 +44,7 @@ export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: Add
       setSubDepartmentId("");
       setZoneId("");
       loadUnassignedPool();
+      loadDepartmentsList();
     }
   }, [open]);
 
@@ -53,10 +53,11 @@ export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: Add
     setUnassignedList(data);
   };
 
-  // Top level departments (children of Company)
-  const departments = useMemo(() => {
-    return organizationData[0]?.children || [];
-  }, []);
+  // Top level departments (children of Company), from the real org tree.
+  const loadDepartmentsList = async () => {
+    const tree = await fetchOrgTree();
+    setDepartments(tree[0]?.children || []);
+  };
 
   // Sub-departments of the selected department
   const subDepartments = useMemo(() => {

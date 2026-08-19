@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { MainLayout } from "@/components/ui/layout/main-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,7 +28,6 @@ import {
   Building2,
   FolderTree,
   MapPin,
-  Pencil,
   Plus,
   Trash2,
   UserRound,
@@ -39,361 +38,161 @@ import { AddStateModal } from "../organization/components/AddStateModal"
 import { AddCityModal } from "../organization/components/AddCityModal"
 import { SafeDeleteDepartmentModal } from "../organization/components/SafeDeleteDepartmentModal"
 import { OrganizationNode } from "../organization/mock/organization"
-import { getStates, getCities } from "../organization/mock/statesAndCities"
-
-interface Department {
-  id: string
-  name: string
-  code: string
-  manager: string
-  employeeCount: number
-  status: "Active" | "Inactive"
-  description: string
-}
-
-interface Branch {
-  id: string
-  name: string
-  code: string
-  state?: string
-  city: string
-  manager: string
-  status: "Active" | "Inactive"
-  description: string
-  departments: Department[]
-}
+import { fetchOrgTree, createDepartmentApi } from "../organization/services/masterDataService"
+import { toast } from "sonner"
 
 interface BranchFormState {
   name: string
-  code: string
-  state: string
-  city: string
-  manager: string
-  status: "Active" | "Inactive"
+  head: string
   description: string
 }
 
 interface DepartmentFormState {
   name: string
-  code: string
-  manager: string
-  employeeCount: string
-  status: "Active" | "Inactive"
+  head: string
   description: string
   branchId: string
 }
 
-const initialBranches: Branch[] = [
-  {
-    id: "branch-mumbai",
-    name: "Mumbai Head Office",
-    code: "MHO",
-    city: "Mumbai",
-    manager: "Ritu Sharma",
-    status: "Active",
-    description: "Corporate back office and central payroll coordination.",
-    departments: [
-      {
-        id: "dept-finance",
-        name: "Finance",
-        code: "FIN",
-        manager: "Anil Mehra",
-        employeeCount: 18,
-        status: "Active",
-        description: "Accounts, treasury, and statutory reconciliation.",
-      },
-      {
-        id: "dept-payroll",
-        name: "Payroll",
-        code: "PAY",
-        manager: "Suhani Kapoor",
-        employeeCount: 12,
-        status: "Active",
-        description: "Salary processing, compliance, and employee payouts.",
-      },
-    ],
-  },
-  {
-    id: "branch-delhi",
-    name: "Delhi Regional Office",
-    code: "DRO",
-    city: "Delhi",
-    manager: "Prakash Rao",
-    status: "Active",
-    description: "Regional coordination for north zone support teams.",
-    departments: [
-      {
-        id: "dept-ops",
-        name: "Operations",
-        code: "OPS",
-        manager: "Neha Arora",
-        employeeCount: 26,
-        status: "Active",
-        description: "Operations planning and service delivery support.",
-      },
-      {
-        id: "dept-admin",
-        name: "Administration",
-        code: "ADM",
-        manager: "Deepak Sethi",
-        employeeCount: 9,
-        status: "Inactive",
-        description: "Facilities, travel, and vendor administration.",
-      },
-    ],
-  },
-]
-
 const emptyBranchForm: BranchFormState = {
   name: "",
-  code: "",
-  state: "",
-  city: "",
-  manager: "",
-  status: "Active",
+  head: "",
   description: "",
 }
 
 const emptyDepartmentForm: DepartmentFormState = {
   name: "",
-  code: "",
-  manager: "",
-  employeeCount: "",
-  status: "Active",
+  head: "",
   description: "",
-  branchId: initialBranches[0]?.id ?? "",
+  branchId: "",
 }
 
 export default function OrganizationManagementPage() {
-  const [branches, setBranches] = useState<Branch[]>(initialBranches)
-  const [selectedBranchId, setSelectedBranchId] = useState(initialBranches[0]?.id ?? "")
+  const [root, setRoot] = useState<OrganizationNode | null>(null)
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("")
+  const [loading, setLoading] = useState(true)
+
   const [branchDialogOpen, setBranchDialogOpen] = useState(false)
   const [departmentDialogOpen, setDepartmentDialogOpen] = useState(false)
   const [stateDialogOpen, setStateDialogOpen] = useState(false)
   const [cityDialogOpen, setCityDialogOpen] = useState(false)
 
-  const [deleteTargetDeptNode, setDeleteTargetDeptNode] = useState<OrganizationNode | null>(null)
-  const [branchMode, setBranchMode] = useState<"create" | "edit">("create")
-  const [departmentMode, setDepartmentMode] = useState<"create" | "edit">("create")
-  const [editingBranchId, setEditingBranchId] = useState<string | null>(null)
-  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null)
+  const [deleteTargetNode, setDeleteTargetNode] = useState<OrganizationNode | null>(null)
   const [branchForm, setBranchForm] = useState<BranchFormState>(emptyBranchForm)
   const [departmentForm, setDepartmentForm] = useState<DepartmentFormState>(emptyDepartmentForm)
+  const [saving, setSaving] = useState(false)
 
-  const statesList = useMemo(() => getStates(), [stateDialogOpen, cityDialogOpen, branchDialogOpen])
-  const citiesList = useMemo(() => getCities(), [stateDialogOpen, cityDialogOpen, branchDialogOpen])
-
+  const branches = useMemo(() => root?.children ?? [], [root])
   const selectedBranch = branches.find((branch) => branch.id === selectedBranchId) ?? null
+  const departments = selectedBranch?.children ?? []
+
+  useEffect(() => {
+    void loadTree()
+  }, [])
+
+  const loadTree = async (preserveSelection = true) => {
+    setLoading(true)
+    const data = await fetchOrgTree()
+    const newRoot = data[0] ?? null
+    setRoot(newRoot)
+    const newBranches = newRoot?.children ?? []
+    setSelectedBranchId((prev) => {
+      if (preserveSelection && newBranches.some((b) => b.id === prev)) {
+        return prev
+      }
+      return newBranches[0]?.id ?? ""
+    })
+    setLoading(false)
+  }
 
   const totals = useMemo(() => {
-    const totalDepartments = branches.reduce((sum, branch) => sum + branch.departments.length, 0)
-    const totalEmployees = branches.reduce(
-      (sum, branch) =>
-        sum + branch.departments.reduce((departmentTotal, department) => departmentTotal + department.employeeCount, 0),
-      0,
-    )
-    const activeBranches = branches.filter((branch) => branch.status === "Active").length
+    const totalDepartments = branches.reduce((sum, branch) => sum + (branch.children?.length ?? 0), 0)
+    const totalEmployees = branches.reduce((sum, branch) => sum + (branch.employeeCount ?? 0), 0)
 
     return {
       totalBranches: branches.length,
       totalDepartments,
       totalEmployees,
-      activeBranches,
     }
   }, [branches])
 
   const resetBranchDialog = () => {
     setBranchDialogOpen(false)
-    setEditingBranchId(null)
     setBranchForm(emptyBranchForm)
   }
 
   const resetDepartmentDialog = () => {
     setDepartmentDialogOpen(false)
-    setEditingDepartmentId(null)
     setDepartmentForm(emptyDepartmentForm)
   }
 
   const openCreateBranchDialog = () => {
-    setBranchMode("create")
-    setEditingBranchId(null)
     setBranchForm(emptyBranchForm)
     setBranchDialogOpen(true)
   }
 
-  const openEditBranchDialog = (branch: Branch) => {
-    setBranchMode("edit")
-    setEditingBranchId(branch.id)
-    const cityMatch = citiesList.find((c) => c.name.toLowerCase() === branch.city.toLowerCase())
-    setBranchForm({
-      name: branch.name,
-      code: branch.code,
-      state: branch.state || (cityMatch ? cityMatch.stateId : ""),
-      city: branch.city,
-      manager: branch.manager,
-      status: branch.status,
-      description: branch.description,
-    })
-    setBranchDialogOpen(true)
-  }
-
   const openCreateDepartmentDialog = () => {
-    setDepartmentMode("create")
-    setEditingDepartmentId(null)
     setDepartmentForm({ ...emptyDepartmentForm, branchId: selectedBranchId })
     setDepartmentDialogOpen(true)
   }
 
-  const openEditDepartmentDialog = (department: Department) => {
-    setDepartmentMode("edit")
-    setEditingDepartmentId(department.id)
-    setDepartmentForm({
-      name: department.name,
-      code: department.code,
-      manager: department.manager,
-      employeeCount: String(department.employeeCount),
-      status: department.status,
-      description: department.description,
-      branchId: selectedBranchId,
-    })
-    setDepartmentDialogOpen(true)
-  }
-
-  const handleBranchSave = () => {
+  // "Branch" has no dedicated backend entity - it maps onto a top-level
+  // department node (parentId = the org root). There is also no PUT
+  // endpoint for a department's basic name/head/description fields
+  // (router_departments.py only exposes designations/zones/geofence PUTs
+  // and DELETE), so editing an existing branch/department is not
+  // supported here - only create and (safe) delete.
+  const handleBranchSave = async () => {
     const trimmedName = branchForm.name.trim()
-    const trimmedCode = branchForm.code.trim().toUpperCase()
-
-    if (!trimmedName || !trimmedCode || !branchForm.city.trim()) {
+    if (!trimmedName || !root) {
       return
     }
 
-    if (branchMode === "create") {
-      const newBranch: Branch = {
-        id: `branch-${Date.now()}`,
-        name: trimmedName,
-        code: trimmedCode,
-        city: branchForm.city.trim(),
-        manager: branchForm.manager.trim(),
-        status: branchForm.status,
-        description: branchForm.description.trim(),
-        departments: [],
-      }
-
-      setBranches((current) => [...current, newBranch])
-      setSelectedBranchId(newBranch.id)
-    } else if (editingBranchId) {
-      setBranches((current) =>
-        current.map((branch) =>
-          branch.id === editingBranchId
-            ? {
-                ...branch,
-                name: trimmedName,
-                code: trimmedCode,
-                city: branchForm.city.trim(),
-                manager: branchForm.manager.trim(),
-                status: branchForm.status,
-                description: branchForm.description.trim(),
-              }
-            : branch,
-        ),
-      )
-    }
-
-    resetBranchDialog()
-  }
-
-  const handleDepartmentSave = () => {
-    const targetBranchId = departmentForm.branchId || selectedBranch?.id
-    if (!targetBranchId) {
-      return
-    }
-
-    const trimmedName = departmentForm.name.trim()
-    const trimmedCode = departmentForm.code.trim().toUpperCase()
-    const parsedEmployeeCount = Number(departmentForm.employeeCount)
-
-    if (!trimmedName || !trimmedCode || Number.isNaN(parsedEmployeeCount) || parsedEmployeeCount < 0) {
-      return
-    }
-
-    const departmentPayload = {
-      id: departmentMode === "create" ? `department-${Date.now()}` : editingDepartmentId ?? `department-${Date.now()}`,
+    setSaving(true)
+    const created = await createDepartmentApi({
       name: trimmedName,
-      code: trimmedCode,
-      manager: departmentForm.manager.trim(),
-      employeeCount: parsedEmployeeCount,
-      status: departmentForm.status,
-      description: departmentForm.description.trim(),
-    }
+      head: branchForm.head.trim() || undefined,
+      description: branchForm.description.trim() || undefined,
+      parentId: root.id,
+    })
+    setSaving(false)
 
-    setBranches((current) =>
-      current.map((branch) => {
-        if (departmentMode === "create") {
-          if (branch.id !== targetBranchId) {
-            return branch
-          }
-
-          return {
-            ...branch,
-            departments: [...branch.departments, departmentPayload],
-          }
-        }
-
-        if (branch.id === selectedBranch?.id && branch.id !== targetBranchId) {
-          return {
-            ...branch,
-            departments: branch.departments.filter((department) => department.id !== editingDepartmentId),
-          }
-        }
-
-        if (branch.id === targetBranchId) {
-          const hasExisting = branch.departments.some((department) => department.id === editingDepartmentId)
-
-          return {
-            ...branch,
-            departments: hasExisting
-              ? branch.departments.map((department) =>
-                  department.id === editingDepartmentId ? departmentPayload : department,
-                )
-              : [...branch.departments, departmentPayload],
-          }
-        }
-
-        return branch
-      }),
-    )
-
-    if (targetBranchId !== selectedBranchId) {
-      setSelectedBranchId(targetBranchId)
-    }
-
-    resetDepartmentDialog()
-  }
-
-  const handleDeleteBranch = (branchId: string) => {
-    const nextBranches = branches.filter((branch) => branch.id !== branchId)
-    setBranches(nextBranches)
-
-    if (selectedBranchId === branchId) {
-      setSelectedBranchId(nextBranches[0]?.id ?? "")
+    if (created) {
+      toast.success(`Branch "${trimmedName}" created.`)
+      await loadTree(false)
+      setSelectedBranchId(created.id)
+      resetBranchDialog()
+    } else {
+      toast.error("Failed to create branch.")
     }
   }
 
-  const handleDeleteDepartment = (departmentId: string) => {
-    if (!selectedBranch) {
+  const handleDepartmentSave = async () => {
+    const targetBranchId = departmentForm.branchId || selectedBranch?.id
+    const trimmedName = departmentForm.name.trim()
+    if (!trimmedName || !targetBranchId) {
       return
     }
 
-    setBranches((current) =>
-      current.map((branch) =>
-        branch.id === selectedBranch.id
-          ? {
-              ...branch,
-              departments: branch.departments.filter((department) => department.id !== departmentId),
-            }
-          : branch,
-      ),
-    )
+    setSaving(true)
+    const created = await createDepartmentApi({
+      name: trimmedName,
+      head: departmentForm.head.trim() || undefined,
+      description: departmentForm.description.trim() || undefined,
+      parentId: targetBranchId,
+    })
+    setSaving(false)
+
+    if (created) {
+      toast.success(`Department "${trimmedName}" created.`)
+      if (targetBranchId !== selectedBranchId) {
+        setSelectedBranchId(targetBranchId)
+      }
+      await loadTree(true)
+      resetDepartmentDialog()
+    } else {
+      toast.error("Failed to create department.")
+    }
   }
 
   return (
@@ -423,11 +222,10 @@ export default function OrganizationManagementPage() {
               <Building className="h-4 w-4" />
               Add City
             </Button>
-
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Card>
             <CardHeader className="space-y-0 pb-2">
               <CardDescription>Total Branches</CardDescription>
@@ -436,7 +234,7 @@ export default function OrganizationManagementPage() {
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Building2 className="h-4 w-4" />
-                {totals.activeBranches} active branches
+                Top-level org units
               </div>
             </CardContent>
           </Card>
@@ -460,19 +258,7 @@ export default function OrganizationManagementPage() {
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
-                Department headcount total
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="space-y-0 pb-2">
-              <CardDescription>Selected Branch</CardDescription>
-              <CardTitle className="truncate text-2xl">{selectedBranch?.code ?? "-"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                {selectedBranch?.city ?? "No branch selected"}
+                Branch headcount total
               </div>
             </CardContent>
           </Card>
@@ -485,7 +271,11 @@ export default function OrganizationManagementPage() {
               <CardDescription>Select a branch to manage its departments.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 py-6">
-              {branches.length === 0 ? (
+              {loading ? (
+                <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+                  Loading...
+                </div>
+              ) : branches.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
                   No branches available. Create a branch to begin.
                 </div>
@@ -506,44 +296,28 @@ export default function OrganizationManagementPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="truncate font-semibold text-foreground">{branch.name}</p>
-                            <Badge variant={branch.status === "Active" ? "default" : "secondary"}>{branch.status}</Badge>
-                          </div>
+                          <p className="truncate font-semibold text-foreground">{branch.name}</p>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            {branch.code} · {branch.city}
+                            {branch.employeeCount ?? 0} employee(s)
                           </p>
                         </div>
-                        <div className="flex shrink-0 gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              openEditBranchDialog(branch)
-                            }}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleDeleteBranch(branch.id)
-                            }}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            setDeleteTargetNode(branch)
+                          }}
+                          className="shrink-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                       <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{branch.description || "No description added."}</p>
                       <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-                        <span>{branch.departments.length} department(s)</span>
-                        <span>{branch.manager || "No branch manager"}</span>
+                        <span>{branch.children?.length ?? 0} department(s)</span>
+                        <span>{branch.head || "No branch head"}</span>
                       </div>
                     </button>
                   )
@@ -559,7 +333,7 @@ export default function OrganizationManagementPage() {
                   <CardTitle>{selectedBranch ? `${selectedBranch.name} Departments` : "Departments"}</CardTitle>
                   <CardDescription>
                     {selectedBranch
-                      ? "Create, edit, or remove departments under the selected branch."
+                      ? "Create or remove departments under the selected branch."
                       : "Select a branch to manage departments."}
                   </CardDescription>
                 </div>
@@ -567,9 +341,9 @@ export default function OrganizationManagementPage() {
                   <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <UserRound className="h-4 w-4" />
-                      {selectedBranch.manager || "No branch manager"}
+                      {selectedBranch.head || "No branch head"}
                     </span>
-                    <span>{selectedBranch.departments.length} department(s)</span>
+                    <span>{selectedBranch.children?.length ?? 0} department(s)</span>
                   </div>
                 )}
               </div>
@@ -579,7 +353,7 @@ export default function OrganizationManagementPage() {
                 <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
                   Select a branch from the left panel.
                 </div>
-              ) : selectedBranch.departments.length === 0 ? (
+              ) : departments.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
                   No departments in this branch yet.
                 </div>
@@ -588,41 +362,28 @@ export default function OrganizationManagementPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Department</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Manager</TableHead>
+                      <TableHead>Head</TableHead>
                       <TableHead>Employees</TableHead>
-                      <TableHead>Status</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedBranch.departments.map((department) => (
+                    {departments.map((department) => (
                       <TableRow key={department.id}>
                         <TableCell className="font-medium">{department.name}</TableCell>
-                        <TableCell>{department.code}</TableCell>
-                        <TableCell>{department.manager || "-"}</TableCell>
-                        <TableCell>{department.employeeCount}</TableCell>
-                        <TableCell>
-                          <Badge variant={department.status === "Active" ? "default" : "secondary"}>
-                            {department.status}
-                          </Badge>
-                        </TableCell>
+                        <TableCell>{department.head || "-"}</TableCell>
+                        <TableCell>{department.employeeCount ?? 0}</TableCell>
                         <TableCell className="max-w-[320px] truncate">{department.description || "-"}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDepartmentDialog(department)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => setDeleteTargetDeptNode({ id: department.id, name: department.name, employeeCount: department.employeeCount, description: department.description })}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteTargetNode(department)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -636,20 +397,14 @@ export default function OrganizationManagementPage() {
 
       <Dialog
         open={branchDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            resetBranchDialog()
-            return
-          }
-          setBranchDialogOpen(true)
-        }}
+        onOpenChange={(open) => (open ? setBranchDialogOpen(true) : resetBranchDialog())}
       >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{branchMode === "create" ? "Add Branch" : "Edit Branch"}</DialogTitle>
-            <DialogDescription>Maintain branch-level master data outside salary workflows.</DialogDescription>
+            <DialogTitle>Add Branch</DialogTitle>
+            <DialogDescription>Branches are top-level organization units.</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2 md:grid-cols-2">
+          <div className="grid gap-4 py-2">
             <div className="space-y-2">
               <Label htmlFor="branch-name">Branch Name</Label>
               <Input
@@ -659,81 +414,14 @@ export default function OrganizationManagementPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-code">Branch Code</Label>
+              <Label htmlFor="branch-head">Branch Head</Label>
               <Input
-                id="branch-code"
-                value={branchForm.code}
-                onChange={(event) => setBranchForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))}
+                id="branch-head"
+                value={branchForm.head}
+                onChange={(event) => setBranchForm((current) => ({ ...current, head: event.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-state">Select State</Label>
-              <select
-                id="branch-state"
-                value={branchForm.state}
-                onChange={(event) => {
-                  const selectedState = event.target.value
-                  setBranchForm((current) => ({
-                    ...current,
-                    state: selectedState,
-                    city: "",
-                  }))
-                }}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
-              >
-                <option value="">-- Select State --</option>
-                {statesList.map((st) => (
-                  <option key={st.id} value={st.id}>
-                    {st.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="branch-city">Select City</Label>
-              <select
-                id="branch-city"
-                value={branchForm.city}
-                onChange={(event) => setBranchForm((current) => ({ ...current, city: event.target.value }))}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
-              >
-                <option value="">-- Select City --</option>
-                {(branchForm.state
-                  ? citiesList.filter((c) => c.stateId === branchForm.state || c.stateName === branchForm.state)
-                  : citiesList
-                ).map((ct) => (
-                  <option key={ct.id} value={ct.name}>
-                    {ct.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="branch-manager">Branch Manager</Label>
-              <Input
-                id="branch-manager"
-                value={branchForm.manager}
-                onChange={(event) => setBranchForm((current) => ({ ...current, manager: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="branch-status">Status</Label>
-              <select
-                id="branch-status"
-                value={branchForm.status}
-                onChange={(event) =>
-                  setBranchForm((current) => ({
-                    ...current,
-                    status: event.target.value as BranchFormState["status"],
-                  }))
-                }
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="branch-description">Description</Label>
               <Textarea
                 id="branch-description"
@@ -747,30 +435,26 @@ export default function OrganizationManagementPage() {
             <Button variant="outline" onClick={resetBranchDialog}>
               Cancel
             </Button>
-            <Button onClick={handleBranchSave}>{branchMode === "create" ? "Create Branch" : "Save Branch"}</Button>
+            <Button onClick={handleBranchSave} disabled={saving || !branchForm.name.trim()}>
+              Create Branch
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog
         open={departmentDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            resetDepartmentDialog()
-            return
-          }
-          setDepartmentDialogOpen(true)
-        }}
+        onOpenChange={(open) => (open ? setDepartmentDialogOpen(true) : resetDepartmentDialog())}
       >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{departmentMode === "create" ? "Add Department" : "Edit Department"}</DialogTitle>
+            <DialogTitle>Add Department</DialogTitle>
             <DialogDescription>
-              {selectedBranch ? `Manage departments under ${selectedBranch.name}.` : "Select a branch first."}
+              {selectedBranch ? `Add a department under ${selectedBranch.name}.` : "Select a branch first."}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-2 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
               <Label htmlFor="department-branch">Branch</Label>
               <select
                 id="department-branch"
@@ -796,53 +480,14 @@ export default function OrganizationManagementPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="department-code">Department Code</Label>
+              <Label htmlFor="department-head">Department Head</Label>
               <Input
-                id="department-code"
-                value={departmentForm.code}
-                onChange={(event) =>
-                  setDepartmentForm((current) => ({ ...current, code: event.target.value.toUpperCase() }))
-                }
+                id="department-head"
+                value={departmentForm.head}
+                onChange={(event) => setDepartmentForm((current) => ({ ...current, head: event.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="department-manager">Department Manager</Label>
-              <Input
-                id="department-manager"
-                value={departmentForm.manager}
-                onChange={(event) => setDepartmentForm((current) => ({ ...current, manager: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="department-count">Employee Count</Label>
-              <Input
-                id="department-count"
-                type="number"
-                min="0"
-                value={departmentForm.employeeCount}
-                onChange={(event) =>
-                  setDepartmentForm((current) => ({ ...current, employeeCount: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="department-status">Status</Label>
-              <select
-                id="department-status"
-                value={departmentForm.status}
-                onChange={(event) =>
-                  setDepartmentForm((current) => ({
-                    ...current,
-                    status: event.target.value as DepartmentFormState["status"],
-                  }))
-                }
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
-            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="department-description">Description</Label>
               <Textarea
                 id="department-description"
@@ -858,8 +503,8 @@ export default function OrganizationManagementPage() {
             <Button variant="outline" onClick={resetDepartmentDialog}>
               Cancel
             </Button>
-            <Button onClick={handleDepartmentSave} disabled={!selectedBranch}>
-              {departmentMode === "create" ? "Create Department" : "Save Department"}
+            <Button onClick={handleDepartmentSave} disabled={saving || !departmentForm.name.trim() || !selectedBranch}>
+              Create Department
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -869,14 +514,12 @@ export default function OrganizationManagementPage() {
       <AddCityModal open={cityDialogOpen} onOpenChange={setCityDialogOpen} />
 
       <SafeDeleteDepartmentModal
-        open={!!deleteTargetDeptNode}
-        onOpenChange={(open) => !open && setDeleteTargetDeptNode(null)}
-        node={deleteTargetDeptNode}
-        onDeleteSuccess={() => {
-          if (deleteTargetDeptNode) {
-            handleDeleteDepartment(deleteTargetDeptNode.id);
-            setDeleteTargetDeptNode(null);
-          }
+        open={!!deleteTargetNode}
+        onOpenChange={(open) => !open && setDeleteTargetNode(null)}
+        node={deleteTargetNode}
+        onDeleteSuccess={async () => {
+          setDeleteTargetNode(null)
+          await loadTree(true)
         }}
       />
     </MainLayout>

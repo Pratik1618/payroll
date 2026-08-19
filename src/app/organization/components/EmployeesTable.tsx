@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { removeEmployee, transferEmployee, updateEmployee, Employee } from "../mock/employees";
-import { fetchEmployeesApi, editEmployeeApi, transferEmployeeApi, unassignEmployeeApi } from "../services/masterDataService";
+import { Employee } from "../mock/employees";
+import { fetchEmployeesApi, editEmployeeApi, transferEmployeeApi, unassignEmployeeApi, fetchOrgTree } from "../services/masterDataService";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { MoreVertical, Edit2, Replace, Trash2, Wallet, Loader2 } from "lucide-react";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { organizationData } from "../mock/organization";
+import { OrganizationNode } from "../mock/organization";
 import { EditSalaryModal } from "./EditSalaryModal";
 
 const AvatarPlaceholder = ({ name }: { name: string }) => {
@@ -42,9 +42,11 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
   const [transferZoneId, setTransferZoneId] = useState("");
 
   const AVAILABLE_ZONES = ["West", "East", "North", "South"];
+  const [departments, setDepartments] = useState<OrganizationNode[]>([]);
 
   useEffect(() => {
     loadEmployees();
+    void fetchOrgTree().then((tree) => setDepartments(tree[0]?.children || []));
   }, [nodeId]);
 
   const loadEmployees = async () => {
@@ -115,8 +117,6 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
       }
     }
   };
-
-  const departments = organizationData[0]?.children || [];
 
   const transferSubDepartments = transferDeptId
     ? departments.find(d => d.id === transferDeptId)?.children?.filter(c => !c.name.includes("Zone")) || []
@@ -329,11 +329,11 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
       <EditSalaryModal
         employee={editingSalaryEmp}
         onOpenChange={(open) => !open && setEditingSalaryEmp(null)}
-        onSave={(newSalary) => {
-          if (editingSalaryEmp) {
-            updateEmployee(editingSalaryEmp.id, { monthlySalary: newSalary });
-            // forceUpdate();
-          }
+        onSave={() => {
+          // EditSalaryModal already persists the real salary structure via
+          // updateEmployeeSalaryStructureApi before calling onSave - refresh
+          // from the real API instead of mutating the disconnected mock array.
+          void loadEmployees();
         }}
       />
     </div>

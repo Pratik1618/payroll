@@ -7,7 +7,6 @@ import { QuickActions } from "./components/QuickActions";
 import { SummaryCards } from "./components/SummaryCards";
 import { OverviewTab } from "./components/OverviewTab";
 import { EmployeesTable } from "./components/EmployeesTable";
-import { SalaryCostTab } from "./components/SalaryCostTab";
 import { OfferManagementModule } from "./components/OfferManagementModule";
 import { organizationData, OrganizationNode } from "./mock/organization";
 import { fetchOrgTree } from "./services/masterDataService";
@@ -99,10 +98,9 @@ export default function OrganizationManagementPage() {
                 <SummaryCards node={selectedNode} />
 
                 <Tabs defaultValue="overview" className="mt-8">
-                  <TabsList className="grid w-full grid-cols-3 h-auto p-1 bg-muted/50">
+                  <TabsList className="grid w-full grid-cols-2 h-auto p-1 bg-muted/50">
                     <TabsTrigger value="overview" className="py-2 text-xs md:text-sm">Overview</TabsTrigger>
                     <TabsTrigger value="employees" className="py-2 text-xs md:text-sm">Employees</TabsTrigger>
-                    <TabsTrigger value="salary" className="py-2 text-xs md:text-sm">Salary Cost</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="overview">
@@ -111,10 +109,6 @@ export default function OrganizationManagementPage() {
 
                   <TabsContent value="employees">
                     <EmployeesTable nodeId={selectedNode.id} />
-                  </TabsContent>
-
-                  <TabsContent value="salary">
-                    <SalaryCostTab node={selectedNode} />
                   </TabsContent>
                 </Tabs>
               </main>

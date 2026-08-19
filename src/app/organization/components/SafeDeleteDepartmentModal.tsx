@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,14 +21,9 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { AlertTriangle, Users, FolderTree, ShieldAlert, ArrowRight } from "lucide-react";
-import {
-  OrganizationNode,
-  organizationData,
-  checkDepartmentDependencies,
-  safeDeleteDepartment,
-} from "../mock/organization";
+import { OrganizationNode } from "../mock/organization";
 
-import { inspectDepartmentDependenciesApi, safeDeleteDepartmentApi, DepartmentDependenciesResult } from "../services/masterDataService";
+import { inspectDepartmentDependenciesApi, safeDeleteDepartmentApi, fetchOrgTree, DepartmentDependenciesResult } from "../services/masterDataService";
 
 interface SafeDeleteDepartmentModalProps {
   open: boolean;
@@ -53,13 +48,17 @@ export function SafeDeleteDepartmentModal({
     childDepartmentsCount: 0,
     childDepartmentNames: [],
   });
+  const [dependenciesLoadFailed, setDependenciesLoadFailed] = useState(false);
+  const [availableTargetDepartments, setAvailableTargetDepartments] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (open && node) {
       setConfirmName("");
       setEmployeeAction("reassign");
       setTargetDeptId("");
+      setDependenciesLoadFailed(false);
       loadDependencies(node.id);
+      loadTargetDepartments(node.id);
     }
   }, [open, node]);
 
@@ -67,26 +66,23 @@ export function SafeDeleteDepartmentModal({
     const res = await inspectDepartmentDependenciesApi(deptId);
     if (res) {
       setDependencies(res);
-    } else if (node) {
-      const fallback = checkDepartmentDependencies(node.id);
-      setDependencies({
-        departmentId: node.id,
-        departmentName: node.name,
-        assignedEmployeesCount: fallback.assignedEmployeesCount,
-        childDepartmentsCount: fallback.childDepartmentsCount,
-        childDepartmentNames: fallback.childDepartmentNames,
-      });
+    } else {
+      // Don't fabricate a dependency count on API failure - that could
+      // make a delete look safe when we actually don't know the real
+      // impact. Block the confirm-name flow via dependenciesLoadFailed
+      // instead.
+      setDependenciesLoadFailed(true);
     }
   };
 
   // Flatten all departments except the current node for target reassignment dropdown
-  const availableTargetDepartments = useMemo(() => {
-    if (!node) return [];
+  const loadTargetDepartments = async (deptId: string) => {
+    const tree = await fetchOrgTree();
     const result: { id: string; name: string }[] = [];
 
     const traverse = (nodes: OrganizationNode[]) => {
       for (const n of nodes) {
-        if (n.id !== node.id && n.id !== "company") {
+        if (n.id !== deptId && n.id !== "company") {
           result.push({ id: n.id, name: n.name });
         }
         if (n.children) {
@@ -95,16 +91,16 @@ export function SafeDeleteDepartmentModal({
       }
     };
 
-    traverse(organizationData);
-    return result;
-  }, [node]);
+    traverse(tree);
+    setAvailableTargetDepartments(result);
+  };
 
   if (!node) return null;
 
   const isNameMatched = confirmName.trim() === node.name.trim();
   const requiresReassignTarget = dependencies.assignedEmployeesCount > 0 && employeeAction === "reassign";
   const isTargetSelected = !requiresReassignTarget || targetDeptId !== "";
-  const isDeleteEnabled = isNameMatched && isTargetSelected;
+  const isDeleteEnabled = isNameMatched && isTargetSelected && !dependenciesLoadFailed;
 
   const handleDelete = async () => {
     if (!isDeleteEnabled) return;
@@ -144,6 +140,11 @@ export function SafeDeleteDepartmentModal({
         </DialogHeader>
 
         <div className="space-y-4 py-2 text-sm">
+          {dependenciesLoadFailed && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive text-xs font-medium">
+              Could not load real dependency data for this department. Deletion is disabled until this can be verified.
+            </div>
+          )}
           {/* Impact Warning Banner */}
           <div className="rounded-lg border border-amber-200 bg-amber-50/80 dark:bg-amber-950/30 p-3 text-amber-800 dark:text-amber-200 space-y-2">
             <div className="flex items-center gap-2 font-medium text-xs">

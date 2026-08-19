@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,8 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { organizationData, DesignationQuantity } from "../mock/organization";
-import { createDepartmentApi, fetchDesignations } from "../services/masterDataService";
+import { OrganizationNode, DesignationQuantity } from "../mock/organization";
+import { createDepartmentApi, fetchDesignations, fetchOrgTree } from "../services/masterDataService";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,6 +42,7 @@ export function AddDepartmentModal({ open, onOpenChange, onDepartmentCreated }: 
   const [selectedDesignation, setSelectedDesignation] = useState("");
   const [designationQty, setDesignationQty] = useState<number>(1);
   const [availableDesignations, setAvailableDesignations] = useState<string[]>([]);
+  const [departments, setDepartments] = useState<OrganizationNode[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Reset form when opened
@@ -56,6 +57,7 @@ export function AddDepartmentModal({ open, onOpenChange, onDepartmentCreated }: 
       setSelectedDesignation("");
       setDesignationQty(1);
       loadDesignationsList();
+      loadDepartmentsList();
     }
   }, [open]);
 
@@ -64,10 +66,11 @@ export function AddDepartmentModal({ open, onOpenChange, onDepartmentCreated }: 
     setAvailableDesignations(list);
   };
 
-  // Top level departments (children of Company)
-  const departments = useMemo(() => {
-    return organizationData[0]?.children || [];
-  }, [open]);
+  // Top level departments (children of Company), from the real org tree.
+  const loadDepartmentsList = async () => {
+    const tree = await fetchOrgTree();
+    setDepartments(tree[0]?.children || []);
+  };
 
   const handleAddDesignationQty = () => {
     if (!selectedDesignation) {
