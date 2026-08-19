@@ -3,11 +3,11 @@ import { getBackendUrl } from '@/lib/base-path'
 
 type RouteContext = {
   params: Promise<{
-    uploadId: string
+    submissionId: string
   }>
 }
 
-export async function GET(req: Request, context: RouteContext) {
+export async function POST(req: Request, context: RouteContext) {
   try {
     const cookieHeader = req.headers.get('cookie') ?? ''
     const tokenMatch = cookieHeader.match(/(?:^|;\s*)token=([^;]+)/)
@@ -17,15 +17,18 @@ export async function GET(req: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const { uploadId } = await context.params
+    const { submissionId } = await context.params
+    const body = await req.text()
 
     const res = await fetch(
-      getBackendUrl(`/api/attendance/submissions/${encodeURIComponent(uploadId)}`),
+      getBackendUrl(`/api/attendance/submissions/${encodeURIComponent(submissionId)}/reject`),
       {
-        method: 'GET',
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
         },
+        body: body || undefined,
         cache: 'no-store',
       }
     )

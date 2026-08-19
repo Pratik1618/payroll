@@ -13,6 +13,6 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/next.config.ts ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-RUN npm ci --only=production
+RUN npm ci --only=production && npm install typescript --no-save
 EXPOSE 3000
 CMD ["npm", "start"]

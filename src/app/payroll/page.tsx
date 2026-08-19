@@ -62,7 +62,7 @@
     { id: "branch-4", name: "Tamil Nadu" },
   ]
 
-  const payrollMonthOptions = generateMonthOptions(2025, 2027)
+  const payrollMonthOptions = generateMonthOptions(2025, 2031)
 
   // add an initial payroll-data constant for easy reset
   const initialPayrollData = {
@@ -927,6 +927,45 @@
                       <div className="text-sm text-muted-foreground">Total In-Hand</div>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {runSummary?.unresolvedEmployees?.length > 0 && (
+                <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+                  <div className="flex items-start gap-3 mb-3">
+                    <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                    <h4 className="font-medium text-orange-800 dark:text-orange-200">
+                      {runSummary.unresolvedEmployees.length} employee(s) could not be processed — no wage rule found
+                    </h4>
+                  </div>
+                  <div className="overflow-x-auto border rounded-lg bg-background max-h-64 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="text-left p-2">Emp ID</th>
+                          <th className="text-left p-2">Name</th>
+                          <th className="text-left p-2">Site</th>
+                          <th className="text-left p-2">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {runSummary.unresolvedEmployees.map((emp: { employeeId?: string; employeeName?: string; siteId?: string; reason?: string }, index: number) => (
+                          <tr key={emp.employeeId || index} className="border-t">
+                            <td className="p-2">{emp.employeeId}</td>
+                            <td className="p-2">{emp.employeeName}</td>
+                            <td className="p-2">{emp.siteId}</td>
+                            <td className="p-2">{emp.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {payrollCalculations.length === 0 && !(runSummary?.unresolvedEmployees?.length > 0) && (
+                <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                  {runSummary?.message || "No attendance data found for this scope and month."}
                 </div>
               )}
 

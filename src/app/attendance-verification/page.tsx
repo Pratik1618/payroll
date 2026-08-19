@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { MainLayout } from "@/components/ui/layout/main-layout";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
     Dialog,
     DialogContent,
@@ -58,73 +59,67 @@ interface SubmissionRecord {
     approvedAt?: string;
 }
 
+// Backend's classic list endpoint returns UPPERCASE status and a
+// {userId, name, role} submittedBy object; this page works in lowercase
+// status strings and a plain submittedBy string, so map on the way in.
+type BackendSubmissionListItem = {
+    submissionId: string;
+    client: string;
+    site: string;
+    month: string;
+    recordsCount: number;
+    status: string;
+    submittedAt: string;
+    submittedBy?: { userId?: string; name?: string; role?: string };
+};
+
+function mapListItem(item: BackendSubmissionListItem): SubmissionRecord {
+    return {
+        id: item.submissionId,
+        client: item.client,
+        site: item.site,
+        month: item.month,
+        records: [],
+        status: item.status.toLowerCase() as SubmissionRecord["status"],
+        submittedAt: item.submittedAt,
+        submittedBy: item.submittedBy?.name ?? item.submittedBy?.userId ?? "",
+    };
+}
+
 export default function AttendanceVerificationPage() {
-    const [submissions, setSubmissions] = useState<SubmissionRecord[]>([
-        {
-            id: "SUB001",
-            client: "Acme Corp",
-            site: "Site A",
-            month: "November",
-            records: [
-                {
-                    employee_id: "EMP001",
-                    employee_name: "John Doe",
-                    present_days: 20,
-                    weekly_off: 4,
-                    national_holidays: 2,
-                    holiday: 1,
-                    comp_off: 0,
-                    leave: 1,
-                    absent: 0,
-                    half_day: 1,
-                    ot_hrs: 8,
-                    total_payable_days: 25,
-                },
-                {
-                    employee_id: "EMP002",
-                    employee_name: "Jane Smith",
-                    present_days: 19,
-                    weekly_off: 4,
-                    national_holidays: 2,
-                    holiday: 1,
-                    comp_off: 1,
-                    leave: 0,
-                    absent: 2,
-                    half_day: 0,
-                    ot_hrs: 4,
-                    total_payable_days: 24,
-                },
-            ],
-            status: "pending",
-            submittedAt: "2024-12-20 10:30 AM",
-            submittedBy: "HR Manager",
-        },
-        {
-            id: "SUB002",
-            client: "Tech Solutions",
-            site: "Site B",
-            month: "December",
-            records: [],
-            status: "approved",
-            submittedAt: "2024-12-18 2:15 PM",
-            submittedBy: "Payroll Team",
-        },
-        {
-            id: "SUB003",
-            client: "Global Services",
-            site: "Site C",
-            month: "November",
-            records: [],
-            status: "rejected",
-            submittedAt: "2024-12-19 3:45 PM",
-            submittedBy: "HR Manager",
-        },
-    ]);
+    const [submissions, setSubmissions] = useState<SubmissionRecord[]>([]);
     const [selectedSubmission, setSelectedSubmission] =
         useState<SubmissionRecord | null>(null);
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const [loadingDetailsId, setLoadingDetailsId] = useState<string | null>(null);
     const [approvingId, setApprovingId] = useState<string | null>(null);
+    const [rejectingId, setRejectingId] = useState<string | null>(null);
+    const [rejectReason, setRejectReason] = useState("");
+
+    const fetchSubmissions = async () => {
+        try {
+            const res = await fetch(withBasePath("/api/attendance/submissions"), {
+                cache: "no-store",
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data?.message || "Failed to load submissions");
+            }
+
+            const results = data?.results ?? data;
+            const items: BackendSubmissionListItem[] = Array.isArray(results?.data)
+                ? results.data
+                : [];
+            setSubmissions(items.map(mapListItem));
+        } catch (error: any) {
+            toast.error(error.message || "Failed to load submissions");
+        }
+    };
+
+    useEffect(() => {
+        fetchSubmissions();
+    }, []);
 
     const handleViewDetails = async (submission: SubmissionRecord) => {
         try {
@@ -155,10 +150,13 @@ export default function AttendanceVerificationPage() {
                 month: results?.month ?? submission.month,
                 submittedBy: results?.submittedBy ?? submission.submittedBy,
                 submittedAt: results?.submittedAt ?? submission.submittedAt,
-                status: results?.status ?? submission.status,
+                status: (typeof results?.status === "string"
+                    ? results.status.toLowerCase()
+                    : submission.status) as SubmissionRecord["status"],
             };
 
             setSelectedSubmission(nextSubmission);
+            setRejectReason("");
             setShowDetailsDialog(true);
         } catch (error: any) {
             toast.error(error.message || "Failed to verify attendance");
@@ -173,7 +171,11 @@ export default function AttendanceVerificationPage() {
 
             const res = await fetch(
                 withBasePath(`/api/attendance/approve/${id}`),
-                { method: "POST" }
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({}),
+                }
             );
             const data = await res.json();
 
@@ -181,13 +183,9 @@ export default function AttendanceVerificationPage() {
                 throw new Error(data?.message || "Failed to approve attendance");
             }
 
-            setSubmissions(
-                submissions.map((sub) =>
-                    sub.id === id ? { ...sub, status: "approved" as const } : sub
-                )
-            );
             setShowDetailsDialog(false);
             toast.success("Attendance approved and uploaded to client site");
+            await fetchSubmissions();
         } catch (error: any) {
             toast.error(error.message || "Failed to approve attendance");
         } finally {
@@ -195,14 +193,35 @@ export default function AttendanceVerificationPage() {
         }
     };
 
-    const handleReject = (id: string) => {
-        setSubmissions(
-            submissions.map((sub) =>
-                sub.id === id ? { ...sub, status: "rejected" as const } : sub
-            )
-        );
-        setShowDetailsDialog(false);
-        toast.error("Attendance rejected. Requestor notified to re-upload");
+    const handleReject = async (id: string) => {
+        if (!rejectReason.trim()) {
+            toast.error("A reason is required to reject a submission");
+            return;
+        }
+
+        try {
+            setRejectingId(id);
+
+            const res = await fetch(withBasePath(`/api/attendance/reject/${id}`), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ reason: rejectReason.trim() }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data?.message || "Failed to reject attendance");
+            }
+
+            setShowDetailsDialog(false);
+            setRejectReason("");
+            toast.error("Attendance rejected. Requestor notified to re-upload");
+            await fetchSubmissions();
+        } catch (error: any) {
+            toast.error(error.message || "Failed to reject attendance");
+        } finally {
+            setRejectingId(null);
+        }
     };
 
     const pendingSubmissions = submissions.filter((s) => s.status === "pending");
@@ -419,22 +438,40 @@ export default function AttendanceVerificationPage() {
 
                             {/* Action Buttons */}
                             {selectedSubmission.status === "pending" && (
-                                <div className="flex gap-3 justify-end">
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => handleReject(selectedSubmission.id)}
-                                        disabled={approvingId === selectedSubmission.id}
-                                    >
-                                        <XCircle className="mr-2 h-4 w-4" />
-                                        Reject
-                                    </Button>
-                                    <Button
-                                        onClick={() => handleApprove(selectedSubmission.id)}
-                                        disabled={approvingId === selectedSubmission.id}
-                                    >
-                                        <CheckCircle className="mr-2 h-4 w-4" />
-                                        {approvingId === selectedSubmission.id ? "Approving..." : "Approve & Upload"}
-                                    </Button>
+                                <div className="space-y-3">
+                                    <Textarea
+                                        placeholder="Reason for rejection (required to reject)"
+                                        value={rejectReason}
+                                        onChange={(e) => setRejectReason(e.target.value)}
+                                        disabled={
+                                            approvingId === selectedSubmission.id ||
+                                            rejectingId === selectedSubmission.id
+                                        }
+                                    />
+                                    <div className="flex gap-3 justify-end">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleReject(selectedSubmission.id)}
+                                            disabled={
+                                                approvingId === selectedSubmission.id ||
+                                                rejectingId === selectedSubmission.id ||
+                                                !rejectReason.trim()
+                                            }
+                                        >
+                                            <XCircle className="mr-2 h-4 w-4" />
+                                            {rejectingId === selectedSubmission.id ? "Rejecting..." : "Reject"}
+                                        </Button>
+                                        <Button
+                                            onClick={() => handleApprove(selectedSubmission.id)}
+                                            disabled={
+                                                approvingId === selectedSubmission.id ||
+                                                rejectingId === selectedSubmission.id
+                                            }
+                                        >
+                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                            {approvingId === selectedSubmission.id ? "Approving..." : "Approve & Upload"}
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </div>

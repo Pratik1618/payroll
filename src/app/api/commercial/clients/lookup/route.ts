@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getBackendUrl } from '@/lib/base-path'
+
+// This route is the one exception to getBackendUrl()'s single BASE_URL: it's
+// client/master data owned by the *commercial* service, not payroll, so it
+// must hit a different backend host regardless of what BASE_URL points at.
+const COMMERCIAL_BASE_URL =
+  process.env.COMMERCIAL_API_BASE_URL || 'http://smarterp-app-svc.smarterp.svc.cluster.local'
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,7 +14,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const res = await fetch(getBackendUrl('/api/commercial/clients/lookup'), {
+    const res = await fetch(`${COMMERCIAL_BASE_URL}/api/commercial/clients/lookup`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,

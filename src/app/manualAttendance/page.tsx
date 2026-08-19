@@ -106,6 +106,33 @@ const fallbackSites: SiteOption[] = [
   { id: "site-d", name: "Site D", clientId: "client-3" },
 ]
 
+// The month dropdown only offers a bare name (no year), but the backend
+// requires strict YYYY-MM for Manual Attendance Upload 2. Handles both full
+// names (dropdown) and 3-letter abbreviations (seen in real uploaded files,
+// e.g. "APR"), case-insensitively.
+const MONTH_NAME_TO_NUMBER: Record<string, string> = {
+  jan: "01", january: "01",
+  feb: "02", february: "02",
+  mar: "03", march: "03",
+  apr: "04", april: "04",
+  may: "05",
+  jun: "06", june: "06",
+  jul: "07", july: "07",
+  aug: "08", august: "08",
+  sep: "09", september: "09",
+  oct: "10", october: "10",
+  nov: "11", november: "11",
+  dec: "12", december: "12",
+}
+
+function toYyyyMm(monthName: string | undefined, yearName: string | undefined): string | null {
+  if (!monthName || !yearName) return null
+  const num = MONTH_NAME_TO_NUMBER[monthName.trim().toLowerCase()]
+  const year = yearName.trim()
+  if (!num || !/^\d{4}$/.test(year)) return null
+  return `${year}-${num}`
+}
+
 const months = [
   "January",
   "February",
@@ -791,6 +818,11 @@ export default function ManualAttendanceUploadPage() {
 
     const firstRecord = tempUploadedData[0]
     const derivedMonth = firstRecord ? `${firstRecord.month_name} ${firstRecord.year_name}` : "Temporary Upload"
+    // Backend requires strict YYYY-MM; the month dropdown only has a bare name.
+    // Prefer deriving it from the uploaded file's own month_name/year_name
+    // columns (present on every row), falling back to the dropdown value only
+    // if that derivation isn't possible (e.g. malformed file).
+    const payloadMonth = toYyyyMm(firstRecord?.month_name, firstRecord?.year_name) ?? tempMonth
     const normalizedRecords = tempAutoSplitSites
       ? buildTemporarySiteGroups(tempUploadedData, tempSites).flatMap((group) => group.records)
       : tempUploadedData.map((record) => ({
@@ -817,7 +849,7 @@ export default function ManualAttendanceUploadPage() {
         credentials: "include",
         body: JSON.stringify({
           clientId: tempClient,
-          month: tempMonth,
+          month: payloadMonth,
           records: payloadRecords,
         }),
       })
@@ -866,7 +898,7 @@ export default function ManualAttendanceUploadPage() {
           batchSubmissionId: submissionId,
           client: getClientName(tempClient),
           site: tempAutoSplitSites ? "Multiple Sites" : getSiteName(tempSite, tempSites),
-          month: tempMonth || derivedMonth,
+          month: payloadMonth || derivedMonth,
           records: [],
           recordsCount: normalizedRecords.length,
           status: "pending",

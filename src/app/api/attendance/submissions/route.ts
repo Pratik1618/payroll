@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getBackendUrl } from '@/lib/base-path'
 
-type RouteContext = {
-  params: Promise<{
-    uploadId: string
-  }>
-}
-
-export async function GET(req: Request, context: RouteContext) {
+export async function GET(req: Request) {
   try {
     const cookieHeader = req.headers.get('cookie') ?? ''
     const tokenMatch = cookieHeader.match(/(?:^|;\s*)token=([^;]+)/)
@@ -17,18 +11,19 @@ export async function GET(req: Request, context: RouteContext) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const { uploadId } = await context.params
+    const url = new URL(req.url)
+    const query = url.searchParams.toString()
+    const backendPath = query
+      ? `/api/attendance/submissions?${query}`
+      : '/api/attendance/submissions'
 
-    const res = await fetch(
-      getBackendUrl(`/api/attendance/submissions/${encodeURIComponent(uploadId)}`),
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: 'no-store',
-      }
-    )
+    const res = await fetch(getBackendUrl(backendPath), {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+    })
 
     const data = await res.json()
 

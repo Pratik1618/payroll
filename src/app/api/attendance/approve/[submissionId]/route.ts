@@ -21,7 +21,7 @@ export async function POST(req: Request, context: RouteContext) {
     const body = await req.text()
 
     const res = await fetch(
-      getBackendUrl(`/api/attendance/approve/${encodeURIComponent(submissionId)}`),
+      getBackendUrl(`/api/attendance/submissions/${encodeURIComponent(submissionId)}/approve`),
       {
         method: 'POST',
         headers: {
