@@ -245,6 +245,24 @@
     }
 
     const processCurrentStep = async () => {
+      // If this step's action already succeeded for the current run, don't
+      // resubmit it - the backend enforces immutability (no recalculation,
+      // no unlock-after-lock), and navigating Previous then re-clicking
+      // "Process Step" would otherwise re-POST the same mutating call and
+      // surface a confusing "not allowed" error even though the step
+      // already completed correctly the first time.
+      const alreadyDone =
+        (currentStep === 1 && !!payrollRunId && payrollData.attendanceImported) ||
+        (currentStep === 2 && payrollData.payrollCalculated) ||
+        (currentStep === 4 && payrollData.payrollLocked)
+
+      if (alreadyDone) {
+        if (currentStep < payrollSteps.length) {
+          setCurrentStep(currentStep + 1)
+        }
+        return
+      }
+
       setIsProcessing(true)
 
       try {
