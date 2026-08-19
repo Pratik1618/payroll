@@ -250,9 +250,11 @@
       // no unlock-after-lock), and navigating Previous then re-clicking
       // "Process Step" would otherwise re-POST the same mutating call and
       // surface a confusing "not allowed" error even though the step
-      // already completed correctly the first time.
+      // already completed correctly the first time. Step 1 (create run) is
+      // deliberately NOT guarded here - it must always create a fresh run
+      // reflecting whatever scope/site selection is currently active, since
+      // the user may have gone back and changed the site selection.
       const alreadyDone =
-        (currentStep === 1 && !!payrollRunId && payrollData.attendanceImported) ||
         (currentStep === 2 && payrollData.payrollCalculated) ||
         (currentStep === 4 && payrollData.payrollLocked)
 
@@ -1351,272 +1353,65 @@
                       <tr className="border-b">
                         <th className="text-left p-2">Employee</th>
                         <th className="text-left p-2 min-w-[150px]">Designation</th>
-                        {/* <th className="text-left p-2">Present Days</th> */}
                         <th className="text-left p-2">Leaves</th>
                         <th className="text-left p-2">LOP</th>
                         <th className="text-left p-2">Paid Days</th>
-                        <th className="text-left p-2">Client OT</th>
-                        <th className="text-left p-2">iSmart OT</th>
-                        <th className="text-left p-2">Total OT</th>
+                        <th className="text-left p-2">OT Hrs</th>
                         {currentStep >= 3 && (
                           <>
-                            <th className="text-left p-2">Basic<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">DA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">HRA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">CONVEYANCE<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-
-                            <th className="text-left p-2">Washing<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Other all.<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Leave w/ Wages<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">CCA<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-
-                            <th className="text-left p-2">Educational<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Medical<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Spl Allow<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Bonus<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Meal<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Site Allowance<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Performance<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Food<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Metro City<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2">Stipend<br /><span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span></th>
-                            <th className="text-left p-2 b">OT Amount</th>
-                            <th className="text-left p-2">Reimburse</th>
-                            <th className="text-left p-2">Cony</th>
-                            <th className="text-left p-2">Cash Risk</th>
-                            <th className="text-left p-2">Incentive</th>
-
-
-                            <th className="text-left p-2">
-                              Gross Salary<br />
-                              <span className="text-xs text-muted-foreground">(Given/<span className="text-green-600">Earned</span>)</span>
-                            </th>
+                            <th className="text-left p-2">Basic</th>
+                            <th className="text-left p-2">DA</th>
+                            <th className="text-left p-2">HRA</th>
+                            <th className="text-left p-2">CCA</th>
+                            <th className="text-left p-2">OT Amount</th>
+                            <th className="text-left p-2">Gross Salary</th>
                             <th className="text-left p-2">PF</th>
                             <th className="text-left p-2">ESIC</th>
                             <th className="text-left p-2">PT</th>
                             <th className="text-left p-2">LWF</th>
-                            <th className="text-left p-2">Other Ded</th>
-                            <th className="text-left p-2">Uniform</th>
-
-
-                            <th className="text-left p-2">Mess</th>
-                            <th className="text-left p-2">HRA Ded</th>
-                            <th className="text-left p-2">Staff Welfare Fund</th>
-                            <th className="text-left p-2">BG Verification</th>
-
-
-                            <th className="text-left p-2">Uniform Ded</th>
-
-                            <th className="text-left p-2">Deductions</th>
+                            <th className="text-left p-2">Advance</th>
+                            <th className="text-left p-2">Total Deductions</th>
                             <th className="text-left p-2">Net Salary</th>
-                            <th className="text-left p-2">Advance Remaining</th>
-                            <th className="text-left p-2">InHand Salary<br />
-                              <span className="text-xs text-muted-foreground">(net salary - advance)</span>
-
-                            </th>
-
+                            <th className="text-left p-2">InHand Salary</th>
                           </>
                         )}
                       </tr>
                     </thead>
                     <tbody>
-                      {(currentStep >= 3 ? finalSalary : mergedData).map((emp, index) => (
+                      {(currentStep >= 3 ? payrollCalculations : attendanceData).map((emp, index) => (
                         <tr key={index} className="border-b">
                           <td className="p-2">
                             <div>
-                              <div className="font-medium">{emp.EMPNAME}</div>
-                              <div className="text-xs text-muted-foreground">{emp.EMPCODE}</div>
+                              <div className="font-medium">{emp.name}</div>
+                              <div className="text-xs text-muted-foreground">{emp.empId}</div>
                             </div>
                           </td>
-                          <td className="p-2">{emp.DESIGNATIONNAME}</td>
-                          {/* <td className="p-2">
-                            {emp.NORMALDAYS}/{30}
-                          </td> */}
-                          <td className="p-2">    {(emp.PL || 0) + (emp.CL || 0) + (emp.SL || 0)}
-                          </td>
+                          <td className="p-2">{emp.designation}</td>
+                          <td className="p-2">{emp.attendance?.leaveDays}</td>
                           <td className="p-2">
-                            <Badge variant={emp.lop > 0 ? "destructive" : "secondary"}>{emp.lopDays}</Badge>
+                            <Badge variant={emp.attendance?.lopDays > 0 ? "destructive" : "secondary"}>{emp.attendance?.lopDays}</Badge>
                           </td>
-                          <td className="p-2">{emp.payableDays}</td>
-
-                          {/* show OT breakdown */}
+                          <td className="p-2">{emp.attendance?.paidDays}</td>
                           <td className="p-2">
-                            <Badge variant={emp.clientOvertime > 0 ? "secondary" : undefined}>{emp.clientOvertime ?? (emp.clientOvertime === 0 ? "0" : "-")}</Badge>
-                          </td>
-                          <td className="p-2">
-                            <Badge variant={emp.ismartOvertime > 0 ? "secondary" : undefined}>{emp.ismartOvertime ?? (emp.ismartOvertime === 0 ? "0" : "-")}</Badge>
-                          </td>
-                          <td className="p-2">
-                            <Badge variant={(emp.clientOvertime + (emp.ismartOvertime || 0)) > 10 ? "destructive" : "secondary"}>{(emp.clientOvertime || 0) + (emp.ismartOvertime || 0)}h</Badge>
+                            <Badge variant={emp.attendance?.otHrs > 0 ? "secondary" : undefined}>{emp.attendance?.otHrs ?? "-"}h</Badge>
                           </td>
 
                           {currentStep >= 3 && (
                             <>
-                              <td className="p-2">
-                                ₹{emp.salaryStructure?.BASIC?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.calculatedSalary?.basic?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.salaryStructure?.DA?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.calculatedSalary?.da?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.salaryStructure?.HRA?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.calculatedSalary?.hra?.toLocaleString()}
-
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.salaryStructure?.CONV?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.calculatedSalary?.conveyance?.toLocaleString()}
-                                </span>
-                              </td>
-
-                              <td className="p-2">
-                                ₹{emp.salaryStructure?.WASHING?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.calculatedSalary?.washing?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.salaryStructure?.["OTHER ALW"]?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.calculatedSalary?.otherAllowance?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.LWW?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.leaveWithWages?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.salaryStructure?.CCA?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.calculatedSalary?.cca?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.givenEducationalAllowance?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.educationalAllowance?.toLocaleString()}
-                                </span>
-                              </td>
-
-                              <td className="p-2">
-                                ₹{emp.givenMedicalAllowance?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.medicalAllowance?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.givenSpecialAllowance?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.specialAllowance?.toLocaleString()}
-                                </span>
-                              </td>  <td className="p-2">
-                                ₹{emp.salaryStructure?.BONUS?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.bonus?.toLocaleString()}
-                                </span>
-                              </td>  <td className="p-2">
-                                ₹{emp.givenMeal?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.meal?.toLocaleString()}
-                                </span>
-                              </td>  <td className="p-2">
-                                ₹{emp.givenSiteAllowance?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.siteAllowance?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.givenPerformanceAllowance?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.performanceAllowance?.toLocaleString()}
-                                </span>
-                              </td> <td className="p-2">
-                                ₹{emp.givenFood?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.food?.toLocaleString()}
-                                </span>
-                              </td> <td className="p-2">
-                                ₹{emp.givenMetroCityAllowance?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.metroCityAllowance?.toLocaleString()}
-                                </span>
-                              </td> <td className="p-2">
-                                ₹{emp.givenStipend?.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.stipend?.toLocaleString()}
-                                </span>
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.overtimePay?.toLocaleString()}
-
-
-                              </td><td className="p-2">
-                                ₹{emp.reimbursement?.toLocaleString()}
-
-                              </td><td className="p-2">
-                                ₹{emp.convy?.toLocaleString()}
-
-                              </td><td className="p-2">
-                                ₹{emp.cashRiskAllowance?.toLocaleString()}
-
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.incentive?.toLocaleString()}
-
-                              </td>
-                              <td className="p-2">
-                                ₹{emp.salaryStructure?.GROSS.toLocaleString()}
-                                <br />
-                                <span className="text-green-700 dark:text-green-300 text-xs font-medium">
-                                  ₹{emp.grossPayable?.toLocaleString()}
-                                </span>
-                              </td>
-
-                              <td className="p-2">₹{emp.finalPF?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.finalESIC?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.pt?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.lwf?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.otherDeduction?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.uniform?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.messDeduction?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.hraDeduction?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.staffWelfareFund?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.backgroundVerification?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.uniformDeduction?.toLocaleString()}</td>
-
-                              <td className="p-2">₹{emp.deductions?.toLocaleString()}</td>
-                              <td className="p-2 font-medium">₹{emp.netSalary?.toLocaleString()}</td>
-                              <td className="p-2 font-medium">₹{emp.advanceRemaining?.toLocaleString()}</td>
-                              <td className="p-2 font-medium">₹{emp.inHandSalary?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.earnings?.basic?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.earnings?.da?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.earnings?.hra?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.earnings?.cca?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.earnings?.overtimePay?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.earnings?.grossSalary?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.deductions?.pf?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.deductions?.esic?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.deductions?.pt?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.deductions?.lwf?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.deductions?.advance?.toLocaleString()}</td>
+                              <td className="p-2">₹{emp.totals?.totalDeductions?.toLocaleString()}</td>
+                              <td className="p-2 font-medium">₹{emp.totals?.netSalary?.toLocaleString()}</td>
+                              <td className="p-2 font-medium">₹{emp.totals?.inHandSalary?.toLocaleString()}</td>
                             </>
                           )}
                         </tr>
