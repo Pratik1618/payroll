@@ -11,19 +11,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const incomingFormData = await req.formData()
-    const outgoingFormData = new FormData()
+    const body = await req.text()
 
-    for (const [key, value] of incomingFormData.entries()) {
-      outgoingFormData.append(key, value)
-    }
-
-    const res = await fetch(getBackendUrl('/api/attendance/manual/upload'), {
+    const res = await fetch(getBackendUrl('/api/attendance/manual/submit'), {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-      body: outgoingFormData,
+      body,
       cache: 'no-store',
     })
 

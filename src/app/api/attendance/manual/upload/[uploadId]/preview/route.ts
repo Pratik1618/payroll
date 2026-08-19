@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getBackendUrl } from '@/lib/base-path'
 
-export async function POST(req: Request) {
+type RouteContext = {
+  params: Promise<{
+    uploadId: string
+  }>
+}
+
+export async function GET(req: Request, context: RouteContext) {
   try {
     const cookieHeader = req.headers.get('cookie') ?? ''
     const tokenMatch = cookieHeader.match(/(?:^|;\s*)token=([^;]+)/)
@@ -11,21 +17,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
     }
 
-    const incomingFormData = await req.formData()
-    const outgoingFormData = new FormData()
+    const { uploadId } = await context.params
 
-    for (const [key, value] of incomingFormData.entries()) {
-      outgoingFormData.append(key, value)
-    }
-
-    const res = await fetch(getBackendUrl('/api/attendance/manual/upload'), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: outgoingFormData,
-      cache: 'no-store',
-    })
+    const res = await fetch(
+      getBackendUrl(`/api/attendance/manual/upload/${encodeURIComponent(uploadId)}/preview`),
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
+      }
+    )
 
     const data = await res.json()
 

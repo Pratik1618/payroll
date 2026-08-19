@@ -325,6 +325,7 @@ export default function ManualAttendanceUploadPage() {
   const [month, setMonth] = useState("")
   const [file, setFile] = useState<File | null>(null)
   const [uploadedData, setUploadedData] = useState<AttendanceRecord[]>([])
+  const [uploadId, setUploadId] = useState<string | null>(null)
   const [tempClient, setTempClient] = useState("")
   const [tempSite, setTempSite] = useState("")
   const [tempAutoSplitSites, setTempAutoSplitSites] = useState(false)
@@ -339,6 +340,7 @@ export default function ManualAttendanceUploadPage() {
   const [temporarySubmissions, setTemporarySubmissions] = useState<SubmissionRecord[]>([])
   const [submissionsLoading, setSubmissionsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [tempLoading, setTempLoading] = useState(false)
   
   // Preview states
@@ -666,18 +668,34 @@ export default function ManualAttendanceUploadPage() {
         throw new Error(data?.message || "Failed to upload attendance file")
       }
 
-      const records = Array.isArray(data?.results?.data)
-        ? data.results.data
-        : Array.isArray(data?.results)
-          ? data.results
-          : Array.isArray(data?.data)
-            ? data.data
-            : []
+      const newUploadId: string | undefined = data?.results?.uploadId
+      if (!newUploadId) {
+        throw new Error("Upload succeeded but no uploadId was returned")
+      }
 
+      const previewRes = await fetch(
+        withBasePath(`/api/attendance/manual/upload/${encodeURIComponent(newUploadId)}/preview`),
+        { credentials: "include", cache: "no-store" }
+      )
+      const previewData = await previewRes.json()
+
+      if (previewRes.status === 401) {
+        toast.error("Your session has expired. Please log in again.")
+        router.replace(withBasePath("/login"))
+        return
+      }
+
+      if (!previewRes.ok) {
+        throw new Error(previewData?.message || "Failed to load parsed attendance preview")
+      }
+
+      const records = Array.isArray(previewData?.results?.records) ? previewData.results.records : []
+
+      setUploadId(newUploadId)
       setUploadedData(records)
       toast.success(`Attendance file loaded for ${getClientName(client)} - ${getSiteName(site, sites)} - ${month}`)
     } catch (error) {
-      toast.error("Failed to upload attendance file")
+      toast.error(error instanceof Error ? error.message : "Failed to upload attendance file")
       console.error("Upload error:", error)
     } finally {
       setLoading(false)
@@ -754,30 +772,60 @@ export default function ManualAttendanceUploadPage() {
     }
   }
 
-  const handleSubmit = () => {
-    if (!uploadedData.length) {
+  const handleSubmit = async () => {
+    if (!uploadedData.length || !uploadId) {
       toast.error("Please upload attendance data first")
       return
     }
 
-    const newSubmission: SubmissionRecord = {
-      id: `SUB${Math.floor(Math.random() * 10000)}`,
-      client: getClientName(client),
-      site: getSiteName(site, sites),
-      month,
-      records: uploadedData,
-      status: "pending",
-      submittedAt: new Date().toLocaleString("en-IN"),
-      type: "standard",
-    }
+    setSubmitting(true)
+    try {
+      const res = await fetch(withBasePath("/api/attendance/manual/submit"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ uploadId, clientId: client, siteId: site, month }),
+      })
+      const data = await res.json()
 
-    setStandardSubmissions((prev) => [newSubmission, ...prev])
-    setUploadedData([])
-    setClient("")
-    setSite("")
-    setMonth("")
-    setFile(null)
-    toast.success("Attendance submitted for verification")
+      if (res.status === 401) {
+        toast.error("Your session has expired. Please log in again.")
+        router.replace(withBasePath("/login"))
+        return
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to submit attendance for verification")
+      }
+
+      const results = data?.results ?? {}
+      const newSubmission: SubmissionRecord = {
+        id: results.submissionId ?? uploadId,
+        client: getClientName(client),
+        site: getSiteName(site, sites),
+        month,
+        records: uploadedData,
+        status: "pending",
+        submittedAt: results.submittedAt
+          ? new Date(results.submittedAt).toLocaleString("en-IN")
+          : new Date().toLocaleString("en-IN"),
+        type: "standard",
+      }
+
+      setStandardSubmissions((prev) => [newSubmission, ...prev])
+      setUploadedData([])
+      setUploadId(null)
+      setClient("")
+      setSite("")
+      setMonth("")
+      setFile(null)
+      toast.success("Attendance submitted for verification")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to submit attendance for verification")
+      console.error("Submit error:", error)
+    } finally {
+      setSubmitting(false)
+    }
   }
   
   const handleDownloadJSON = () => {
@@ -1120,12 +1168,12 @@ export default function ManualAttendanceUploadPage() {
                     </Table>
                   </div>
                   <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={() => setUploadedData([])}>
+                    <Button variant="outline" onClick={() => { setUploadedData([]); setUploadId(null) }} disabled={submitting}>
                       Cancel
                     </Button>
-                    <Button onClick={handleSubmit}>
+                    <Button onClick={handleSubmit} disabled={submitting}>
                       <Send className="mr-2 h-4 w-4" />
-                      Submit for Verification
+                      {submitting ? "Submitting..." : "Submit for Verification"}
                     </Button>
                   </div>
                 </CardContent>
