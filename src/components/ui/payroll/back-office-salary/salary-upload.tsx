@@ -25,6 +25,13 @@ interface SalaryRow {
   gratuity: number
 }
 
+// This component itself already parses a real user-uploaded file (no mock
+// data) and hands the result to the caller via onUpload - the caller is
+// responsible for persisting it. Note: employee_history (the backend module
+// this feeds) is explicitly read-only (no bulk-upload/salary-write
+// endpoint exists), so there is currently nowhere real for the parent to
+// POST this to; onUpload's consumer will need its own backend gap noted
+// separately if/when one is wired up.
 interface SalaryUploadProps {
   selectedEmployee?: {
     id: string

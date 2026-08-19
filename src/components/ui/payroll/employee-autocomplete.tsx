@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { withBasePath } from "@/lib/base-path"
 
 interface Employee {
   code: string
@@ -21,31 +22,68 @@ interface EmployeeAutocompleteProps {
   placeholder?: string
 }
 
-// Mock employee data - replace with real data from your API
-const mockEmployees: Employee[] = [
-  { code: "EMP001", name: "John Doe", designation: "Software Engineer", site: "Mumbai" },
-  { code: "EMP002", name: "Jane Smith", designation: "Product Manager", site: "Bangalore" },
-  { code: "EMP003", name: "Raj Kumar", designation: "Data Analyst", site: "Delhi" },
-  { code: "EMP004", name: "Priya Patel", designation: "Designer", site: "Mumbai" },
-  { code: "EMP005", name: "Amit Singh", designation: "QA Engineer", site: "Hyderabad" },
-]
-
 export function EmployeeAutocomplete({
   value,
   onChange,
-  employees = mockEmployees,
+  employees,
   placeholder = "Search by code or name...",
 }: EmployeeAutocompleteProps) {
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("")
+  const [fetchedEmployees, setFetchedEmployees] = React.useState<Employee[]>([])
+  const [selectedEmployee, setSelectedEmployee] = React.useState<Employee | null>(null)
 
-  const selectedEmployee = employees.find((emp) => emp.code === value)
+  // Only hit the real backend when the caller doesn't supply its own list.
+  React.useEffect(() => {
+    if (employees) return
+    if (searchValue.trim().length < 2) {
+      setFetchedEmployees([])
+      return
+    }
 
-  const filteredEmployees = employees.filter(
-    (emp) =>
-      emp.code.toLowerCase().includes(searchValue.toLowerCase()) ||
-      emp.name.toLowerCase().includes(searchValue.toLowerCase()),
-  )
+    let cancelled = false
+    const load = async () => {
+      try {
+        const res = await fetch(
+          withBasePath(`/api/employees/search?query=${encodeURIComponent(searchValue)}`),
+          { credentials: "include", cache: "no-store" }
+        )
+        const json = await res.json()
+        if (!cancelled && res.ok) {
+          const data = json?.results?.data ?? []
+          setFetchedEmployees(
+            data.map((item: any) => ({
+              code: item.empCode,
+              name: item.empName,
+              designation: item.designation,
+              site: item.site,
+            }))
+          )
+        }
+      } catch (error) {
+        console.error("Error searching employees:", error)
+      }
+    }
+    const timer = setTimeout(load, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [searchValue, employees])
+
+  const sourceEmployees = employees ?? fetchedEmployees
+
+  const filteredEmployees = employees
+    ? employees.filter(
+        (emp) =>
+          emp.code.toLowerCase().includes(searchValue.toLowerCase()) ||
+          emp.name.toLowerCase().includes(searchValue.toLowerCase())
+      )
+    : sourceEmployees
+
+  const displayed = selectedEmployee && selectedEmployee.code === value
+    ? selectedEmployee
+    : sourceEmployees.find((emp) => emp.code === value)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -57,10 +95,10 @@ export function EmployeeAutocomplete({
           className="w-full justify-between bg-transparent"
         >
           <div className="flex items-center gap-2 truncate">
-            {selectedEmployee ? (
+            {displayed ? (
               <>
-                <span className="text-sm font-medium">{selectedEmployee.code}</span>
-                <span className="text-sm text-muted-foreground truncate">{selectedEmployee.name}</span>
+                <span className="text-sm font-medium">{displayed.code}</span>
+                <span className="text-sm text-muted-foreground truncate">{displayed.name}</span>
               </>
             ) : (
               <span className="text-muted-foreground">{placeholder}</span>
@@ -72,7 +110,9 @@ export function EmployeeAutocomplete({
       <PopoverContent className="w-full p-0" align="start">
         <Command shouldFilter={false}>
           <CommandInput placeholder={placeholder} value={searchValue} onValueChange={setSearchValue} />
-          <CommandEmpty>No employee found.</CommandEmpty>
+          <CommandEmpty>
+            {!employees && searchValue.trim().length < 2 ? "Type at least 2 characters..." : "No employee found."}
+          </CommandEmpty>
           <CommandList>
             <CommandGroup>
               {filteredEmployees.map((emp) => (
@@ -81,6 +121,7 @@ export function EmployeeAutocomplete({
                   value={emp.code}
                   onSelect={(currentValue) => {
                     onChange(currentValue === value ? "" : currentValue)
+                    setSelectedEmployee(emp)
                     setOpen(false)
                     setSearchValue("")
                   }}
