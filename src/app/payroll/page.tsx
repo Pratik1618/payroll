@@ -7,7 +7,7 @@
   import { Badge } from "@/components/ui/badge"
   import { Stepper } from "@/components/ui/stepper"
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-  import { Upload, Lock, Copy, AlertTriangle, CheckCircle, Calendar, ChevronDown } from "lucide-react"
+  import { Upload, Lock, Copy, AlertTriangle, CheckCircle, Calendar, ChevronDown, Download } from "lucide-react"
   import { SalaryHoldModal } from "@/components/ui/payroll/salary-hold-modal"
   import { toast } from "sonner"
   import { SitesDropdown } from "@/components/ui/sites-dropdown"
@@ -1198,6 +1198,49 @@
       setCurrentStep(1)
     }
 
+    const exportPayrollExcel = async () => {
+      if (!payrollRunId || payrollCalculations.length === 0) {
+        toast.error("Cannot Export", {
+          description: "Calculate and review payroll first.",
+        })
+        return
+      }
+
+      try {
+        const res = await fetch(withBasePath(`/api/payroll/run/${payrollRunId}/export-excel`), {
+          method: "GET",
+          credentials: "include",
+        })
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          toast.error("Export Failed", {
+            description: err?.message || `Failed with status ${res.status}`,
+          })
+          return
+        }
+
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `Payroll_${payrollRunId}.xlsx`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+
+        toast("Excel Exported", {
+          description: "Payroll Excel file has been downloaded.",
+          className: "bg-green-600 text-white",
+        })
+      } catch (error: any) {
+        toast.error("Export Failed", {
+          description: error?.message || "Something went wrong while exporting.",
+        })
+      }
+    }
+
     // when branch selected -> clear client/site selections (branch triggers bulk import)
     useEffect(() => {
       if (selectedBranch) {
@@ -1237,6 +1280,13 @@
                 </Button>
 
                 <div className="flex space-x-2">
+                  {currentStep === 3 && payrollCalculations.length > 0 && (
+                    <Button onClick={exportPayrollExcel} variant="outline">
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Payroll Excel
+                    </Button>
+                  )}
+
                   {payrollData.payrollLocked && (
                     <Button onClick={generateBankFile} variant="default" className="bg-green-600 hover:bg-green-700">
                       <Upload className="mr-2 h-4 w-4" />
