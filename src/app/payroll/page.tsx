@@ -1397,9 +1397,9 @@
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-auto max-h-[70vh]">
                   <table className="w-full text-sm">
-                    <thead>
+                    <thead className="bg-muted sticky top-0 z-10">
                       <tr className="border-b">
                         <th className="text-left p-2">Employee</th>
                         <th className="text-left p-2 min-w-[150px]">Designation</th>
