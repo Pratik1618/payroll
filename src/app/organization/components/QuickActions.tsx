@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, FileText, MapPin, Building, Layers } from "lucide-react";
+import { Plus, Download, Upload, FileText, MapPin, Building, Layers } from "lucide-react";
 import { AddEmployeeModal } from "./AddEmployeeModal";
 import { AddDepartmentModal } from "./AddDepartmentModal";
 import { AddStateModal } from "./AddStateModal";
 import { AddCityModal } from "./AddCityModal";
 import { DesignationMasterModal } from "./DesignationMasterModal";
 import { SalaryComponentsMasterModal } from "./SalaryComponentsMasterModal";
+import { BulkEmployeeImportModal } from "./BulkEmployeeImportModal";
 import { useRouter } from "next/navigation";
 
 export function QuickActions() {
@@ -18,6 +19,7 @@ export function QuickActions() {
   const [isAddCityOpen, setIsAddCityOpen] = useState(false);
   const [isDesignationMasterOpen, setIsDesignationMasterOpen] = useState(false);
   const [isSalaryCompMasterOpen, setIsSalaryCompMasterOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const router = useRouter();
 
   return (
@@ -25,6 +27,10 @@ export function QuickActions() {
       <Button variant="outline" size="sm" className="hidden lg:flex">
         <Download className="mr-2 h-4 w-4" />
         Export
+      </Button>
+      <Button variant="outline" size="sm" className="hidden lg:flex" onClick={() => setIsBulkImportOpen(true)}>
+        <Upload className="mr-2 h-4 w-4 text-green-600" />
+        Import Employees
       </Button>
       <Button variant="outline" size="sm" className="hidden lg:flex" onClick={() => setIsDesignationMasterOpen(true)}>
         <FileText className="mr-2 h-4 w-4" />
@@ -94,6 +100,16 @@ export function QuickActions() {
       <SalaryComponentsMasterModal
         open={isSalaryCompMasterOpen}
         onOpenChange={setIsSalaryCompMasterOpen}
+      />
+
+      <BulkEmployeeImportModal
+        open={isBulkImportOpen}
+        onOpenChange={(open) => {
+          setIsBulkImportOpen(open);
+          if (!open) {
+            router.refresh();
+          }
+        }}
       />
     </div>
   );
