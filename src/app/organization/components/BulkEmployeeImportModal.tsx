@@ -149,6 +149,20 @@ interface BulkEmployeeImportModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+interface BulkImportApiError {
+  row: number;
+  employeeId: string | null;
+  field: string;
+  errorMessage: string;
+}
+
+interface BulkImportApiResult {
+  totalProcessed: number;
+  successCount: number;
+  failedCount: number;
+  errors: BulkImportApiError[];
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -157,6 +171,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
   const [fileName, setFileName] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<BulkImportApiResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ---- Reset on close ----
@@ -166,6 +181,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
       setFileName("");
       setIsDragOver(false);
       setIsImporting(false);
+      setImportResult(null);
     }
     onOpenChange(nextOpen);
   };
@@ -380,6 +396,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
     }
 
     setIsImporting(true);
+    setImportResult(null);
     try {
       const employees = validRows.map((r) => ({
         employeeId: String(r.data.EMP_CODE).trim(),
@@ -394,12 +411,40 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
         })),
       }));
 
-      console.log("Bulk import payload:", employees);
-
-      toast.success(`${employees.length} employees imported successfully!`, {
-        description: `${employees.length} employee records with salary structures have been imported.`,
+      const res = await fetch("/api/organization/employees/bulk-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "PARTIAL", employees }),
       });
-      handleOpenChange(false);
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        const message =
+          data?.error?.message ||
+          data?.errors?.[0]?.errorMessage ||
+          `Request failed with status ${res.status}`;
+        toast.error("Import Failed", { description: message });
+        return;
+      }
+
+      const result: BulkImportApiResult = data.results;
+      setImportResult(result);
+
+      if (result.failedCount === 0) {
+        toast.success(`${result.successCount} employees imported successfully!`, {
+          description: `${result.successCount} employee records with salary structures have been imported.`,
+        });
+        handleOpenChange(false);
+      } else if (result.successCount > 0) {
+        toast.warning(`Imported ${result.successCount} of ${result.totalProcessed} employees`, {
+          description: `${result.failedCount} failed — see details below.`,
+        });
+      } else {
+        toast.error("Import Failed", {
+          description: `All ${result.failedCount} employees failed validation — see details below.`,
+        });
+      }
     } catch (err: any) {
       toast.error("Import Failed", { description: err.message || "Something went wrong." });
     } finally {
@@ -603,6 +648,37 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
                         </TableRow>
                       );
                     })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+          {/* ---- Step 4: Import Result ---- */}
+          {importResult && importResult.errors.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <p className="font-medium text-sm">
+                  {importResult.failedCount} of {importResult.totalProcessed} failed to import
+                </p>
+              </div>
+              <div className="border rounded-lg overflow-hidden max-h-[200px] overflow-y-auto">
+                <Table>
+                  <TableHeader className="bg-muted/50 sticky top-0">
+                    <TableRow>
+                      <TableHead className="text-xs">Emp Code</TableHead>
+                      <TableHead className="text-xs">Field</TableHead>
+                      <TableHead className="text-xs">Reason</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importResult.errors.map((e, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="text-xs font-medium">{e.employeeId || "—"}</TableCell>
+                        <TableCell className="text-xs">{e.field}</TableCell>
+                        <TableCell className="text-xs">{e.errorMessage}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
