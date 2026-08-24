@@ -36,6 +36,23 @@ interface SalaryComponentsMasterModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const DESIRED_SEQUENCE = [
+  "BASIC", "DA", "HRA", "CONVEYANCE", "WASHING_ALLOWANCE", "OTHER_ALLOWANCE", "OVERTIME", "LEAVE_WITH_WAGES",
+  "EX_GRATIA", "CCA", "EDUCATIONAL_ALLOWANCE", "MEDICAL_ALLOWANCE", "OT_AMOUNT", "PAID_HOLIDAY", "SPL_ALLOWANCE",
+  "WEEKLY_OFF", "GRATUITY", "REIMBURSEMENT", "LTC", "BONUS", "ATTIRE", "MEAL", "LTA", "CONSOLIDATED_WAGES_1",
+  "CONSOLIDATED_WAGES_2", "BASIC_DA_ARREARS", "OTHER_ARREARS", "SITE_ALLOWANCE", "HOLIDAY_ALLOWANCE",
+  "LEAVE_ENCASHMENT", "P_OT", "CONY", "BONUS_Q_Y", "P_HOLIDAY", "LTA_M", "EX_GRATIA_Q_Y", "FIXED_COMPENSATION",
+  "PERFORMANCE_ALLOWANCE", "MEDICAL_REM_MER", "CAR_REPAIR_RMB", "BOOK_PERIODICAL_RMB", "WASHING_ALLOWANCE_ARREARS",
+  "PLI", "MEDICAL_INS_REB", "FOOD_ALLOWANCE", "SUBSISTENCE_ALLOWANCE", "FIXED_LTA_PA", "FIXED_MEAL_CARD",
+  "FIXED_MEDICAL_RMB", "FIXED_PLI_PA", "FIXED_MEDICAL_INS_REB", "FIXED_CAR_REPAIR_RMB", "FIXED_BOOK_PERIODICAL_RMB",
+  "FIXED_TELEPHONE_RMB", "TELEPHONE_REB", "CASH_RISK_ALLOWANCE", "BA_OT_FD", "INCENTIVE", "FOOD", "WO_ALLOWANCE",
+  "METRO_CITY_ALLOWANCE", "ROOM_RENT_REIMB", "BASIC_DA_ADVANCE", "OTHER_ADVANCE", "HRA_ADVANCE", "MOBILE_ALLOWANCE",
+  "STIPEND", "PF", "ESIC", "PT", "LWF", "LOAN", "ADVANCE", "TDS", "FINE", "OTHER_DEDUCTION", "PENALTY",
+  "MEDICAL_INSURANCE", "LOAN_ADV_RECOVERY", "GRATUITY_PROVISION", "BENEVOLENT_F", "STAFF_WELFARE_FUND",
+  "BACKGROUND_VERIFICATION", "VOLUNTARY_PROVIDENT_FUND", "EMPLOYER_PF", "EMPLOYER_ESIC", "EMPLOYER_GRATUITY",
+  "MEDICLAIM", "EMPLOYER_BONUS", "EMPLOYER_LEAVE_WITH_WAGES"
+];
+
 export function SalaryComponentsMasterModal({ open, onOpenChange }: SalaryComponentsMasterModalProps) {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,11 +80,25 @@ export function SalaryComponentsMasterModal({ open, onOpenChange }: SalaryCompon
     setIsLoading(false);
   };
 
-  const filteredComponents = componentsList.filter((c) => {
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase().trim();
-    return c.name.toLowerCase().includes(term) || c.category.toLowerCase().includes(term) || c.code.toLowerCase().includes(term);
-  });
+  const filteredComponents = [...componentsList]
+    .filter((c) => {
+      if (!searchTerm.trim()) return true;
+      const term = searchTerm.toLowerCase().trim();
+      return (
+        c.name.toLowerCase().includes(term) ||
+        c.category.toLowerCase().includes(term) ||
+        c.code.toLowerCase().includes(term)
+      );
+    })
+    .sort((a, b) => {
+      const codeA = (a.code || "").toUpperCase();
+      const codeB = (b.code || "").toUpperCase();
+      const idxA = DESIRED_SEQUENCE.indexOf(codeA);
+      const idxB = DESIRED_SEQUENCE.indexOf(codeB);
+      const posA = idxA !== -1 ? idxA : 999;
+      const posB = idxB !== -1 ? idxB : 999;
+      return posA - posB;
+    });
 
   const handleOpenAdd = () => {
     setName("");
