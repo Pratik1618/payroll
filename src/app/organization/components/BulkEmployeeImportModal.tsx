@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { withBasePath } from "@/lib/base-path";
 
 // ---------------------------------------------------------------------------
 // Salary component codes in exact order requested by user
@@ -411,7 +412,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
         })),
       }));
 
-      const res = await fetch("/api/organization/employees/bulk-import", {
+      const res = await fetch(withBasePath("/api/organization/employees/bulk-import"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode: "PARTIAL", employees }),
