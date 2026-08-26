@@ -57,7 +57,7 @@ export function EditSalaryModal({ employee, onOpenChange, onSave }: EditSalaryMo
     setIsSaving(false);
 
     if (success) {
-      onSave(calculations.grossMonthly);
+      onSave(calculations.netMonthly);
       toast.success("Salary structure updated successfully.");
       onOpenChange(false);
     } else {
