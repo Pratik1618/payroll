@@ -106,6 +106,9 @@ const SALARY_COMPONENT_COLUMNS = [
   { code: "MOBILE_ALLOWANCE", name: "Mobile Allowance", category: "Earning", required: "No", description: "Fixed cellular phone allowance.", example: 0 },
   { code: "STIPEND", name: "Stipend", category: "Earning", required: "No", description: "Trainee or intern monthly stipend.", example: 0 },
 
+  // --- SUMMARY ---
+  { code: "GROSS_AMT", name: "Total Gross Monthly Earnings", category: "Summary", required: "No", description: "Computed total gross earnings (sum of all Earning components).", example: 0 },
+
   // --- DEDUCTIONS ---
   { code: "PF", name: "Provident Fund (EPF)", category: "Deduction", required: "No", description: "Statutory Employee Provident Fund 12% deduction.", example: 1800 },
   { code: "ESIC", name: "ESIC Employee", category: "Deduction", required: "No", description: "Statutory Employee State Insurance 0.75% deduction.", example: 0 },
@@ -124,13 +127,21 @@ const SALARY_COMPONENT_COLUMNS = [
   { code: "BACKGROUND_VERIFICATION", name: "Background Verification Fee", category: "Deduction", required: "No", description: "One-time background screening charge recovery.", example: 0 },
   { code: "VOLUNTARY_PROVIDENT_FUND", name: "Voluntary Provident Fund (VPF)", category: "Deduction", required: "No", description: "Employee voluntary VPF contribution above 12%.", example: 0 },
 
+  // --- SUMMARY ---
+  { code: "TOTALDEDUCTION", name: "Total Monthly Deductions", category: "Summary", required: "No", description: "Computed total deductions (sum of all Deduction components).", example: 0 },
+  { code: "NETPAYABLE", name: "Net Salary Payable", category: "Summary", required: "No", description: "Computed net payable (GROSS_AMT - TOTALDEDUCTION).", example: 0 },
+
   // --- EMPLOYER CONTRIBUTIONS ---
+  { code: "GRATUITY_PROVISION", name: "Gratuity Provision", category: "Employer Contribution", required: "No", description: "Statutory employer provision for gratuity trust.", example: 0 },
   { code: "EMPLOYER_PF", name: "Employer PF Contribution", category: "Employer Contribution", required: "No", description: "Statutory Employer EPF match contribution.", example: 1800 },
   { code: "EMPLOYER_ESIC", name: "Employer ESIC Contribution", category: "Employer Contribution", required: "No", description: "Statutory Employer ESIC 3.25% match contribution.", example: 0 },
   { code: "EMPLOYER_GRATUITY", name: "Employer Gratuity Contribution", category: "Employer Contribution", required: "No", description: "Statutory Employer Gratuity contribution.", example: 0 },
   { code: "MEDICLAIM", name: "Employer Mediclaim Provision", category: "Employer Contribution", required: "No", description: "Employer premium contribution for group health insurance.", example: 0 },
   { code: "EMPLOYER_BONUS", name: "Employer Bonus Provision", category: "Employer Contribution", required: "No", description: "Employer statutory bonus reserve provision.", example: 0 },
-  { code: "EMPLOYER_LEAVE_WITH_WAGES", name: "Employer Leave With Wages Provision", category: "Employer Contribution", required: "No", description: "Employer statutory LWW leave encashment reserve.", example: 0 }
+  { code: "EMPLOYER_LEAVE_WITH_WAGES", name: "Employer Leave With Wages Provision", category: "Employer Contribution", required: "No", description: "Employer statutory LWW leave encashment reserve.", example: 0 },
+
+  // --- SUMMARY ---
+  { code: "CTC", name: "Cost to Company", category: "Summary", required: "No", description: "Total Cost to Company (GROSS_AMT + Employer Contributions).", example: 0 }
 ];
 
 const EMPLOYEE_COLUMNS = ["EMP_CODE", "EMP_NAME", "DESIGNATION", "DEPARTMENT"];
@@ -157,10 +168,23 @@ interface BulkImportApiError {
   errorMessage: string;
 }
 
+interface BulkImportApiEmployee {
+  id: string;
+  employeeId: string;
+  name: string;
+  designation: string;
+  department: string | null;
+  status: string;
+  grossSalary: number;
+  totalDeductions: number;
+  netSalary: number;
+}
+
 interface BulkImportApiResult {
   totalProcessed: number;
   successCount: number;
   failedCount: number;
+  employees: BulkImportApiEmployee[];
   errors: BulkImportApiError[];
 }
 
@@ -655,6 +679,40 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
             </div>
           )}
           {/* ---- Step 4: Import Result ---- */}
+          {importResult && importResult.employees && importResult.employees.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                <p className="font-medium text-sm">
+                  {importResult.successCount} of {importResult.totalProcessed} imported successfully
+                </p>
+              </div>
+              <div className="border rounded-lg overflow-hidden max-h-[200px] overflow-y-auto">
+                <Table>
+                  <TableHeader className="bg-muted/50 sticky top-0">
+                    <TableRow>
+                      <TableHead className="text-xs">Emp Code</TableHead>
+                      <TableHead className="text-xs">Name</TableHead>
+                      <TableHead className="text-xs">Gross</TableHead>
+                      <TableHead className="text-xs">Deductions</TableHead>
+                      <TableHead className="text-xs">Net</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importResult.employees.map((emp) => (
+                      <TableRow key={emp.id}>
+                        <TableCell className="text-xs font-medium">{emp.employeeId}</TableCell>
+                        <TableCell className="text-xs">{emp.name}</TableCell>
+                        <TableCell className="text-xs">{emp.grossSalary}</TableCell>
+                        <TableCell className="text-xs">{emp.totalDeductions}</TableCell>
+                        <TableCell className="text-xs">{emp.netSalary}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
           {importResult && importResult.errors.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
