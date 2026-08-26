@@ -693,6 +693,22 @@ export async function unassignEmployeeApi(employeeId: string): Promise<boolean> 
   }
 }
 
+export async function fetchEmployeeSalaryStructureApi(employeeId: string): Promise<any[] | null> {
+  try {
+    const res = await fetch(withBasePath(`/api/organization/employees/${encodeURIComponent(employeeId)}/salary-structure`));
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch salary structure: ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    return json.results?.salaryComponents ?? null;
+  } catch (error) {
+    console.error('fetchEmployeeSalaryStructureApi error:', error);
+    return null;
+  }
+}
+
 export async function updateEmployeeSalaryStructureApi(
   employeeId: string,
   salaryComponents: any[]

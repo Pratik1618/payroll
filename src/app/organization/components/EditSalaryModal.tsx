@@ -16,7 +16,7 @@ import { SalaryComp, DEFAULT_COMPONENTS } from "../types/salary";
 import { useSalaryEngine } from "../hooks/useSalaryEngine";
 import { SalaryStructureBuilder } from "./SalaryStructureBuilder";
 
-import { updateEmployeeSalaryStructureApi } from "../services/masterDataService";
+import { fetchEmployeeSalaryStructureApi, updateEmployeeSalaryStructureApi } from "../services/masterDataService";
 
 interface EditSalaryModalProps {
   employee: Employee | null;
@@ -27,19 +27,44 @@ interface EditSalaryModalProps {
 export function EditSalaryModal({ employee, onOpenChange, onSave }: EditSalaryModalProps) {
   const [components, setComponents] = useState<SalaryComp[]>(DEFAULT_COMPONENTS);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (employee) {
-      // If we stored the components in the Employee object, we would load them here.
-      // For now, we load DEFAULT_COMPONENTS but scale the Basic to roughly match their current salary
-      const scaledComponents = DEFAULT_COMPONENTS.map(c => {
-        if (c.id === "c_basic") {
-          return { ...c, value: employee.monthlySalary * 0.4 }; // Assume Basic is 40% of current salary
-        }
-        return c;
-      });
-      setComponents(scaledComponents);
-    }
+    if (!employee) return;
+
+    let cancelled = false;
+    setIsLoading(true);
+
+    fetchEmployeeSalaryStructureApi(employee.id).then((real) => {
+      if (cancelled) return;
+      if (real && real.length > 0) {
+        setComponents(
+          real.map((c) => ({
+            id: c.id,
+            name: c.name,
+            type: c.type,
+            calcType: c.calcType,
+            value: Number(c.value),
+            formulaBaseIds: c.formulaBaseIds ?? [],
+          }))
+        );
+      } else {
+        // No real salary structure saved yet (new employee) -- fall back to
+        // defaults, scaling Basic to roughly match their current salary.
+        const scaledComponents = DEFAULT_COMPONENTS.map(c => {
+          if (c.id === "c_basic") {
+            return { ...c, value: employee.monthlySalary * 0.4 }; // Assume Basic is 40% of current salary
+          }
+          return c;
+        });
+        setComponents(scaledComponents);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [employee]);
 
   const calculations = useSalaryEngine(components);
@@ -80,11 +105,17 @@ export function EditSalaryModal({ employee, onOpenChange, onSave }: EditSalaryMo
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden relative">
-          <SalaryStructureBuilder 
-            components={components} 
-            onChange={setComponents} 
-            calculations={calculations} 
-          />
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full text-sm text-slate-500">
+              Loading salary structure…
+            </div>
+          ) : (
+            <SalaryStructureBuilder
+              components={components}
+              onChange={setComponents}
+              calculations={calculations}
+            />
+          )}
         </div>
 
         <DialogFooter className="px-6 py-4 border-t bg-white shrink-0 items-center justify-between sm:justify-between w-full">
@@ -93,7 +124,7 @@ export function EditSalaryModal({ employee, onOpenChange, onSave }: EditSalaryMo
           </div>
           <div className="flex gap-3">
             <Button variant="outline" className="px-6 shadow-sm" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button className="px-8 shadow-md bg-blue-600 hover:bg-blue-700" onClick={handleSave}>
+            <Button className="px-8 shadow-md bg-blue-600 hover:bg-blue-700" onClick={handleSave} disabled={isLoading || isSaving}>
               Save Salary Structure
             </Button>
           </div>
