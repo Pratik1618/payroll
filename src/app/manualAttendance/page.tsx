@@ -842,7 +842,7 @@ export default function ManualAttendanceUploadPage() {
       new_emp_code: r.new_emp_code || null,
       new_designation_name: r.new_designation_name || null,
       grade: r.grade || null,
-      gender: r.gender || "Male",
+      gender: r.gender || "",
     }))
     const payload = { clientId: tempClient, month: tempMonth, records: payloadRecords }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
@@ -888,7 +888,7 @@ export default function ManualAttendanceUploadPage() {
       new_emp_code: r.new_emp_code || null,
       new_designation_name: r.new_designation_name || null,
       grade: r.grade || null,
-      gender: r.gender || "Male",
+      gender: r.gender || "",
     }))
 
     setTempLoading(true)
@@ -1494,7 +1494,7 @@ export default function ManualAttendanceUploadPage() {
                             <TableCell className="max-w-[150px] truncate" title={record.designation_name}>{record.designation_name}</TableCell>
                             <TableCell className="font-medium text-primary max-w-[150px] truncate" title={record.new_designation_name || ""}>{record.new_designation_name || "-"}</TableCell>
                             <TableCell>{record.grade || "-"}</TableCell>
-                            <TableCell>{record.gender || "Male"}</TableCell>
+                            <TableCell>{record.gender || "-"}</TableCell>
                             <TableCell>{record.duty_id}</TableCell>
                             <TableCell>{record.duty_name}</TableCell>
                             <TableCell>{record.employee_code}</TableCell>
@@ -1976,7 +1976,7 @@ function mapTemporaryAttendanceRow(
   const newEmpCode = explicitNewEmpCode || autoEmpCode()
   
   const rawGender = String(getCellValue(headers, row, TEMP_COLUMN_ALIASES.gender) || "").trim()
-  let gender = "Male"
+  let gender = ""
   if (rawGender) {
     const lower = rawGender.toLowerCase()
     if (lower === "f" || lower === "female" || lower === "w" || lower === "woman") {
