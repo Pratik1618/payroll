@@ -1410,13 +1410,13 @@
                         <th className="text-left p-2">SPL OT Hrs</th>
                         {currentStep >= 3 && (
                           <>
-                            <th className="text-left p-2">Basic <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
-                            <th className="text-left p-2">DA <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
-                            <th className="text-left p-2">HRA <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
-                            <th className="text-left p-2">CCA <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
+                            <th className="text-left p-2">Basic <span className="font-normal text-muted-foreground text-xs">(<span className="text-foreground font-medium">earned</span>/<span className="text-green-700 dark:text-green-300 font-medium">given</span>)</span></th>
+                            <th className="text-left p-2">DA <span className="font-normal text-muted-foreground text-xs">(<span className="text-foreground font-medium">earned</span>/<span className="text-green-700 dark:text-green-300 font-medium">given</span>)</span></th>
+                            <th className="text-left p-2">HRA <span className="font-normal text-muted-foreground text-xs">(<span className="text-foreground font-medium">earned</span>/<span className="text-green-700 dark:text-green-300 font-medium">given</span>)</span></th>
+                            <th className="text-left p-2">CCA <span className="font-normal text-muted-foreground text-xs">(<span className="text-foreground font-medium">earned</span>/<span className="text-green-700 dark:text-green-300 font-medium">given</span>)</span></th>
                             <th className="text-left p-2">OT Amount</th>
                             <th className="text-left p-2">Special OT</th>
-                            <th className="text-left p-2">Gross Salary <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
+                            <th className="text-left p-2">Gross Salary <span className="font-normal text-muted-foreground text-xs">(<span className="text-foreground font-medium">earned</span>/<span className="text-green-700 dark:text-green-300 font-medium">given</span>)</span></th>
                             <th className="text-left p-2">PF</th>
                             <th className="text-left p-2">ESIC</th>
                             <th className="text-left p-2">PT</th>
