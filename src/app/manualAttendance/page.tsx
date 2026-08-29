@@ -14,8 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "sonner"
-import { AlertCircle, Send, Upload, ChevronDown, Eye, Search } from "lucide-react"
+import { AlertCircle, Send, Upload, ChevronDown, Eye, Search, CheckCircle, XCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import { withBasePath } from "@/lib/base-path"
 import { useClients, useClientSites } from "@/hooks/use-shared-master-data"
 
@@ -351,7 +352,13 @@ export default function ManualAttendanceUploadPage() {
   const [previewData, setPreviewData] = useState<any>(null)
   const [previewSearch, setPreviewSearch] = useState("")
   const [previewViewMode, setPreviewViewMode] = useState<"flat" | "grouped">("flat")
-  
+
+  // Upload 2 batch approve/reject states
+  const [approvingBatchId, setApprovingBatchId] = useState<string | null>(null)
+  const [rejectingBatchId, setRejectingBatchId] = useState<string | null>(null)
+  const [rejectDialogBatchId, setRejectDialogBatchId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState("")
+
   // Client dropdown search states
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false)
   const [clientSearch, setClientSearch] = useState("")
@@ -469,6 +476,75 @@ export default function ManualAttendanceUploadPage() {
       setPreviewModalOpen(false)
     } finally {
       setPreviewLoading(false)
+    }
+  }
+
+  const refreshTemporarySubmissions = () =>
+    loadTemporarySubmissions(tempClient || undefined, (tempAutoSplitSites ? undefined : tempSite) || undefined)
+
+  const handleApproveTempBatch = async (batchId: string) => {
+    setApprovingBatchId(batchId)
+    try {
+      const response = await fetch(withBasePath(`/api/attendance/temporary-upload/submissions/batch/${encodeURIComponent(batchId)}/approve`), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+
+      if (response.status === 401) {
+        toast.error("Your session has expired. Please log in again.")
+        router.replace(withBasePath("/login"))
+        return
+      }
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to approve submission")
+      }
+
+      toast.success("Submission approved")
+      await refreshTemporarySubmissions()
+    } catch (error: any) {
+      console.error("Approve batch error:", error)
+      toast.error(error?.message || "Failed to approve submission")
+    } finally {
+      setApprovingBatchId(null)
+    }
+  }
+
+  const handleRejectTempBatch = async () => {
+    if (!rejectDialogBatchId || !rejectReason.trim()) return
+    const batchId = rejectDialogBatchId
+    setRejectingBatchId(batchId)
+    try {
+      const response = await fetch(withBasePath(`/api/attendance/temporary-upload/submissions/batch/${encodeURIComponent(batchId)}/reject`), {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rejectReason.trim() }),
+      })
+
+      if (response.status === 401) {
+        toast.error("Your session has expired. Please log in again.")
+        router.replace(withBasePath("/login"))
+        return
+      }
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to reject submission")
+      }
+
+      toast.success("Submission rejected")
+      setRejectDialogBatchId(null)
+      setRejectReason("")
+      await refreshTemporarySubmissions()
+    } catch (error: any) {
+      console.error("Reject batch error:", error)
+      toast.error(error?.message || "Failed to reject submission")
+    } finally {
+      setRejectingBatchId(null)
     }
   }
 
@@ -1593,9 +1669,36 @@ export default function ManualAttendanceUploadPage() {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="icon" onClick={() => handlePreviewSubmission(submission.batchSubmissionId || submission.id)}>
-                                <Eye className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="icon" onClick={() => handlePreviewSubmission(submission.batchSubmissionId || submission.id)}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                {submission.status === "pending" && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      title="Approve"
+                                      disabled={approvingBatchId === submission.id || rejectingBatchId === submission.id}
+                                      onClick={() => handleApproveTempBatch(submission.batchSubmissionId || submission.id)}
+                                    >
+                                      <CheckCircle className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      title="Reject"
+                                      disabled={approvingBatchId === submission.id || rejectingBatchId === submission.id}
+                                      onClick={() => {
+                                        setRejectDialogBatchId(submission.batchSubmissionId || submission.id)
+                                        setRejectReason("")
+                                      }}
+                                    >
+                                      <XCircle className="h-4 w-4 text-red-600" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1608,6 +1711,50 @@ export default function ManualAttendanceUploadPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog
+        open={rejectDialogBatchId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRejectDialogBatchId(null)
+            setRejectReason("")
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Submission</DialogTitle>
+            <DialogDescription>
+              This will reject all pending site submissions in this batch. A reason is required.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Reason for rejection (required)"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            rows={4}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRejectDialogBatchId(null)
+                setRejectReason("")
+              }}
+              disabled={rejectingBatchId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectTempBatch}
+              disabled={rejectingBatchId !== null || !rejectReason.trim()}
+            >
+              {rejectingBatchId !== null ? "Rejecting..." : "Reject"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={previewModalOpen} onOpenChange={setPreviewModalOpen}>
         <DialogContent className="w-[95vw] sm:max-w-[95vw] max-h-[95vh] overflow-hidden flex flex-col">
