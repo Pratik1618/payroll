@@ -1410,13 +1410,13 @@
                         <th className="text-left p-2">SPL OT Hrs</th>
                         {currentStep >= 3 && (
                           <>
-                            <th className="text-left p-2">Basic</th>
-                            <th className="text-left p-2">DA</th>
-                            <th className="text-left p-2">HRA</th>
-                            <th className="text-left p-2">CCA</th>
+                            <th className="text-left p-2">Basic <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
+                            <th className="text-left p-2">DA <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
+                            <th className="text-left p-2">HRA <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
+                            <th className="text-left p-2">CCA <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
                             <th className="text-left p-2">OT Amount</th>
                             <th className="text-left p-2">Special OT</th>
-                            <th className="text-left p-2">Gross Salary</th>
+                            <th className="text-left p-2">Gross Salary <span className="text-green-700 dark:text-green-300 font-normal">(earned/given)</span></th>
                             <th className="text-left p-2">PF</th>
                             <th className="text-left p-2">ESIC</th>
                             <th className="text-left p-2">PT</th>
@@ -1453,13 +1453,28 @@
 
                           {currentStep >= 3 && (
                             <>
-                              <td className="p-2">₹{emp.earnings?.basic?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.earnings?.da?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.earnings?.hra?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.earnings?.cca?.toLocaleString()}</td>
+                              <td className="p-2">
+                                <div>₹{emp.earnings?.basic?.toLocaleString()}</div>
+                                <div className="text-xs text-green-700 dark:text-green-300">₹{emp.earnings?.basicFixed?.toLocaleString()}</div>
+                              </td>
+                              <td className="p-2">
+                                <div>₹{emp.earnings?.da?.toLocaleString()}</div>
+                                <div className="text-xs text-green-700 dark:text-green-300">₹{emp.earnings?.daFixed?.toLocaleString()}</div>
+                              </td>
+                              <td className="p-2">
+                                <div>₹{emp.earnings?.hra?.toLocaleString()}</div>
+                                <div className="text-xs text-green-700 dark:text-green-300">₹{emp.earnings?.hraFixed?.toLocaleString()}</div>
+                              </td>
+                              <td className="p-2">
+                                <div>₹{emp.earnings?.cca?.toLocaleString()}</div>
+                                <div className="text-xs text-green-700 dark:text-green-300">₹{emp.earnings?.ccaFixed?.toLocaleString()}</div>
+                              </td>
                               <td className="p-2">₹{emp.earnings?.overtimePay?.toLocaleString()}</td>
                               <td className="p-2">₹{emp.earnings?.specialOt?.toLocaleString()}</td>
-                              <td className="p-2">₹{emp.earnings?.grossSalary?.toLocaleString()}</td>
+                              <td className="p-2">
+                                <div>₹{emp.earnings?.grossSalary?.toLocaleString()}</div>
+                                <div className="text-xs text-green-700 dark:text-green-300">₹{emp.earnings?.grossFixed?.toLocaleString()}</div>
+                              </td>
                               <td className="p-2">₹{emp.deductions?.pf?.toLocaleString()}</td>
                               <td className="p-2">₹{emp.deductions?.esic?.toLocaleString()}</td>
                               <td className="p-2">₹{emp.deductions?.pt?.toLocaleString()}</td>
