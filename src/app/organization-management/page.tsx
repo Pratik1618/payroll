@@ -37,6 +37,7 @@ import {
 import { AddStateModal } from "../organization/components/AddStateModal"
 import { AddCityModal } from "../organization/components/AddCityModal"
 import { SafeDeleteDepartmentModal } from "../organization/components/SafeDeleteDepartmentModal"
+import { BranchGeofenceModal } from "../organization/components/BranchGeofenceModal"
 import { OrganizationNode } from "../organization/mock/organization"
 import { fetchOrgTree, createDepartmentApi } from "../organization/services/masterDataService"
 import { toast } from "sonner"
@@ -78,6 +79,7 @@ export default function OrganizationManagementPage() {
   const [cityDialogOpen, setCityDialogOpen] = useState(false)
 
   const [deleteTargetNode, setDeleteTargetNode] = useState<OrganizationNode | null>(null)
+  const [geofenceTargetBranch, setGeofenceTargetBranch] = useState<OrganizationNode | null>(null)
   const [branchForm, setBranchForm] = useState<BranchFormState>(emptyBranchForm)
   const [departmentForm, setDepartmentForm] = useState<DepartmentFormState>(emptyDepartmentForm)
   const [saving, setSaving] = useState(false)
@@ -301,20 +303,48 @@ export default function OrganizationManagementPage() {
                             {branch.employeeCount ?? 0} employee(s)
                           </p>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setDeleteTargetNode(branch)
-                          }}
-                          className="shrink-0 text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setGeofenceTargetBranch(branch)
+                            }}
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <MapPin className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setDeleteTargetNode(branch)
+                            }}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{branch.description || "No description added."}</p>
+                      {branch.latitude != null && branch.longitude != null ? (
+                        <a
+                          href={`https://www.google.com/maps?q=${branch.latitude},${branch.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(event) => event.stopPropagation()}
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                          <MapPin className="h-3 w-3" />
+                          {Number(branch.latitude).toFixed(4)}, {Number(branch.longitude).toFixed(4)} · {branch.geofenceRadiusMeters ?? 200}m radius
+                        </a>
+                      ) : (
+                        <p className="mt-2 text-xs text-muted-foreground">No location set.</p>
+                      )}
                       <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
                         <span>{branch.children?.length ?? 0} department(s)</span>
                         <span>{branch.head || "No branch head"}</span>
@@ -521,6 +551,13 @@ export default function OrganizationManagementPage() {
           setDeleteTargetNode(null)
           await loadTree(true)
         }}
+      />
+
+      <BranchGeofenceModal
+        open={!!geofenceTargetBranch}
+        onOpenChange={(open) => !open && setGeofenceTargetBranch(null)}
+        branch={geofenceTargetBranch}
+        onSaved={() => loadTree(true)}
       />
     </MainLayout>
   )

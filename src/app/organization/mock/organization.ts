@@ -16,6 +16,9 @@ export type OrganizationNode = {
   description?: string;
   coveredZones?: string[];
   designationQuantities?: DesignationQuantity[];
+  latitude?: number;
+  longitude?: number;
+  geofenceRadiusMeters?: number;
 };
 
 export const organizationData: OrganizationNode[] = [

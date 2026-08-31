@@ -322,6 +322,9 @@ function buildHierarchicalTree(rawList: any[]): OrganizationNode[] {
       activeManagers: item.activeManagers || 0,
       coveredZones: item.coveredZones || [],
       designationQuantities: item.designationQuantities || [],
+      latitude: item.latitude ?? undefined,
+      longitude: item.longitude ?? undefined,
+      geofenceRadiusMeters: item.geofenceRadiusMeters ?? undefined,
       children: Array.isArray(item.children) ? [...item.children] : [],
     };
     map.set(id, node);
@@ -460,6 +463,49 @@ export async function updateCoveredZonesApi(
     return json.success !== false;
   } catch (error) {
     console.error('updateCoveredZonesApi error:', error);
+    return false;
+  }
+}
+
+export async function updateGeofenceApi(
+  deptId: string,
+  payload: { latitude: number; longitude: number; radiusMeters: number }
+): Promise<{ latitude: number; longitude: number; radiusMeters: number } | null> {
+  try {
+    const res = await fetch(withBasePath(`/api/organization/departments/${encodeURIComponent(deptId)}/geofence`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to update geofence: ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    return json.data || json.results || null;
+  } catch (error) {
+    console.error('updateGeofenceApi error:', error);
+    return null;
+  }
+}
+
+export async function clearGeofenceApi(deptId: string): Promise<boolean> {
+  try {
+    const res = await fetch(withBasePath(`/api/organization/departments/${encodeURIComponent(deptId)}/geofence`), {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to clear geofence: ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    return json.success !== false;
+  } catch (error) {
+    console.error('clearGeofenceApi error:', error);
     return false;
   }
 }
