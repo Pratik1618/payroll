@@ -301,9 +301,16 @@ export async function fetchBranchesMaster(): Promise<BranchMasterItem[]> {
   }
 }
 
+// The backend returns { errors: [{ errorMessage, ... }] } on failure -
+// surface that specific reason (e.g. "Branch code 'X' already exists")
+// instead of a generic "Failed to ..." toast that hides why it failed.
+function extractApiErrorMessage(json: any, fallback: string): string {
+  return json?.errors?.[0]?.errorMessage || fallback;
+}
+
 export async function createBranch(
   payload: { code: string; name: string; latitude?: number; longitude?: number }
-): Promise<BranchMasterItem | null> {
+): Promise<{ data: BranchMasterItem | null; error?: string }> {
   try {
     const res = await fetch(withBasePath('/api/masters/branches'), {
       method: 'POST',
@@ -313,22 +320,22 @@ export async function createBranch(
       body: JSON.stringify(payload),
     });
 
+    const json = await res.json();
     if (!res.ok) {
-      throw new Error(`Failed to create branch: ${res.statusText}`);
+      return { data: null, error: extractApiErrorMessage(json, `Failed to create branch: ${res.statusText}`) };
     }
 
-    const json = await res.json();
-    return json.data || json.result || json.results?.[0] || null;
+    return { data: json.data || json.result || json.results?.[0] || null };
   } catch (error) {
     console.error('createBranch error:', error);
-    return null;
+    return { data: null, error: 'Network error while creating branch.' };
   }
 }
 
 export async function updateBranchApi(
   id: string,
   payload: Partial<{ code: string; name: string; latitude: number; longitude: number }>
-): Promise<boolean> {
+): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(withBasePath(`/api/masters/branches/${encodeURIComponent(id)}`), {
       method: 'PUT',
@@ -338,33 +345,33 @@ export async function updateBranchApi(
       body: JSON.stringify(payload),
     });
 
+    const json = await res.json();
     if (!res.ok) {
-      throw new Error(`Failed to update branch: ${res.statusText}`);
+      return { success: false, error: extractApiErrorMessage(json, `Failed to update branch: ${res.statusText}`) };
     }
 
-    const json = await res.json();
-    return json.success !== false;
+    return { success: json.success !== false };
   } catch (error) {
     console.error('updateBranchApi error:', error);
-    return false;
+    return { success: false, error: 'Network error while updating branch.' };
   }
 }
 
-export async function deleteBranchApi(id: string): Promise<boolean> {
+export async function deleteBranchApi(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(withBasePath(`/api/masters/branches/${encodeURIComponent(id)}`), {
       method: 'DELETE',
     });
 
+    const json = await res.json();
     if (!res.ok) {
-      throw new Error(`Failed to delete branch: ${res.statusText}`);
+      return { success: false, error: extractApiErrorMessage(json, `Failed to delete branch: ${res.statusText}`) };
     }
 
-    const json = await res.json();
-    return json.success !== false;
+    return { success: json.success !== false };
   } catch (error) {
     console.error('deleteBranchApi error:', error);
-    return false;
+    return { success: false, error: 'Network error while deleting branch.' };
   }
 }
 

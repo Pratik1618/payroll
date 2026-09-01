@@ -98,7 +98,7 @@ export function BranchMasterModal({ open, onOpenChange }: BranchMasterModalProps
 
     setIsSubmitting(true);
     if (editingId) {
-      const success = await updateBranchApi(editingId, {
+      const { success, error } = await updateBranchApi(editingId, {
         code: code.trim(), name: name.trim(), latitude: lat, longitude: lng,
       });
       setIsSubmitting(false);
@@ -107,28 +107,28 @@ export function BranchMasterModal({ open, onOpenChange }: BranchMasterModalProps
         setIsFormOpen(false);
         loadBranches();
       } else {
-        toast.error("Failed to update branch.");
+        toast.error(error || "Failed to update branch.");
       }
     } else {
-      const created = await createBranch({ code: code.trim(), name: name.trim(), latitude: lat, longitude: lng });
+      const { data, error } = await createBranch({ code: code.trim(), name: name.trim(), latitude: lat, longitude: lng });
       setIsSubmitting(false);
-      if (created) {
+      if (data) {
         toast.success(`Branch '${name.trim()}' added.`);
         setIsFormOpen(false);
         loadBranches();
       } else {
-        toast.error("Failed to add branch.");
+        toast.error(error || "Failed to add branch.");
       }
     }
   };
 
   const handleDelete = async (id: string, branchName: string) => {
-    const success = await deleteBranchApi(id);
+    const { success, error } = await deleteBranchApi(id);
     if (success) {
       toast.success(`Branch '${branchName}' deleted.`);
       loadBranches();
     } else {
-      toast.error(`Failed to delete branch '${branchName}'.`);
+      toast.error(error || `Failed to delete branch '${branchName}'.`);
     }
   };
 
