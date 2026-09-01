@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Employee } from "../mock/employees";
-import { fetchEmployeesApi, editEmployeeApi, transferEmployeeApi, unassignEmployeeApi, fetchOrgTree } from "../services/masterDataService";
+import { BranchMasterItem } from "../mock/branches";
+import { fetchEmployeesApi, editEmployeeApi, transferEmployeeApi, unassignEmployeeApi, fetchOrgTree, fetchBranchesMaster } from "../services/masterDataService";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { MoreVertical, Edit2, Replace, Trash2, Wallet, Loader2 } from "lucide-react";
@@ -35,6 +36,8 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
   const [editDesignation, setEditDesignation] = useState("");
   const [editSalary, setEditSalary] = useState(0);
   const [editZones, setEditZones] = useState<string[]>([]);
+  const [editBranchId, setEditBranchId] = useState("");
+  const [branches, setBranches] = useState<BranchMasterItem[]>([]);
 
   // Transfer State
   const [transferDeptId, setTransferDeptId] = useState("");
@@ -47,6 +50,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
   useEffect(() => {
     loadEmployees();
     void fetchOrgTree().then((tree) => setDepartments(tree[0]?.children || []));
+    void fetchBranchesMaster().then(setBranches);
   }, [nodeId]);
 
   const loadEmployees = async () => {
@@ -71,14 +75,16 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
     setEditDesignation(emp.designation);
     setEditSalary(emp.monthlySalary);
     setEditZones(emp.coveredZones ? [...emp.coveredZones] : []);
+    setEditBranchId(emp.branchId ?? "");
   };
 
   const saveEdit = async () => {
     if (editingEmp) {
-      const payload: Partial<Employee> = {
+      const payload: Omit<Partial<Employee>, 'branchId'> & { branchId?: string | null } = {
         designation: editDesignation,
         monthlySalary: editSalary,
         coveredZones: editZones.length > 0 ? editZones : undefined,
+        branchId: editBranchId || null,
       };
 
       const success = await editEmployeeApi(editingEmp.id, payload);
@@ -225,6 +231,20 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
             <div className="grid gap-2">
               <Label>Monthly Salary</Label>
               <Input type="number" value={editSalary} onChange={(e) => setEditSalary(Number(e.target.value))} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Branch</Label>
+              <Select value={editBranchId || "none"} onValueChange={(val) => setEditBranchId(val === "none" ? "" : val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {branches.map(b => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {editingEmp?.coveredZones !== undefined && (
               <div className="grid gap-2 mt-2">

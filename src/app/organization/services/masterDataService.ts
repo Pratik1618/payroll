@@ -706,7 +706,7 @@ export async function fetchEmployeesApi(nodeId?: string, status?: string): Promi
 
 export async function editEmployeeApi(
   employeeId: string,
-  payload: Partial<Employee>
+  payload: Omit<Partial<Employee>, 'branchId'> & { branchId?: string | null }
 ): Promise<boolean> {
   try {
     const res = await fetch(withBasePath(`/api/organization/employees/${encodeURIComponent(employeeId)}`), {
