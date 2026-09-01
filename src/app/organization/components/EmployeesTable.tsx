@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Employee } from "../mock/employees";
@@ -118,20 +118,6 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
     }
   };
 
-  // Map every department-tree node id to the name of its top-level branch
-  // ancestor, so each employee's Branch column can be derived from the
-  // department/zone they're actually assigned to (nodeId) - branches have
-  // no separate assignment field, they're just the tree's root children.
-  const nodeToBranchName = useMemo(() => {
-    const map = new Map<string, string>();
-    const walk = (node: OrganizationNode, branchName: string) => {
-      map.set(node.id, branchName);
-      node.children?.forEach((child) => walk(child, branchName));
-    };
-    departments.forEach((branch) => walk(branch, branch.name));
-    return map;
-  }, [departments]);
-
   const transferSubDepartments = transferDeptId
     ? departments.find(d => d.id === transferDeptId)?.children?.filter(c => !c.name.includes("Zone")) || []
     : [];
@@ -177,7 +163,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
                 <span className="font-medium">{emp.name}</span>
               </TableCell>
               <TableCell className="text-muted-foreground">{emp.employeeId}</TableCell>
-              <TableCell>{nodeToBranchName.get(emp.nodeId) ?? "-"}</TableCell>
+              <TableCell>{emp.branchName ?? "-"}</TableCell>
               <TableCell>{emp.designation}</TableCell>
               <TableCell>
                 {emp.coveredZones && emp.coveredZones.length > 0 ? (

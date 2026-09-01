@@ -11,6 +11,8 @@ export type Employee = {
   hierarchyLevel: number;
   nodeId: string;
   coveredZones?: string[];
+  branchId?: string;
+  branchName?: string;
 };
 
 export const employeesData: Employee[] = [

@@ -18,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { fetchUnassignedEmployeesApi, assignEmployeeApi, fetchOrgTree, UnassignedEmployeeItem } from "../services/masterDataService";
+import { fetchUnassignedEmployeesApi, assignEmployeeApi, fetchOrgTree, fetchBranchesMaster, UnassignedEmployeeItem } from "../services/masterDataService";
 import { OrganizationNode } from "../mock/organization";
+import { BranchMasterItem } from "../mock/branches";
 import { toast } from "sonner";
 
 interface AddEmployeeModalProps {
@@ -33,8 +34,10 @@ export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: Add
   const [departmentId, setDepartmentId] = useState("");
   const [subDepartmentId, setSubDepartmentId] = useState("");
   const [zoneId, setZoneId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [unassignedList, setUnassignedList] = useState<UnassignedEmployeeItem[]>([]);
   const [departments, setDepartments] = useState<OrganizationNode[]>([]);
+  const [branches, setBranches] = useState<BranchMasterItem[]>([]);
 
   // Reset form when opened
   useEffect(() => {
@@ -43,8 +46,10 @@ export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: Add
       setDepartmentId("");
       setSubDepartmentId("");
       setZoneId("");
+      setBranchId("");
       loadUnassignedPool();
       loadDepartmentsList();
+      loadBranchesList();
     }
   }, [open]);
 
@@ -57,6 +62,11 @@ export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: Add
   const loadDepartmentsList = async () => {
     const tree = await fetchOrgTree();
     setDepartments(tree[0]?.children || []);
+  };
+
+  const loadBranchesList = async () => {
+    const data = await fetchBranchesMaster();
+    setBranches(data);
   };
 
   // Sub-departments of the selected department
@@ -90,6 +100,7 @@ export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: Add
       zoneId: zoneId || null,
       reportingManager: "TBD",
       monthlySalary: 60000,
+      branchId: branchId || null,
     };
 
     const success = await assignEmployeeApi(selectedEmpId, payload);
@@ -152,6 +163,26 @@ export function AddEmployeeModal({ open, onOpenChange, onEmployeeAssigned }: Add
                     {dept.name}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="branch">Choose Branch (Optional)</Label>
+            <Select value={branchId} onValueChange={setBranchId}>
+              <SelectTrigger id="branch">
+                <SelectValue placeholder="Select a branch" />
+              </SelectTrigger>
+              <SelectContent>
+                {branches.length === 0 ? (
+                  <SelectItem value="none" disabled>No branches available</SelectItem>
+                ) : (
+                  branches.map(b => (
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

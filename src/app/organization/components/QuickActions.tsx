@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, Upload, FileText, MapPin, Building, Layers } from "lucide-react";
+import { Plus, Download, Upload, FileText, MapPin, Building, Building2, Layers } from "lucide-react";
 import { AddEmployeeModal } from "./AddEmployeeModal";
 import { AddDepartmentModal } from "./AddDepartmentModal";
 import { AddStateModal } from "./AddStateModal";
 import { AddCityModal } from "./AddCityModal";
 import { DesignationMasterModal } from "./DesignationMasterModal";
 import { SalaryComponentsMasterModal } from "./SalaryComponentsMasterModal";
+import { BranchMasterModal } from "./BranchMasterModal";
 import { BulkEmployeeImportModal } from "./BulkEmployeeImportModal";
 import { useRouter } from "next/navigation";
 
@@ -19,6 +20,7 @@ export function QuickActions() {
   const [isAddCityOpen, setIsAddCityOpen] = useState(false);
   const [isDesignationMasterOpen, setIsDesignationMasterOpen] = useState(false);
   const [isSalaryCompMasterOpen, setIsSalaryCompMasterOpen] = useState(false);
+  const [isBranchMasterOpen, setIsBranchMasterOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const router = useRouter();
 
@@ -39,6 +41,10 @@ export function QuickActions() {
       <Button variant="outline" size="sm" className="hidden lg:flex" onClick={() => setIsSalaryCompMasterOpen(true)}>
         <Layers className="mr-2 h-4 w-4 text-purple-600" />
         Salary Components
+      </Button>
+      <Button variant="outline" size="sm" className="hidden lg:flex" onClick={() => setIsBranchMasterOpen(true)}>
+        <Building2 className="mr-2 h-4 w-4 text-blue-600" />
+        Branches
       </Button>
       <Button size="sm" onClick={() => setIsAddEmployeeOpen(true)}>
         <Plus className="mr-2 h-4 w-4" />
@@ -100,6 +106,11 @@ export function QuickActions() {
       <SalaryComponentsMasterModal
         open={isSalaryCompMasterOpen}
         onOpenChange={setIsSalaryCompMasterOpen}
+      />
+
+      <BranchMasterModal
+        open={isBranchMasterOpen}
+        onOpenChange={setIsBranchMasterOpen}
       />
 
       <BulkEmployeeImportModal

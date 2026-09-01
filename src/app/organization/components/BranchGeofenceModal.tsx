@@ -120,9 +120,9 @@ export function BranchGeofenceModal({ open, onOpenChange, branch, onSaved }: Bra
               <MapPin className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle>Branch Location</DialogTitle>
+              <DialogTitle>Department Location</DialogTitle>
               <DialogDescription className="text-xs">
-                {branch ? `Set GPS coordinates and geofence radius for ${branch.name}.` : "Select a branch."}
+                {branch ? `Set GPS coordinates and geofence radius for ${branch.name}.` : "Select a department."}
               </DialogDescription>
             </div>
           </div>

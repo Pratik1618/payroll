@@ -160,12 +160,12 @@ export default function OrganizationManagementPage() {
     setSaving(false)
 
     if (created) {
-      toast.success(`Branch "${trimmedName}" created.`)
+      toast.success(`Department "${trimmedName}" created.`)
       await loadTree(false)
       setSelectedBranchId(created.id)
       resetBranchDialog()
     } else {
-      toast.error("Failed to create branch.")
+      toast.error("Failed to create department.")
     }
   }
 
@@ -186,14 +186,14 @@ export default function OrganizationManagementPage() {
     setSaving(false)
 
     if (created) {
-      toast.success(`Department "${trimmedName}" created.`)
+      toast.success(`Sub-Department "${trimmedName}" created.`)
       if (targetBranchId !== selectedBranchId) {
         setSelectedBranchId(targetBranchId)
       }
       await loadTree(true)
       resetDepartmentDialog()
     } else {
-      toast.error("Failed to create department.")
+      toast.error("Failed to create sub-department.")
     }
   }
 
@@ -204,17 +204,17 @@ export default function OrganizationManagementPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Organization Management</h1>
             <p className="text-sm text-muted-foreground">
-              Manage branches and departments separately from salary operations.
+              Manage departments and sub-departments separately from salary operations.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={openCreateBranchDialog}>
               <Plus className="h-4 w-4" />
-              Add Branch
+              Add Department
             </Button>
             <Button onClick={openCreateDepartmentDialog} disabled={!selectedBranch}>
               <Plus className="h-4 w-4" />
-              Add Department
+              Add Sub-Department
             </Button>
             <Button variant="outline" onClick={() => setStateDialogOpen(true)}>
               <MapPin className="h-4 w-4" />
@@ -230,7 +230,7 @@ export default function OrganizationManagementPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <Card>
             <CardHeader className="space-y-0 pb-2">
-              <CardDescription>Total Branches</CardDescription>
+              <CardDescription>Total Departments</CardDescription>
               <CardTitle className="text-3xl">{totals.totalBranches}</CardTitle>
             </CardHeader>
             <CardContent>
@@ -242,13 +242,13 @@ export default function OrganizationManagementPage() {
           </Card>
           <Card>
             <CardHeader className="space-y-0 pb-2">
-              <CardDescription>Total Departments</CardDescription>
+              <CardDescription>Total Sub-Departments</CardDescription>
               <CardTitle className="text-3xl">{totals.totalDepartments}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FolderTree className="h-4 w-4" />
-                Across all branches
+                Across all departments
               </div>
             </CardContent>
           </Card>
@@ -260,7 +260,7 @@ export default function OrganizationManagementPage() {
             <CardContent>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
-                Branch headcount total
+                Department headcount total
               </div>
             </CardContent>
           </Card>
@@ -269,8 +269,8 @@ export default function OrganizationManagementPage() {
         <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
           <Card className="py-0">
             <CardHeader className="border-b py-6">
-              <CardTitle>Branches</CardTitle>
-              <CardDescription>Select a branch to manage its departments.</CardDescription>
+              <CardTitle>Departments</CardTitle>
+              <CardDescription>Select a department to manage its sub-departments.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 py-6">
               {loading ? (
@@ -279,7 +279,7 @@ export default function OrganizationManagementPage() {
                 </div>
               ) : branches.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-                  No branches available. Create a branch to begin.
+                  No departments available. Create a department to begin.
                 </div>
               ) : (
                 branches.map((branch) => {
@@ -346,8 +346,8 @@ export default function OrganizationManagementPage() {
                         <p className="mt-2 text-xs text-muted-foreground">No location set.</p>
                       )}
                       <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-                        <span>{branch.children?.length ?? 0} department(s)</span>
-                        <span>{branch.head || "No branch head"}</span>
+                        <span>{branch.children?.length ?? 0} sub-department(s)</span>
+                        <span>{branch.head || "No department head"}</span>
                       </div>
                     </button>
                   )
@@ -360,20 +360,20 @@ export default function OrganizationManagementPage() {
             <CardHeader className="border-b py-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <CardTitle>{selectedBranch ? `${selectedBranch.name} Departments` : "Departments"}</CardTitle>
+                  <CardTitle>{selectedBranch ? `${selectedBranch.name} Sub-Departments` : "Sub-Departments"}</CardTitle>
                   <CardDescription>
                     {selectedBranch
-                      ? "Create or remove departments under the selected branch."
-                      : "Select a branch to manage departments."}
+                      ? "Create or remove sub-departments under the selected department."
+                      : "Select a department to manage sub-departments."}
                   </CardDescription>
                 </div>
                 {selectedBranch && (
                   <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
                       <UserRound className="h-4 w-4" />
-                      {selectedBranch.head || "No branch head"}
+                      {selectedBranch.head || "No department head"}
                     </span>
-                    <span>{selectedBranch.children?.length ?? 0} department(s)</span>
+                    <span>{selectedBranch.children?.length ?? 0} sub-department(s)</span>
                   </div>
                 )}
               </div>
@@ -381,17 +381,17 @@ export default function OrganizationManagementPage() {
             <CardContent className="space-y-4 py-6">
               {!selectedBranch ? (
                 <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                  Select a branch from the left panel.
+                  Select a department from the left panel.
                 </div>
               ) : departments.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-                  No departments in this branch yet.
+                  No sub-departments in this department yet.
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Department</TableHead>
+                      <TableHead>Sub-Department</TableHead>
                       <TableHead>Head</TableHead>
                       <TableHead>Employees</TableHead>
                       <TableHead>Description</TableHead>
@@ -431,12 +431,12 @@ export default function OrganizationManagementPage() {
       >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Add Branch</DialogTitle>
-            <DialogDescription>Branches are top-level organization units.</DialogDescription>
+            <DialogTitle>Add Department</DialogTitle>
+            <DialogDescription>Departments are top-level organization units.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="branch-name">Branch Name</Label>
+              <Label htmlFor="branch-name">Department Name</Label>
               <Input
                 id="branch-name"
                 value={branchForm.name}
@@ -444,7 +444,7 @@ export default function OrganizationManagementPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="branch-head">Branch Head</Label>
+              <Label htmlFor="branch-head">Department Head</Label>
               <Input
                 id="branch-head"
                 value={branchForm.head}
@@ -466,7 +466,7 @@ export default function OrganizationManagementPage() {
               Cancel
             </Button>
             <Button onClick={handleBranchSave} disabled={saving || !branchForm.name.trim()}>
-              Create Branch
+              Create Department
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -478,14 +478,14 @@ export default function OrganizationManagementPage() {
       >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Add Department</DialogTitle>
+            <DialogTitle>Add Sub-Department</DialogTitle>
             <DialogDescription>
-              {selectedBranch ? `Add a department under ${selectedBranch.name}.` : "Select a branch first."}
+              {selectedBranch ? `Add a sub-department under ${selectedBranch.name}.` : "Select a department first."}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="department-branch">Branch</Label>
+              <Label htmlFor="department-branch">Department</Label>
               <select
                 id="department-branch"
                 value={departmentForm.branchId}
@@ -502,7 +502,7 @@ export default function OrganizationManagementPage() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="department-name">Department Name</Label>
+              <Label htmlFor="department-name">Sub-Department Name</Label>
               <Input
                 id="department-name"
                 value={departmentForm.name}
@@ -510,7 +510,7 @@ export default function OrganizationManagementPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="department-head">Department Head</Label>
+              <Label htmlFor="department-head">Sub-Department Head</Label>
               <Input
                 id="department-head"
                 value={departmentForm.head}
@@ -534,7 +534,7 @@ export default function OrganizationManagementPage() {
               Cancel
             </Button>
             <Button onClick={handleDepartmentSave} disabled={saving || !departmentForm.name.trim() || !selectedBranch}>
-              Create Department
+              Create Sub-Department
             </Button>
           </DialogFooter>
         </DialogContent>

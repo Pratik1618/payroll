@@ -1,6 +1,7 @@
 import { withBasePath } from '@/lib/base-path';
 import { StateItem, CityItem } from '../mock/statesAndCities';
 import { SalaryComponentMasterItem } from '../mock/salaryComponentsMaster';
+import { BranchMasterItem } from '../mock/branches';
 import { OrganizationNode } from '../mock/organization';
 import { Employee } from '../mock/employees';
 
@@ -265,6 +266,104 @@ export async function deleteSalaryComponentApi(id: string): Promise<boolean> {
     return json.success !== false;
   } catch (error) {
     console.error('deleteSalaryComponentApi error:', error);
+    return false;
+  }
+}
+
+// ---- Branches Master (physical office locations - code/name/lat/long only,
+// independent of the department tree; distinct from the unrelated
+// Module 12 `/api/branches` operation-branch lookup used elsewhere) ----
+
+export async function fetchBranchesMaster(): Promise<BranchMasterItem[]> {
+  try {
+    const res = await fetch(withBasePath('/api/masters/branches'), {
+      method: 'GET',
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch branches: ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    const list = Array.isArray(json?.results)
+      ? json.results
+      : Array.isArray(json?.data)
+      ? json.data
+      : Array.isArray(json)
+      ? json
+      : [];
+
+    return list;
+  } catch (error) {
+    console.error('fetchBranchesMaster error:', error);
+    return [];
+  }
+}
+
+export async function createBranch(
+  payload: { code: string; name: string; latitude?: number; longitude?: number }
+): Promise<BranchMasterItem | null> {
+  try {
+    const res = await fetch(withBasePath('/api/masters/branches'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to create branch: ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    return json.data || json.result || json.results?.[0] || null;
+  } catch (error) {
+    console.error('createBranch error:', error);
+    return null;
+  }
+}
+
+export async function updateBranchApi(
+  id: string,
+  payload: Partial<{ code: string; name: string; latitude: number; longitude: number }>
+): Promise<boolean> {
+  try {
+    const res = await fetch(withBasePath(`/api/masters/branches/${encodeURIComponent(id)}`), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to update branch: ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    return json.success !== false;
+  } catch (error) {
+    console.error('updateBranchApi error:', error);
+    return false;
+  }
+}
+
+export async function deleteBranchApi(id: string): Promise<boolean> {
+  try {
+    const res = await fetch(withBasePath(`/api/masters/branches/${encodeURIComponent(id)}`), {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to delete branch: ${res.statusText}`);
+    }
+
+    const json = await res.json();
+    return json.success !== false;
+  } catch (error) {
+    console.error('deleteBranchApi error:', error);
     return false;
   }
 }
@@ -695,6 +794,7 @@ export async function assignEmployeeApi(
     zoneId?: string | null;
     reportingManager?: string;
     monthlySalary?: number;
+    branchId?: string | null;
   }
 ): Promise<boolean> {
   try {
