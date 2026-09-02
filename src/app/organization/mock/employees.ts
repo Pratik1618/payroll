@@ -13,6 +13,7 @@ export type Employee = {
   coveredZones?: string[];
   branchId?: string;
   branchName?: string;
+  employeeType?: "REGULAR" | "NAPS";
 };
 
 export const employeesData: Employee[] = [

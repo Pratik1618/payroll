@@ -144,7 +144,7 @@ const SALARY_COMPONENT_COLUMNS = [
   { code: "CTC", name: "Cost to Company", category: "Summary", required: "No", description: "Total Cost to Company (GROSS_AMT + Employer Contributions).", example: 0 }
 ];
 
-const EMPLOYEE_COLUMNS = ["EMP_CODE", "EMP_NAME", "DESIGNATION", "DEPARTMENT"];
+const EMPLOYEE_COLUMNS = ["EMP_CODE", "EMP_NAME", "DESIGNATION", "DEPARTMENT", "EMP_TYPE"];
 const ALL_COLUMNS = [...EMPLOYEE_COLUMNS, ...SALARY_COMPONENT_COLUMNS.map((c) => c.code)];
 
 // ---------------------------------------------------------------------------
@@ -175,6 +175,7 @@ interface BulkImportApiEmployee {
   designation: string;
   department: string | null;
   status: string;
+  employeeType: string;
   grossSalary: number;
   totalDeductions: number;
   netSalary: number;
@@ -223,6 +224,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
       EMP_NAME: "Rahul Sharma",
       DESIGNATION: "SUPERVISOR",
       DEPARTMENT: "Operations",
+      EMP_TYPE: "REGULAR",
       BASIC: 11632,
       DA: 3614,
       HRA: 3709,
@@ -278,6 +280,14 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
         "Required": "Yes",
         "Description": "Department or operational zone name",
         "Sample Value": "Operations",
+      },
+      {
+        "Column Code": "EMP_TYPE",
+        "Full Component Name": "Employee Type",
+        "Category": "Employee Info",
+        "Required": "No",
+        "Description": "REGULAR (default) or NAPS. NAPS apprentices may have BASIC = 0 (paid via STIPEND instead) and are exempt from PF/ESIC/PT/Bonus in payroll processing.",
+        "Sample Value": "REGULAR",
       },
       ...SALARY_COMPONENT_COLUMNS.map((c) => ({
         "Column Code": c.code,
@@ -365,7 +375,8 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
           if (!normalized.DEPARTMENT || String(normalized.DEPARTMENT).trim() === "") {
             errors.push("Missing DEPARTMENT");
           }
-          if (!normalized.BASIC || Number(normalized.BASIC) <= 0) {
+          const empType = String(normalized.EMP_TYPE || "").trim().toUpperCase() || "REGULAR";
+          if (empType !== "NAPS" && (!normalized.BASIC || Number(normalized.BASIC) <= 0)) {
             errors.push("Missing or zero BASIC salary");
           }
 
@@ -428,6 +439,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
         name: String(r.data.EMP_NAME).trim(),
         designation: String(r.data.DESIGNATION).trim(),
         department: String(r.data.DEPARTMENT).trim(),
+        employeeType: String(r.data.EMP_TYPE || "REGULAR").trim().toUpperCase(),
         salaryComponents: SALARY_COMPONENT_COLUMNS.map((comp) => ({
           code: comp.code,
           name: comp.name,
@@ -613,6 +625,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
                       <TableHead className="text-xs">Name</TableHead>
                       <TableHead className="text-xs">Designation</TableHead>
                       <TableHead className="text-xs">Department</TableHead>
+                      <TableHead className="text-xs">Type</TableHead>
                       <TableHead className="text-xs text-right">Basic</TableHead>
                       <TableHead className="text-xs text-right">Gross</TableHead>
                       <TableHead className="text-xs text-right">Deductions</TableHead>
@@ -634,6 +647,8 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
                         .reduce((sum, c) => sum + (Number(row.data[c.code]) || 0), 0);
 
                       const netPayable = gross - deductionsTotal;
+                      const rowEmpType = String(row.data.EMP_TYPE || "REGULAR").trim().toUpperCase();
+                      const isNaps = rowEmpType === "NAPS";
 
                       return (
                         <TableRow
@@ -647,8 +662,24 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
                           <TableCell className="text-xs">{String(row.data.EMP_NAME || "—")}</TableCell>
                           <TableCell className="text-xs">{String(row.data.DESIGNATION || "—")}</TableCell>
                           <TableCell className="text-xs">{String(row.data.DEPARTMENT || "—")}</TableCell>
+                          <TableCell>
+                            {isNaps ? (
+                              <Badge className="bg-purple-600 text-white text-[10px] h-5 px-1.5">NAPS</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] h-5 px-1.5 text-muted-foreground">
+                                Regular
+                              </Badge>
+                            )}
+                          </TableCell>
                           <TableCell className="text-xs text-right">
-                            ₹{(Number(row.data.BASIC) || 0).toLocaleString("en-IN")}
+                            {isNaps ? (
+                              <>
+                                ₹{(Number(row.data.STIPEND) || 0).toLocaleString("en-IN")}{" "}
+                                <span className="text-muted-foreground">(Stipend)</span>
+                              </>
+                            ) : (
+                              <>₹{(Number(row.data.BASIC) || 0).toLocaleString("en-IN")}</>
+                            )}
                           </TableCell>
                           <TableCell className="text-xs text-right font-medium text-green-700 dark:text-green-400">
                             ₹{gross.toLocaleString("en-IN")}
@@ -693,6 +724,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
                     <TableRow>
                       <TableHead className="text-xs">Emp Code</TableHead>
                       <TableHead className="text-xs">Name</TableHead>
+                      <TableHead className="text-xs">Type</TableHead>
                       <TableHead className="text-xs">Gross</TableHead>
                       <TableHead className="text-xs">Deductions</TableHead>
                       <TableHead className="text-xs">Net</TableHead>
@@ -703,6 +735,7 @@ export function BulkEmployeeImportModal({ open, onOpenChange }: BulkEmployeeImpo
                       <TableRow key={emp.id}>
                         <TableCell className="text-xs font-medium">{emp.employeeId}</TableCell>
                         <TableCell className="text-xs">{emp.name}</TableCell>
+                        <TableCell className="text-xs">{emp.employeeType}</TableCell>
                         <TableCell className="text-xs">{emp.grossSalary}</TableCell>
                         <TableCell className="text-xs">{emp.totalDeductions}</TableCell>
                         <TableCell className="text-xs">{emp.netSalary}</TableCell>

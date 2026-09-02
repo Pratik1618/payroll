@@ -38,6 +38,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
   const [editZones, setEditZones] = useState<string[]>([]);
   const [editBranchId, setEditBranchId] = useState("");
   const [branches, setBranches] = useState<BranchMasterItem[]>([]);
+  const [editEmployeeType, setEditEmployeeType] = useState<"REGULAR" | "NAPS">("REGULAR");
 
   // Transfer State
   const [transferDeptId, setTransferDeptId] = useState("");
@@ -76,15 +77,17 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
     setEditSalary(emp.monthlySalary);
     setEditZones(emp.coveredZones ? [...emp.coveredZones] : []);
     setEditBranchId(emp.branchId ?? "");
+    setEditEmployeeType(emp.employeeType ?? "REGULAR");
   };
 
   const saveEdit = async () => {
     if (editingEmp) {
-      const payload: Omit<Partial<Employee>, 'branchId'> & { branchId?: string | null } = {
+      const payload: Omit<Partial<Employee>, 'branchId'> & { branchId?: string | null; employeeType?: "REGULAR" | "NAPS" } = {
         designation: editDesignation,
         monthlySalary: editSalary,
         coveredZones: editZones.length > 0 ? editZones : undefined,
         branchId: editBranchId || null,
+        employeeType: editEmployeeType,
       };
 
       const success = await editEmployeeApi(editingEmp.id, payload);
@@ -141,6 +144,7 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
             <TableHead>Employee ID</TableHead>
             <TableHead>Branch</TableHead>
             <TableHead>Designation</TableHead>
+            <TableHead>Type</TableHead>
             <TableHead>Department / Zones</TableHead>
             <TableHead className="text-right">Monthly Salary</TableHead>
             <TableHead>Status</TableHead>
@@ -150,14 +154,14 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
         <TableBody>
           {isLoading ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
                 Loading employees...
               </TableCell>
             </TableRow>
           ) : employeesList.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                 No employees assigned directly to this organizational unit.
               </TableCell>
             </TableRow>
@@ -171,6 +175,13 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
               <TableCell className="text-muted-foreground">{emp.employeeId}</TableCell>
               <TableCell>{emp.branchName ?? "-"}</TableCell>
               <TableCell>{emp.designation}</TableCell>
+              <TableCell>
+                {emp.employeeType === "NAPS" ? (
+                  <Badge className="bg-purple-600 text-white font-normal">NAPS</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-muted-foreground font-normal">Regular</Badge>
+                )}
+              </TableCell>
               <TableCell>
                 {emp.coveredZones && emp.coveredZones.length > 0 ? (
                   <div className="flex gap-1 flex-wrap">
@@ -243,6 +254,18 @@ export function EmployeesTable({ nodeId }: { nodeId?: string }) {
                   {branches.map(b => (
                     <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Employee Type</Label>
+              <Select value={editEmployeeType} onValueChange={(val) => setEditEmployeeType(val as "REGULAR" | "NAPS")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="REGULAR">Regular</SelectItem>
+                  <SelectItem value="NAPS">NAPS Apprentice</SelectItem>
                 </SelectContent>
               </Select>
             </div>
